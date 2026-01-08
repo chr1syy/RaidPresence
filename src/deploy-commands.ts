@@ -2,12 +2,14 @@ import { REST, Routes } from 'discord.js';
 import { config } from 'dotenv';
 import raidCommand from './commands/raid';
 import configCommand from './commands/config';
+import setupCommand from './commands/setup';
 
 config();
 
 const commands = [
   raidCommand.data.toJSON(),
   configCommand.data.toJSON(),
+  setupCommand.data.toJSON(),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN!);

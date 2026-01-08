@@ -231,8 +231,8 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // Create embed
   const embed = await createRaidEmbed(raid.id);
 
-  // Get translations for buttons
-  const trans = getTranslations(guildData.language || 'en');
+  // Get translations for buttons (safe fallback to 'en')
+  const trans = getTranslations('en');
 
   // Create buttons
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -342,9 +342,10 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
       ? a.wowSpec
         ? `${a.wowClass} (${a.wowSpec})`
         : a.wowClass
-      : trans.noClassSet;
+      : null;
     const prefix = specSymbol ? `${specSymbol} ` : '';
-    const line = `  • ${prefix}${a.username} - ${classSpec}`;
+    const displayName = `${prefix}${a.username}`;
+    const line = classSpec ? `  • ${displayName} - ${classSpec}` : `  • ${displayName}`;
 
     if (role === 'Tank') tankList.push(line);
     else if (role === 'Healer') healerList.push(line);

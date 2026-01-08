@@ -82,7 +82,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     noClass: 'No Class',
 
     // Class/spec
-    noClassSet: 'No class set',
+    noClassSet: 'No Class',
 
     // Countdown
     countdownIn: 'in',

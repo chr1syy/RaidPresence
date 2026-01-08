@@ -12,6 +12,7 @@ model Guild {
   name            String
   raidRoles       String   // Comma-separated role IDs or names for attendance
   raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
+  language        String   @default("en") // Language for bot messages (en, de)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

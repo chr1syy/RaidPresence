@@ -39,6 +39,21 @@ const command: Command = {
             .setRequired(true)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('language')
+        .setDescription('Set the bot language for this server')
+        .addStringOption((option) =>
+          option
+            .setName('lang')
+            .setDescription('Choose a language')
+            .setRequired(true)
+            .addChoices(
+              { name: 'English', value: 'en' },
+              { name: 'Deutsch (German)', value: 'de' }
+            )
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -52,6 +67,8 @@ const command: Command = {
       await handleSetRaidRoles(interaction);
     } else if (subcommand === 'leader-roles') {
       await handleSetLeaderRoles(interaction);
+    } else if (subcommand === 'language') {
+      await handleSetLanguage(interaction);
     }
   },
 };
@@ -80,6 +97,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
 
   const raidRoles = guildData.raidRoles || 'Not configured';
   const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
+  const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
 
   const embed = new EmbedBuilder()
     .setTitle('Server Configuration')
@@ -94,9 +112,14 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
         name: 'Raid Leader Roles',
         value: `\`${leaderRoles}\`\n\nMembers with these roles can create and delete raids.`,
         inline: false,
+      },
+      {
+        name: 'Language',
+        value: `\`${language}\`\n\nBot messages will appear in this language.`,
+        inline: false,
       }
     )
-    .setFooter({ text: 'Use /config raid-roles or /config leader-roles to update' })
+    .setFooter({ text: 'Use /config to update any setting' })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
@@ -187,6 +210,45 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
 
   await interaction.editReply({
     content: `✅ Raid leader roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles can now create and manage raids.`,
+  });
+}
+
+async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const language = interaction.options.get('lang', true).value as string;
+
+  if (language !== 'en' && language !== 'de') {
+    await interaction.editReply({
+      content: '❌ Invalid language. Please choose English or German.',
+    });
+    return;
+  }
+
+  // Update in database
+  await prisma.guild.upsert({
+    where: { id: interaction.guild.id },
+    update: { language },
+    create: {
+      id: interaction.guild.id,
+      name: interaction.guild.name,
+      raidRoles: '',
+      raidLeaderRoles: '',
+      language,
+    },
+  });
+
+  const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
+  await interaction.editReply({
+    content: `✅ Language updated to: \`${languageName}\`\n\nBot messages will now appear in this language.`,
   });
 }
 

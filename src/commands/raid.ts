@@ -10,8 +10,9 @@ import {
 } from 'discord.js';
 import prisma from '../database/client';
 import { Command } from '../types';
-import { getSpecRole, RoleComposition } from '../utils/wowData';
+import { getSpecRole, getSpecSymbol, RoleComposition } from '../utils/wowData';
 import { canManageRaids } from '../utils/permissions';
+import { t, getTranslations } from '../utils/localization';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -230,19 +231,22 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // Create embed
   const embed = await createRaidEmbed(raid.id);
 
+  // Get translations for buttons
+  const trans = getTranslations(guildData.language || 'en');
+
   // Create buttons
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`raid_optout_${raid.id}`)
-      .setLabel('Opt Out')
+      .setLabel(trans.optOut)
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId(`raid_optin_${raid.id}`)
-      .setLabel('Opt In')
+      .setLabel(trans.optIn)
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId(`raid_class_${raid.id}`)
-      .setLabel('Set Class/Spec')
+      .setLabel(trans.setClassSpec)
       .setStyle(ButtonStyle.Primary)
   );
 
@@ -271,19 +275,24 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   });
 }
 
-export async function createRaidEmbed(raidId: string): Promise<EmbedBuilder> {
+export async function createRaidEmbed(raidId: string, language?: string): Promise<EmbedBuilder> {
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
     include: {
       attendance: {
         orderBy: { username: 'asc' },
       },
+      guild: true,
     },
   });
 
   if (!raid) {
     throw new Error('Raid not found');
   }
+
+  // Use provided language or fetch from guild
+  const lang = language || raid.guild.language || 'en';
+  const trans = getTranslations(lang);
 
   const attending = raid.attendance.filter((a) => a.status === 'attending');
   const optedOut = raid.attendance.filter((a) => a.status === 'opted_out');
@@ -292,17 +301,19 @@ export async function createRaidEmbed(raidId: string): Promise<EmbedBuilder> {
   const composition: RoleComposition = {
     tanks: 0,
     healers: 0,
-    dps: 0,
+    melee: 0,
+    ranged: 0,
+    noClass: 0,
   };
 
-  // Sort attending by role: Tanks -> Healers -> DPS -> No class set
+  // Sort attending by role: Tanks -> Healers -> Melee -> Ranged -> No class set
   const sortedAttending = attending.sort((a, b) => {
     const roleA = getSpecRole(a.wowClass, a.wowSpec);
     const roleB = getSpecRole(b.wowClass, b.wowSpec);
 
-    const roleOrder = { Tank: 0, Healer: 1, DPS: 2 };
-    const orderA = roleA ? roleOrder[roleA] : 3;
-    const orderB = roleB ? roleOrder[roleB] : 3;
+    const roleOrder = { Tank: 0, Healer: 1, Melee: 2, Ranged: 3 };
+    const orderA = roleA ? roleOrder[roleA] : 4;
+    const orderB = roleB ? roleOrder[roleB] : 4;
 
     if (orderA !== orderB) return orderA - orderB;
     return a.username.localeCompare(b.username); // Secondary sort by name
@@ -312,50 +323,72 @@ export async function createRaidEmbed(raidId: string): Promise<EmbedBuilder> {
     const role = getSpecRole(a.wowClass, a.wowSpec);
     if (role === 'Tank') composition.tanks++;
     else if (role === 'Healer') composition.healers++;
-    else if (role === 'DPS') composition.dps++;
+    else if (role === 'Melee') composition.melee++;
+    else if (role === 'Ranged') composition.ranged++;
+    else composition.noClass++;
   });
 
-  const compositionText = `Tanks: ${composition.tanks}  •  Healers: ${composition.healers}  •  DPS: ${composition.dps}`;
+  const compositionText = `${trans.tank}: ${composition.tanks}  •  ${trans.heal}: ${composition.healers}  •  ${trans.melee}: ${composition.melee}  •  ${trans.ranged}: ${composition.ranged}  •  ${trans.noClass}: ${composition.noClass}`;
+
+  // Calculate countdown
+  const now = new Date();
+  const timeUntilRaid = raid.raidDate.getTime() - now.getTime();
+
+  let countdownText = '';
+  if (timeUntilRaid > 0) {
+    const days = Math.floor(timeUntilRaid / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeUntilRaid % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((timeUntilRaid % (1000 * 60 * 60)) / (1000 * 60));
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}${trans.days}`);
+    if (hours > 0) parts.push(`${hours}${trans.hours}`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}${trans.minutes}`);
+
+    countdownText = ` (${trans.countdownIn} ${parts.join(' ')})`;
+  }
 
   const embed = new EmbedBuilder()
-    .setTitle(`${raid.description || 'Raid Event'}`)
+    .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(0x00ae86)
     .addFields(
       {
-        name: 'Date & Time',
-        value: `<t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>`,
+        name: trans.dateAndTime,
+        value: `<t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>${countdownText}`,
         inline: false,
       },
       {
-        name: 'Composition',
+        name: trans.composition,
         value: compositionText,
         inline: false,
       },
       {
-        name: `✅ Attending (${attending.length})`,
+        name: `✅ ${trans.attending} (${attending.length})`,
         value: attending.length > 0
           ? sortedAttending
               .map((a) => {
+                const specSymbol = getSpecSymbol(a.wowClass, a.wowSpec);
                 const classSpec = a.wowClass
                   ? a.wowSpec
                     ? `${a.wowClass} (${a.wowSpec})`
                     : a.wowClass
-                  : 'No class set';
-                return `• ${a.username} - ${classSpec}`;
+                  : trans.noClassSet;
+                const prefix = specSymbol ? `${specSymbol} ` : '';
+                return `• ${prefix}${a.username} - ${classSpec}`;
               })
               .join('\n')
-          : 'No one attending yet',
+          : trans.noOneAttending,
         inline: false,
       },
       {
-        name: `❌ Opted Out (${optedOut.length})`,
+        name: `❌ ${trans.optedOut} (${optedOut.length})`,
         value: optedOut.length > 0
           ? optedOut.map((a) => `• ${a.username}`).join('\n')
-          : 'No one opted out',
+          : trans.noOneOptedOut,
         inline: false,
       }
     )
-    .setFooter({ text: `Raid ID: ${raid.id}` })
+    .setFooter({ text: `${trans.raidId}: ${raid.id}` })
     .setTimestamp();
 
   return embed;

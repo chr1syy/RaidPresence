@@ -290,8 +290,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     throw new Error('Raid not found');
   }
 
-  // Use provided language or fetch from guild
-  const lang = language || raid.guild.language || 'en';
+  // Use provided language or default to 'en'
+  const lang = language || 'en';
   const trans = getTranslations(lang);
 
   const attending = raid.attendance.filter((a) => a.status === 'attending');
@@ -378,28 +378,52 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
 
+  // Helper to chunk long embed field values into multiple fields (Discord limit: 1024 chars)
+  const chunkFieldText = (name: string, text: string, inline = false) => {
+    const MAX = 1024;
+    if (text.length <= MAX) return [{ name, value: text, inline }];
+
+    const lines = text.split('\n');
+    const fields: { name: string; value: string; inline: boolean }[] = [];
+    let current = '';
+
+    for (const line of lines) {
+      const candidate = current ? `${current}\n${line}` : line;
+      if (candidate.length > MAX) {
+        if (current === '') {
+          // single line exceeds limit, truncate safely
+          fields.push({ name, value: `${line.slice(0, MAX - 1)}…`, inline });
+        } else {
+          fields.push({ name, value: current, inline });
+          current = line;
+        }
+      } else {
+        current = candidate;
+      }
+    }
+
+    if (current) fields.push({ name, value: current, inline });
+
+    if (fields.length > 1) {
+      return fields.map((f, i) => ({ name: `${name} (${i + 1}/${fields.length})`, value: f.value, inline: f.inline }));
+    }
+
+    return fields;
+  };
+
+  const baseFields: { name: string; value: string; inline: boolean }[] = [
+    { name: trans.dateAndTime, value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
+  ];
+
+  baseFields.push(...chunkFieldText(`✅ ${trans.attending} (${attending.length})`, attendanceText, false));
+
+  const optedOutText = optedOut.length > 0 ? optedOut.map((a) => `• ${a.username}`).join('\n') : trans.noOneOptedOut;
+  baseFields.push(...chunkFieldText(`❌ ${trans.optedOut} (${optedOut.length})`, optedOutText, false));
+
   const embed = new EmbedBuilder()
     .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(0x00ae86)
-    .addFields(
-      {
-        name: trans.dateAndTime,
-        value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`,
-        inline: false,
-      },
-      {
-        name: `✅ ${trans.attending} (${attending.length})`,
-        value: attendanceText,
-        inline: false,
-      },
-      {
-        name: `❌ ${trans.optedOut} (${optedOut.length})`,
-        value: optedOut.length > 0
-          ? optedOut.map((a) => `• ${a.username}`).join('\n')
-          : trans.noOneOptedOut,
-        inline: false,
-      }
-    )
+    .addFields(...baseFields)
     .setFooter({ text: `${trans.raidId}: ${raid.id}` })
     .setTimestamp();
 

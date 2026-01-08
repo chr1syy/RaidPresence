@@ -110,7 +110,7 @@ const SPEC_ROLES: Record<string, WoWRole> = {
 export const SPEC_SYMBOLS: Record<string, string> = {
   // Death Knight
   'Death Knight-Blood': '🩸',
-  'Death Knight-Frost': '❄️',
+  'Death Knight-Frost': '<:dk_frost:1458819517122609418>',
   'Death Knight-Unholy': '☠️',
 
   // Demon Hunter

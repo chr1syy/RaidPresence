@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Guild {
+  id              String   @id
+  name            String
+  raidRoles       String   // Comma-separated role IDs or names for attendance
+  raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  raids Raid[]
+  users UserPreference[]
+}
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String   // Discord user ID
+  guildId   String
+  username  String
+  wowClass  String?  // e.g., "Warrior", "Mage", etc.
+  wowSpec   String?  // e.g., "Protection", "Fire", etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  attendance RaidAttendance[]
+
+  @@unique([userId, guildId])
+}
+
+model Raid {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String   // Channel where raid was created
+  messageId   String?  // Message ID of the raid embed
+  raidDate    DateTime
+  description String?
+  createdBy   String   // Discord user ID of raid leader
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  attendance RaidAttendance[]
+}
+
+model RaidAttendance {
+  id         String   @id @default(cuid())
+  raidId     String
+  userId     String   // Discord user ID
+  username   String
+  status     String   @default("attending") // "attending" or "opted_out"
+  wowClass   String?  // Class at time of raid (can differ from preference)
+  wowSpec    String?  // Spec at time of raid
+  respondedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  raid           Raid            @relation(fields: [raidId], references: [id], onDelete: Cascade)
+  userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])
+  guildId        String
+
+  @@unique([raidId, userId])
+}

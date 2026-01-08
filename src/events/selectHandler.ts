@@ -1,0 +1,126 @@
+import {
+  StringSelectMenuInteraction,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+} from 'discord.js';
+import prisma from '../database/client';
+import { getSpecsForClass } from '../utils/wowData';
+import { createRaidEmbed } from '../commands/raid';
+
+export async function handleSelectMenu(interaction: StringSelectMenuInteraction) {
+  const [action, subAction, raidId] = interaction.customId.split('_');
+
+  if (action === 'class' && subAction === 'select') {
+    await handleClassSelect(interaction, raidId);
+  } else if (action === 'spec' && subAction === 'select') {
+    await handleSpecSelect(interaction, raidId);
+  }
+}
+
+async function handleClassSelect(interaction: StringSelectMenuInteraction, raidId: string) {
+  const selectedClass = interaction.values[0];
+
+  // Get specs for the selected class
+  const specs = getSpecsForClass(selectedClass);
+
+  if (specs.length === 0) {
+    await interaction.update({
+      content: '❌ No specs found for this class.',
+      components: [],
+    });
+    return;
+  }
+
+  // Create spec selection menu
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId(`spec_select_${raidId}_${selectedClass}`)
+    .setPlaceholder('Select your specialization')
+    .addOptions(
+      specs.map((spec) => ({
+        label: spec,
+        value: spec,
+      }))
+    );
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
+  await interaction.update({
+    content: `⚔️ You selected **${selectedClass}**. Now select your spec:`,
+    components: [row],
+  });
+}
+
+async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId: string) {
+  await interaction.deferUpdate();
+
+  const [, , , selectedClass] = interaction.customId.split('_');
+  const selectedSpec = interaction.values[0];
+
+  if (!interaction.guild) return;
+
+  // Get member to access displayName
+  const member = await interaction.guild.members.fetch(interaction.user.id);
+
+  // Update user preference
+  await prisma.userPreference.upsert({
+    where: {
+      userId_guildId: {
+        userId: interaction.user.id,
+        guildId: interaction.guild.id,
+      },
+    },
+    update: {
+      wowClass: selectedClass,
+      wowSpec: selectedSpec,
+      username: member.displayName,
+    },
+    create: {
+      userId: interaction.user.id,
+      guildId: interaction.guild.id,
+      username: member.displayName,
+      wowClass: selectedClass,
+      wowSpec: selectedSpec,
+    },
+  });
+
+  // Update raid attendance
+  await prisma.raidAttendance.update({
+    where: {
+      raidId_userId: {
+        raidId,
+        userId: interaction.user.id,
+      },
+    },
+    data: {
+      wowClass: selectedClass,
+      wowSpec: selectedSpec,
+    },
+  });
+
+  await interaction.editReply({
+    content: `✅ Your class has been set to **${selectedClass} (${selectedSpec})**!\nThis will be remembered for future raids.`,
+    components: [],
+  });
+
+  // Update the raid message
+  try {
+    const raid = await prisma.raid.findUnique({
+      where: { id: raidId },
+    });
+
+    if (raid && raid.messageId) {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+
+      if (channel?.isTextBased()) {
+        const message = await channel.messages.fetch(raid.messageId);
+        const embed = await createRaidEmbed(raidId);
+
+        await message.edit({
+          embeds: [embed],
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error updating raid message:', error);
+  }
+}

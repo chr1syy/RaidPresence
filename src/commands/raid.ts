@@ -328,25 +328,55 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     else composition.noClass++;
   });
 
-  const compositionText = `${trans.tank}: ${composition.tanks}  •  ${trans.heal}: ${composition.healers}  •  ${trans.melee}: ${composition.melee}  •  ${trans.ranged}: ${composition.ranged}  •  ${trans.noClass}: ${composition.noClass}`;
+  // Group attending players by role
+  const tankList: string[] = [];
+  const healerList: string[] = [];
+  const meleeList: string[] = [];
+  const rangedList: string[] = [];
+  const noClassList: string[] = [];
 
-  // Calculate countdown
-  const now = new Date();
-  const timeUntilRaid = raid.raidDate.getTime() - now.getTime();
+  sortedAttending.forEach((a) => {
+    const role = getSpecRole(a.wowClass, a.wowSpec);
+    const specSymbol = getSpecSymbol(a.wowClass, a.wowSpec);
+    const classSpec = a.wowClass
+      ? a.wowSpec
+        ? `${a.wowClass} (${a.wowSpec})`
+        : a.wowClass
+      : trans.noClassSet;
+    const prefix = specSymbol ? `${specSymbol} ` : '';
+    const line = `  • ${prefix}${a.username} - ${classSpec}`;
 
-  let countdownText = '';
-  if (timeUntilRaid > 0) {
-    const days = Math.floor(timeUntilRaid / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeUntilRaid % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeUntilRaid % (1000 * 60 * 60)) / (1000 * 60));
+    if (role === 'Tank') tankList.push(line);
+    else if (role === 'Healer') healerList.push(line);
+    else if (role === 'Melee') meleeList.push(line);
+    else if (role === 'Ranged') rangedList.push(line);
+    else noClassList.push(line);
+  });
 
-    const parts = [];
-    if (days > 0) parts.push(`${days}${trans.days}`);
-    if (hours > 0) parts.push(`${hours}${trans.hours}`);
-    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}${trans.minutes}`);
+  // Build categorized attendance text
+  const attendanceCategories: string[] = [];
 
-    countdownText = ` (${trans.countdownIn} ${parts.join(' ')})`;
+  if (tankList.length > 0) {
+    attendanceCategories.push(`**${trans.tank} (${composition.tanks}):**\n${tankList.join('\n')}`);
   }
+  if (healerList.length > 0) {
+    attendanceCategories.push(`**${trans.heal} (${composition.healers}):**\n${healerList.join('\n')}`);
+  }
+  if (meleeList.length > 0) {
+    attendanceCategories.push(`**${trans.melee} (${composition.melee}):**\n${meleeList.join('\n')}`);
+  }
+  if (rangedList.length > 0) {
+    attendanceCategories.push(`**${trans.ranged} (${composition.ranged}):**\n${rangedList.join('\n')}`);
+  }
+  if (noClassList.length > 0) {
+    attendanceCategories.push(`**${trans.noClass} (${composition.noClass}):**\n${noClassList.join('\n')}`);
+  }
+
+  const attendanceText = attendanceCategories.length > 0
+    ? attendanceCategories.join('\n\n')
+    : trans.noOneAttending;
+
+  const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
 
   const embed = new EmbedBuilder()
     .setTitle(`${raid.description || trans.raidEvent}`)
@@ -354,30 +384,12 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     .addFields(
       {
         name: trans.dateAndTime,
-        value: `<t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>${countdownText}`,
-        inline: false,
-      },
-      {
-        name: trans.composition,
-        value: compositionText,
+        value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`,
         inline: false,
       },
       {
         name: `✅ ${trans.attending} (${attending.length})`,
-        value: attending.length > 0
-          ? sortedAttending
-              .map((a) => {
-                const specSymbol = getSpecSymbol(a.wowClass, a.wowSpec);
-                const classSpec = a.wowClass
-                  ? a.wowSpec
-                    ? `${a.wowClass} (${a.wowSpec})`
-                    : a.wowClass
-                  : trans.noClassSet;
-                const prefix = specSymbol ? `${specSymbol} ` : '';
-                return `• ${prefix}${a.username} - ${classSpec}`;
-              })
-              .join('\n')
-          : trans.noOneAttending,
+        value: attendanceText,
         inline: false,
       },
       {

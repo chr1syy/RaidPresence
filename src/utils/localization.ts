@@ -7,9 +7,17 @@ interface Translations {
   composition: string;
   attending: string;
   optedOut: string;
+  runningLate: string;
   noOneAttending: string;
   noOneOptedOut: string;
+  noOneRunningLate: string;
   raidId: string;
+  raidStatus: string;
+
+  // Raid status labels
+  statusOpen: string;
+  statusClosed: string;
+  statusCancelled: string;
 
   // Composition labels
   tank: string;
@@ -30,11 +38,16 @@ interface Translations {
   // Buttons
   optOut: string;
   optIn: string;
+  runningLateButton: string;
   setClassSpec: string;
 
   // Success messages
   raidCreatedSuccess: string;
   raidDeletedSuccess: string;
+  raidClosedSuccess: string;
+  raidCancelledSuccess: string;
+  raidReminderSent: string;
+  markedAsLate: string;
 
   // Error messages
   serverOnlyCommand: string;
@@ -46,6 +59,9 @@ interface Translations {
   raidNotFound: string;
   raidNotInServer: string;
   cannotSendMessage: string;
+  raidIsClosed: string;
+  raidIsCancelled: string;
+  alreadyMarkedAsLate: string;
 
   // Config
   configUpdated: string;
@@ -60,6 +76,11 @@ interface Translations {
   noUpcomingRaids: string;
   date: string;
   id: string;
+  status: string;
+
+  // Raid reminder
+  reminderTitle: string;
+  reminderMessage: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -70,9 +91,17 @@ const translations: Record<SupportedLanguage, Translations> = {
     composition: 'Composition',
     attending: 'Attending',
     optedOut: 'Opted Out',
+    runningLate: 'Running Late',
     noOneAttending: 'No one attending yet',
     noOneOptedOut: 'No one opted out',
+    noOneRunningLate: 'No one running late',
     raidId: 'Raid ID',
+    raidStatus: 'Status',
+
+    // Raid status labels
+    statusOpen: '🟢 Open',
+    statusClosed: '🔴 Closed',
+    statusCancelled: '❌ Cancelled',
 
     // Composition labels
     tank: 'Tank',
@@ -93,11 +122,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Buttons
     optOut: 'Opt Out',
     optIn: 'Opt In',
+    runningLateButton: 'Running Late',
     setClassSpec: 'Set Class/Spec',
 
     // Success messages
     raidCreatedSuccess: 'Raid "{title}" created successfully with {count} members!',
     raidDeletedSuccess: 'Raid "{title}" has been deleted.',
+    raidClosedSuccess: 'Raid "{title}" has been closed. No further changes allowed.',
+    raidCancelledSuccess: 'Raid "{title}" has been cancelled.',
+    raidReminderSent: 'Reminder sent for raid "{title}"!',
+    markedAsLate: 'You are now marked as running late for this raid.',
 
     // Error messages
     serverOnlyCommand: 'This command can only be used in a server!',
@@ -109,6 +143,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidNotFound: 'Raid not found.',
     raidNotInServer: 'This raid does not belong to this server.',
     cannotSendMessage: 'Cannot send message to this channel type.',
+    raidIsClosed: 'This raid is closed. No further changes allowed.',
+    raidIsCancelled: 'This raid has been cancelled.',
+    alreadyMarkedAsLate: 'You are already marked as running late.',
 
     // Config
     configUpdated: 'Configuration updated successfully!',
@@ -123,6 +160,11 @@ const translations: Record<SupportedLanguage, Translations> = {
     noUpcomingRaids: 'No upcoming raids found.',
     date: 'Date',
     id: 'ID',
+    status: 'Status',
+
+    // Raid reminder
+    reminderTitle: '🔔 Raid Reminder',
+    reminderMessage: 'The raid **{title}** starts <t:{timestamp}:R>!\n\nPlease confirm your attendance if you haven\'t already.',
   },
 
   de: {
@@ -132,9 +174,17 @@ const translations: Record<SupportedLanguage, Translations> = {
     composition: 'Zusammensetzung',
     attending: 'Anwesend',
     optedOut: 'Abgemeldet',
+    runningLate: 'Verspätet',
     noOneAttending: 'Noch niemand angemeldet',
     noOneOptedOut: 'Niemand abgemeldet',
+    noOneRunningLate: 'Niemand verspätet',
     raidId: 'Raid ID',
+    raidStatus: 'Status',
+
+    // Raid status labels
+    statusOpen: '🟢 Offen',
+    statusClosed: '🔴 Geschlossen',
+    statusCancelled: '❌ Abgesagt',
 
     // Composition labels
     tank: 'Tank',
@@ -155,11 +205,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Buttons
     optOut: 'Abmelden',
     optIn: 'Anmelden',
+    runningLateButton: 'Verspätet',
     setClassSpec: 'Klasse/Spezialisierung',
 
     // Success messages
     raidCreatedSuccess: 'Raid "{title}" erfolgreich erstellt mit {count} Mitgliedern!',
     raidDeletedSuccess: 'Raid "{title}" wurde gelöscht.',
+    raidClosedSuccess: 'Raid "{title}" wurde geschlossen. Keine weiteren Änderungen möglich.',
+    raidCancelledSuccess: 'Raid "{title}" wurde abgesagt.',
+    raidReminderSent: 'Erinnerung für Raid "{title}" gesendet!',
+    markedAsLate: 'Du bist jetzt als verspätet für diesen Raid markiert.',
 
     // Error messages
     serverOnlyCommand: 'Dieser Befehl kann nur auf einem Server verwendet werden!',
@@ -171,6 +226,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidNotFound: 'Raid nicht gefunden.',
     raidNotInServer: 'Dieser Raid gehört nicht zu diesem Server.',
     cannotSendMessage: 'Kann keine Nachricht in diesem Kanaltyp senden.',
+    raidIsClosed: 'Dieser Raid ist geschlossen. Keine weiteren Änderungen möglich.',
+    raidIsCancelled: 'Dieser Raid wurde abgesagt.',
+    alreadyMarkedAsLate: 'Du bist bereits als verspätet markiert.',
 
     // Config
     configUpdated: 'Konfiguration erfolgreich aktualisiert!',
@@ -185,6 +243,11 @@ const translations: Record<SupportedLanguage, Translations> = {
     noUpcomingRaids: 'Keine anstehenden Raids gefunden.',
     date: 'Datum',
     id: 'ID',
+    status: 'Status',
+
+    // Raid reminder
+    reminderTitle: '🔔 Raid-Erinnerung',
+    reminderMessage: 'Der Raid **{title}** beginnt <t:{timestamp}:R>!\n\nBitte bestätige deine Teilnahme, falls du es noch nicht getan hast.',
   },
 };
 

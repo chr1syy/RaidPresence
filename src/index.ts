@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import { config } from 'dotenv';
 import { BotClient, Command } from './types';
 import prisma from './database/client';
+import { startRaidScheduler } from './utils/raidScheduler';
 
 config();
 
@@ -42,6 +43,9 @@ client.once(Events.ClientReady, async (c) => {
   }
 
   console.log('✅ Guild data synchronized');
+
+  // Start the raid scheduler for auto-closing expired raids
+  startRaidScheduler(c);
 });
 
 // Interaction handler

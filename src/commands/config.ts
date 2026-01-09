@@ -54,6 +54,19 @@ const command: Command = {
             )
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('timezone')
+        .setDescription('Set the timezone offset for raid times')
+        .addIntegerOption((option) =>
+          option
+            .setName('offset')
+            .setDescription('Timezone offset in hours (e.g., 1 for GMT+1, -5 for GMT-5)')
+            .setRequired(true)
+            .setMinValue(-12)
+            .setMaxValue(14)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -69,6 +82,8 @@ const command: Command = {
       await handleSetLeaderRoles(interaction);
     } else if (subcommand === 'language') {
       await handleSetLanguage(interaction);
+    } else if (subcommand === 'timezone') {
+      await handleSetTimezone(interaction);
     }
   },
 };
@@ -98,6 +113,8 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   const raidRoles = guildData.raidRoles || 'Not configured';
   const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
   const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
+  const timezoneOffset = guildData.timezoneOffset;
+  const timezoneDisplay = timezoneOffset >= 0 ? `GMT+${timezoneOffset}` : `GMT${timezoneOffset}`;
 
   const embed = new EmbedBuilder()
     .setTitle('Server Configuration')
@@ -116,6 +133,11 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
       {
         name: 'Language',
         value: `\`${language}\`\n\nBot messages will appear in this language.`,
+        inline: false,
+      },
+      {
+        name: 'Timezone',
+        value: `\`${timezoneDisplay}\`\n\nRaid times will be created in this timezone.`,
         inline: false,
       }
     )
@@ -249,6 +271,46 @@ async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
   const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
   await interaction.editReply({
     content: `✅ Language updated to: \`${languageName}\`\n\nBot messages will now appear in this language.`,
+  });
+}
+
+async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const offset = interaction.options.get('offset', true).value as number;
+
+  if (offset < -12 || offset > 14) {
+    await interaction.editReply({
+      content: '❌ Invalid timezone offset. Must be between -12 and +14.',
+    });
+    return;
+  }
+
+  // Update in database
+  await prisma.guild.upsert({
+    where: { id: interaction.guild.id },
+    update: { timezoneOffset: offset },
+    create: {
+      id: interaction.guild.id,
+      name: interaction.guild.name,
+      raidRoles: '',
+      raidLeaderRoles: '',
+      language: 'en',
+      timezoneOffset: offset,
+    },
+  });
+
+  const timezoneDisplay = offset >= 0 ? `GMT+${offset}` : `GMT${offset}`;
+  await interaction.editReply({
+    content: `✅ Timezone updated to: \`${timezoneDisplay}\`\n\nRaid times will now be created in this timezone.`,
   });
 }
 

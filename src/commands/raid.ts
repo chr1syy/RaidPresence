@@ -137,9 +137,25 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
 
-  // Parse and validate date/time
+  // Get guild settings first for timezone
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  // Parse and validate date/time with timezone offset
   const dateTimeStr = `${dateStr}T${timeStr}:00`;
-  const raidDate = new Date(dateTimeStr);
+  const localDate = new Date(dateTimeStr);
+
+  // Apply timezone offset (user enters local time, we store UTC)
+  const timezoneOffsetHours = guildData.timezoneOffset || 0;
+  const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
 
   if (isNaN(raidDate.getTime())) {
     await interaction.editReply({
@@ -151,18 +167,6 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (raidDate < new Date()) {
     await interaction.editReply({
       content: '❌ Raid date must be in the future!',
-    });
-    return;
-  }
-
-  // Get guild settings
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  if (!guildData) {
-    await interaction.editReply({
-      content: '❌ Guild not found in database. Please try again.',
     });
     return;
   }

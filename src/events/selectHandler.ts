@@ -106,6 +106,7 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
   try {
     const raid = await prisma.raid.findUnique({
       where: { id: raidId },
+      include: { guild: true },
     });
 
     if (raid && raid.messageId) {
@@ -113,7 +114,7 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
 
       if (channel?.isTextBased()) {
         const message = await channel.messages.fetch(raid.messageId);
-        const embed = await createRaidEmbed(raidId);
+        const embed = await createRaidEmbed(raidId, raid.guild.language);
 
         await message.edit({
           embeds: [embed],

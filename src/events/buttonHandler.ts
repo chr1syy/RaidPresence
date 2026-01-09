@@ -168,11 +168,12 @@ async function updateRaidMessage(interaction: ButtonInteraction, raidId: string)
   try {
     const raid = await prisma.raid.findUnique({
       where: { id: raidId },
+      include: { guild: true },
     });
 
     if (!raid || !raid.messageId) return;
 
-    const embed = await createRaidEmbed(raidId);
+    const embed = await createRaidEmbed(raidId, raid.guild.language);
 
     await interaction.message.edit({
       embeds: [embed],

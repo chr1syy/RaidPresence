@@ -228,11 +228,11 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     data: attendanceData,
   });
 
-  // Create embed
-  const embed = await createRaidEmbed(raid.id);
+  // Create embed with guild's language
+  const embed = await createRaidEmbed(raid.id, guildData.language);
 
-  // Get translations for buttons (safe fallback to 'en')
-  const trans = getTranslations('en');
+  // Get translations for buttons
+  const trans = getTranslations(guildData.language || 'en');
 
   // Create buttons
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -290,8 +290,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     throw new Error('Raid not found');
   }
 
-  // Use provided language or default to 'en'
-  const lang = language || 'en';
+  // Use provided language or fetch from guild database
+  const lang = language || raid.guild.language || 'en';
   const trans = getTranslations(lang);
 
   const attending = raid.attendance.filter((a) => a.status === 'attending');

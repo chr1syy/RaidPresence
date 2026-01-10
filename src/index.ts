@@ -11,6 +11,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildIntegrations,
   ],
 }) as BotClient;
 
@@ -136,35 +137,48 @@ client.on(Events.GuildCreate, async (guild) => {
 
   // Send welcome/setup message
   try {
-    const { EmbedBuilder, Colors } = await import('discord.js');
+    const { EmbedBuilder, Colors, AuditLogEvent } = await import('discord.js');
 
     const timezoneNote = detectedTimezone !== null
-      ? `🌍 Timezone auto-detected as **${getTimezoneName(timezoneOffset)}** based on your server locale.`
-      : '⚠️ Could not auto-detect timezone. Using **UTC**. Use `/config timezone` to set manually.';
+      ? `🌍 Timezone auto-detected as **${getTimezoneName(timezoneOffset)}**`
+      : '⚠️ Could not auto-detect timezone - defaulting to **UTC**';
+
+    const timezoneInstructions = detectedTimezone !== null && timezoneOffset !== 1
+      ? `\n⚠️ **If this is incorrect**, run: \`/config timezone offset:1\` for GMT+1`
+      : detectedTimezone === null
+      ? `\n**Please set your timezone:** \`/config timezone offset:1\` for GMT+1`
+      : '';
 
     const welcomeEmbed = new EmbedBuilder()
       .setTitle('🎉 Thanks for adding RaidPresence!')
       .setColor(Colors.Green)
       .setDescription(
         'I help manage WoW raid attendance with a **reverse sign-up system** - everyone is automatically signed up and must opt-out if they can\'t attend.\n\n' +
-        `${timezoneNote}\n\n` +
+        `${timezoneNote}${timezoneInstructions}\n\n` +
         '**Quick Setup Required:**'
       )
       .addFields(
         {
-          name: '1️⃣ Configure Raid Attendance Roles',
+          name: '1️⃣ Set Timezone (if not GMT+1)',
+          value: 'Run: `/config timezone offset:1` for GMT+1\n' +
+                 'Or: `/config timezone offset:<hours>` for your timezone\n' +
+                 '**This ensures raid times are created correctly!**',
+          inline: false,
+        },
+        {
+          name: '2️⃣ Configure Raid Attendance Roles',
           value: 'Run: `/config raid-roles roles:Raider,Member,Trial`\n' +
                  'Members with these roles will be automatically added to raid rosters.',
           inline: false,
         },
         {
-          name: '2️⃣ Configure Raid Leader Roles',
+          name: '3️⃣ Configure Raid Leader Roles',
           value: 'Run: `/config leader-roles roles:Officer,Raid Leader`\n' +
                  'Members with these roles can create and manage raids.',
           inline: false,
         },
         {
-          name: '3️⃣ Create Your First Raid',
+          name: '4️⃣ Create Your First Raid',
           value: 'Run: `/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night`',
           inline: false,
         }
@@ -173,7 +187,6 @@ client.on(Events.GuildCreate, async (guild) => {
         {
           name: '📋 Useful Commands',
           value: '• `/config view` - View current settings\n' +
-                 '• `/config timezone offset:<hours>` - Adjust timezone if needed\n' +
                  '• `/raid list` - List upcoming raids\n' +
                  '• `/raid delete` - Delete a raid',
           inline: false,
@@ -182,16 +195,47 @@ client.on(Events.GuildCreate, async (guild) => {
       .setFooter({ text: 'Need help? Check out the documentation or contact support' })
       .setTimestamp();
 
-    // Try to send to system channel first, then owner
+    // Try to find who added the bot via audit logs
+    let botAdder = null;
+    try {
+      const auditLogs = await guild.fetchAuditLogs({
+        type: AuditLogEvent.BotAdd,
+        limit: 5,
+      });
+
+      const botAddEntry = auditLogs.entries.find(
+        (entry) => entry.target?.id === client.user?.id
+      );
+
+      if (botAddEntry) {
+        botAdder = botAddEntry.executor;
+        console.log(`📋 Bot was added by: ${botAdder?.tag}`);
+      }
+    } catch (error) {
+      console.log(`⚠️  Could not fetch audit logs for ${guild.name}`);
+    }
+
+    // Try to send DM to person who added the bot
     let messageSent = false;
 
-    if (guild.systemChannel && guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')) {
+    if (botAdder) {
+      try {
+        await botAdder.send({ embeds: [welcomeEmbed] });
+        messageSent = true;
+        console.log(`📨 Sent welcome DM to ${botAdder.tag} (added the bot) in ${guild.name}`);
+      } catch (error) {
+        console.log(`⚠️  Could not DM ${botAdder.tag} (DMs disabled or blocked)`);
+      }
+    }
+
+    // Fallback: Try system channel
+    if (!messageSent && guild.systemChannel && guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')) {
       await guild.systemChannel.send({ embeds: [welcomeEmbed] });
       messageSent = true;
       console.log(`📨 Sent welcome message to system channel in ${guild.name}`);
     }
 
-    // If no system channel or couldn't send, DM the owner
+    // Final fallback: Try to DM the owner
     if (!messageSent) {
       try {
         const owner = await guild.fetchOwner();

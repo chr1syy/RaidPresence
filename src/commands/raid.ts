@@ -172,7 +172,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  const roleIds = guildData.raidRoles.split(',').map((r) => r.trim()).filter(Boolean);
+  const roleIds = guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
 
   let eligibleMembers = new Set<string>();
 
@@ -239,7 +239,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     },
   });
 
-  const prefsMap = new Map(userPrefs.map((p) => [p.userId, p]));
+  const prefsMap = new Map<string, typeof userPrefs[0]>(userPrefs.map((p: typeof userPrefs[0]) => [p.userId, p]));
 
   // Create raid in database
   const raid = await prisma.raid.create({
@@ -344,9 +344,9 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   const lang = language || raid.guild.language || 'en';
   const trans = getTranslations(lang);
 
-  const attending = raid.attendance.filter((a) => a.status === 'attending');
-  const optedOut = raid.attendance.filter((a) => a.status === 'opted_out');
-  const runningLate = raid.attendance.filter((a) => a.status === 'late');
+  const attending = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'attending');
+  const optedOut = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'opted_out');
+  const runningLate = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'late');
 
   // Calculate role composition and sort by role
   const composition: RoleComposition = {
@@ -358,7 +358,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   };
 
   // Sort attending by role: Tanks -> Healers -> Melee -> Ranged -> No class set
-  const sortedAttending = attending.sort((a, b) => {
+  const sortedAttending = attending.sort((a: typeof raid.attendance[0], b: typeof raid.attendance[0]) => {
     const roleA = getSpecRole(a.wowClass, a.wowSpec);
     const roleB = getSpecRole(b.wowClass, b.wowSpec);
 
@@ -370,7 +370,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     return a.username.localeCompare(b.username); // Secondary sort by name
   });
 
-  sortedAttending.forEach((a) => {
+  sortedAttending.forEach((a: typeof raid.attendance[0]) => {
     const role = getSpecRole(a.wowClass, a.wowSpec);
     if (role === 'Tank') composition.tanks++;
     else if (role === 'Healer') composition.healers++;
@@ -386,7 +386,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   const rangedList: string[] = [];
   const noClassList: string[] = [];
 
-  sortedAttending.forEach((a) => {
+  sortedAttending.forEach((a: typeof raid.attendance[0]) => {
     const role = getSpecRole(a.wowClass, a.wowSpec);
     const specSymbol = getSpecSymbol(a.wowClass, a.wowSpec);
     const classSpec = a.wowClass
@@ -396,7 +396,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
       : null;
     const prefix = specSymbol ? `${specSymbol} ` : '';
     const displayName = `${prefix}${a.username}`;
-    const line = classSpec ? `  • ${displayName} - ${classSpec}` : `  • ${displayName}`;
+    const line = `  • ${displayName}`;
 
     if (role === 'Tank') tankList.push(line);
     else if (role === 'Healer') healerList.push(line);
@@ -483,11 +483,11 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 
   // Add running late section
   if (runningLate.length > 0) {
-    const lateText = runningLate.map((a) => `• ${a.username}`).join('\n');
+    const lateText = runningLate.map((a: typeof raid.attendance[0]) => `• ${a.username}`).join('\n');
     baseFields.push(...chunkFieldText(`⏰ ${trans.runningLate} (${runningLate.length})`, lateText, false));
   }
 
-  const optedOutText = optedOut.length > 0 ? optedOut.map((a) => `• ${a.username}`).join('\n') : trans.noOneOptedOut;
+  const optedOutText = optedOut.length > 0 ? optedOut.map((a: typeof raid.attendance[0]) => `• ${a.username}`).join('\n') : trans.noOneOptedOut;
   baseFields.push(...chunkFieldText(`❌ ${trans.optedOut} (${optedOut.length})`, optedOutText, false));
 
   const embed = new EmbedBuilder()
@@ -539,8 +539,8 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     .setColor(0x00ae86)
     .setDescription(
       raids
-        .map((raid) => {
-          const attending = raid.attendance.filter((a) => a.status === 'attending').length;
+        .map((raid: typeof raids[0]) => {
+          const attending = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'attending').length;
           const total = raid.attendance.length;
           return `**${raid.description}**\nDate: <t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>\nAttending: ${attending}/${total}\nID: \`${raid.id}\``;
         })
@@ -838,7 +838,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
 
   // Get list of people who haven't responded (still "attending" but no respondedAt)
   const notResponded = raid.attendance.filter(
-    (a) => a.status === 'attending' && !a.respondedAt
+    (a: typeof raid.attendance[0]) => a.status === 'attending' && !a.respondedAt
   );
 
   const reminderEmbed = new EmbedBuilder()

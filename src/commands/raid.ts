@@ -1059,7 +1059,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         wowSpec: pref?.wowSpec || null,
       };
     })
-    .filter(Boolean) as any[];
+    .filter((data): data is NonNullable<typeof data> => data !== null);
 
   // Batch insert new attendance records
   if (attendanceData.length > 0) {
@@ -1070,9 +1070,10 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
 
   // Batch delete removed members
   if (membersToRemove.length > 0) {
+    const memberIdsToRemove = membersToRemove.map(attendance => attendance.id);
     await prisma.raidAttendance.deleteMany({
       where: {
-        id: { in: membersToRemove.map((a: typeof raid.attendance[0]) => a.id) },
+        id: { in: memberIdsToRemove },
       },
     });
   }

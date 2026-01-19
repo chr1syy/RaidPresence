@@ -165,81 +165,320 @@ No need to restart the bot or edit configuration files!
 
 ## Usage
 
-### Creating a Raid
+## Slash Commands Reference
 
-Use the slash command in any channel:
+### `/raid` Command
 
+Main command for creating and managing raid events.
+
+#### `/raid create`
+
+Create a new raid event with automatic roster population.
+
+**Syntax:**
 ```
-/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night
+/raid create date:YYYY-MM-DD time:HH:MM title:Raid Title [roles:Role1,Role2]
 ```
 
 **Parameters:**
-- `date`: Format YYYY-MM-DD
-- `time`: 24-hour format HH:MM
-- `title`: Raid title/name (required)
+- `date` *(required)*: Raid date in format YYYY-MM-DD (e.g., 2026-01-15)
+- `time` *(required)*: Raid time in 24-hour format HH:MM (e.g., 20:00)
+- `title` *(required)*: Custom name for the raid event
+- `roles` *(optional)*: Custom Discord roles for this raid (comma-separated). Overrides configured raid roles.
+
+**Examples:**
+```
+/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night
+/raid create date:2026-01-20 time:19:30 title:Mythic Progress roles:CoreRaider,Trial
+```
 
 **Permissions:** Requires configured raid leader role or ManageEvents permission.
 
-The bot will:
-1. Scan for all members with configured raid roles
-2. Create an attendance list with everyone marked as "attending"
-3. Pull saved class/spec preferences for each member
-4. Post a public interactive raid message with buttons
-5. Send you a private confirmation message
+**Behavior:**
+- Without `roles` parameter: Scans all members with configured raid roles (set via `/config raid-roles`)
+- With `roles` parameter: Only scans members with the specified custom roles
+- Creates an attendance list with everyone automatically marked as "attending"
+- Pulls saved class/spec preferences for each member
+- Posts an interactive raid message with buttons in the channel
+- Sends a private confirmation message to the creator
 
-### Listing Raids
+#### `/raid list`
 
-View all upcoming raids:
+View all upcoming raids for the server.
 
+**Syntax:**
 ```
 /raid list
 ```
 
-Shows all future raids with:
-- Raid title and date
-- Attendance count (attending/total)
-- Raid ID for management
+**Shows:**
+- Raid title and date/time
+- Attendance count (attending/total roster)
+- Raid ID for use with management commands
+- All raids sorted by date
 
-### Deleting a Raid
+#### `/raid delete`
 
-Delete a raid event:
+Permanently delete a raid event.
 
+**Syntax:**
 ```
 /raid delete raid_id:xyz123
 ```
 
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid (shown in `/raid list`)
+
 **Permissions:** Requires configured raid leader role or ManageEvents permission.
 
-This will:
-- Delete the raid message from the channel
-- Remove all attendance records
-- Delete the raid from the database
+**Effects:**
+- Deletes the raid message from the channel
+- Removes all attendance records from database
+- Permanently deletes the raid event
+
+#### `/raid close`
+
+Close a raid to prevent further attendance changes.
+
+**Syntax:**
+```
+/raid close raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Disables all interactive buttons on the raid message
+- Prevents players from changing attendance status
+- Locks the roster for final planning
+
+#### `/raid cancel`
+
+Cancel a raid event and notify attendees.
+
+**Syntax:**
+```
+/raid cancel raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Marks the raid as cancelled in the embed
+- Keeps the raid message visible but indicates cancellation status
+- Maintains attendance records for reference
+
+#### `/raid remind`
+
+Send a reminder message for an upcoming raid.
+
+**Syntax:**
+```
+/raid remind raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Posts a reminder message in the channel
+- Mentions all members currently marked as attending
+- Shows raid details (date, time, title)
+
+#### `/raid refresh`
+
+Refresh raid roster by re-scanning members and updating the embed.
+
+**Syntax:**
+```
+/raid refresh raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Use Cases:**
+- Add members who gained raid role after raid creation
+- Remove members who lost raid role
+- Update embed with latest design/layout changes
+- Refresh roster after role changes
+
+**Effects:**
+- Re-scans all eligible members based on current raid roles
+- Adds new members who now have raid role
+- Removes members who no longer have raid role
+- Updates the raid embed message with latest design
+- Shows count of members added/removed
+
+### `/config` Command
+
+Configure bot settings for your Discord server. Each server has independent configuration.
+
+**Permissions:** All `/config` commands require Administrator permission.
+
+#### `/config view`
+
+View current server configuration.
+
+**Syntax:**
+```
+/config view
+```
+
+**Shows:**
+- Raid attendance roles (for auto-roster)
+- Raid leader roles (for permissions)
+- Bot language setting
+- Timezone setting
+
+#### `/config raid-roles`
+
+Set Discord roles that are automatically added to raid rosters.
+
+**Syntax:**
+```
+/config raid-roles roles:Role1,Role2,Role3
+```
+
+**Parameters:**
+- `roles` *(required)*: Comma-separated role names or IDs
+
+**Examples:**
+```
+/config raid-roles roles:Raider,Member,Trial
+/config raid-roles roles:123456789,987654321
+```
+
+**Notes:**
+- Role names are case-sensitive
+- Can use role names, role IDs, or a mix
+- Members with these roles will be auto-added to new raids (unless custom roles are specified in `/raid create`)
+
+#### `/config leader-roles`
+
+Set Discord roles that can create and manage raids.
+
+**Syntax:**
+```
+/config leader-roles roles:Officer,Raid Leader
+```
+
+**Parameters:**
+- `roles` *(required)*: Comma-separated role names or IDs
+
+**Examples:**
+```
+/config leader-roles roles:Officer,Raid Leader
+/config leader-roles roles:123456789
+```
+
+**Notes:**
+- Members with these roles can use all `/raid` management commands
+- If not configured, defaults to members with ManageEvents permission
+- Role names are case-sensitive
+
+#### `/config language`
+
+Set the bot language for your server.
+
+**Syntax:**
+```
+/config language lang:en
+```
+
+**Parameters:**
+- `lang` *(required)*: Language code (en = English, de = Deutsch/German)
+
+**Available Languages:**
+- `en`: English
+- `de`: Deutsch (German)
+
+**Effects:**
+- All bot messages will appear in the selected language
+- Raid embeds, buttons, and responses are translated
+
+#### `/config timezone`
+
+Set timezone offset for raid times.
+
+**Syntax:**
+```
+/config timezone offset:1
+```
+
+**Parameters:**
+- `offset` *(required)*: Timezone offset in hours (range: -12 to +14)
+
+**Examples:**
+```
+/config timezone offset:0    # GMT/UTC
+/config timezone offset:1    # GMT+1 (CET)
+/config timezone offset:-5   # GMT-5 (EST)
+/config timezone offset:8    # GMT+8 (CST/PHT)
+```
+
+**Effects:**
+- Raid times will be created using this timezone
+- Discord timestamps still display in each user's local timezone
+
+## Player Interactions
 
 ### Managing Attendance
 
-Players can interact with the raid message using buttons:
+Players can interact with the raid message using interactive buttons:
 
-- **Opt Out**: Remove yourself from the raid
-- **Opt In**: Re-join the raid if you opted out
+**Available Buttons:**
+- **Opt Out**: Remove yourself from the raid roster if you cannot attend
+- **Opt In**: Re-join the raid if you previously opted out
+- **Running Late**: Mark yourself as late while remaining on the roster
 - **Set Class/Spec**: Select your WoW class and specialization
+
+All changes are instant and update the raid embed in real-time.
 
 ### Class/Spec Selection
 
-When clicking "Set Class/Spec":
-1. Select your WoW class from dropdown
-2. Select your specialization
-3. Your preference is saved for all future raids
-4. Attendance list automatically updates and sorts by role (Tank → Healer → DPS)
-5. Can be changed anytime
+When clicking the "Set Class/Spec" button:
 
-### Raid Display
+1. **Select Class**: Choose your WoW class from the dropdown menu
+2. **Select Spec**: Choose your active specialization
+3. **Auto-Save**: Your preference is saved to your user profile
+4. **Auto-Update**: The raid embed immediately updates with your spec symbol and correct role
+5. **Auto-Sort**: You're automatically sorted into the correct role column (Tank/Healer/DPS)
+6. **Persistent**: Your class/spec is remembered for all future raids
+7. **Flexible**: Change your spec anytime by clicking the button again
 
-The raid message shows:
-- **Title**: Your custom raid title
-- **Date & Time**: Discord timestamp (displays in user's timezone)
-- **Composition**: Role breakdown (Tanks: X • Healers: Y • DPS: Z)
-- **Attending**: Sorted by role - Tanks first, then Healers, then DPS
-- **Opted Out**: List of players who can't attend
+### Raid Embed Display
+
+The raid embed shows a clean, organized 3-column layout:
+
+**Header:**
+- Raid title (customizable)
+- Date & time (Discord timestamp - displays in each user's local timezone)
+- Role composition summary (Tanks: X • Healers: Y • DPS: Z)
+
+**Main Columns (3-column layout):**
+- **🛡️ Tanks**: Left column with tank count and player list
+- **💚 Healers**: Middle column with healer count and player list  
+- **⚔️ DPS**: Right column with combined Melee + Ranged DPS count and player list
+
+Each player name includes their spec symbol (e.g., ⚔️ for Arms Warrior, 🛡️ for Protection Paladin).
+
+**Special Sections (below main columns):**
+- **⏰ Running Late**: Players who marked themselves as running late
+- **❌ Opted Out**: Players who cannot attend
+- **❓ No Class**: Players who haven't set their class/spec yet
+
+All sections show player count and sorted player names.
 
 ## Database Schema
 
@@ -372,20 +611,100 @@ Each server configures independently!
 
 ## Troubleshooting
 
-**Bot not responding to commands:**
-- Verify bot token in `.env`
-- Check bot has necessary permissions
-- Ensure commands were deployed: `npm run deploy`
-- Check bot is online in Discord
+### Bot Not Responding to Commands
 
-**No one added to raid:**
-- Verify `RAID_ROLES` in `.env` matches your Discord role names or IDs
-- Check bot has "Server Members Intent" enabled
-- Ensure bot can see members (may need to fetch members)
+**Symptoms:** Slash commands don't appear or bot doesn't reply when commands are used.
 
-**Database errors:**
-- Run `npm run db:generate` after schema changes
-- Run `npm run db:migrate` to apply migrations
+**Solutions:**
+1. **Verify Bot Token**: Check that `DISCORD_TOKEN` in `.env` is correct and hasn't expired
+2. **Check Bot Status**: Ensure the bot shows as "Online" in your Discord server member list
+3. **Deploy Commands**: Run `npm run deploy` to register slash commands with Discord
+4. **Check Permissions**: Verify the bot has these permissions:
+   - Send Messages
+   - Embed Links
+   - Use Slash Commands
+   - Read Message History
+5. **Restart Bot**: Stop and restart the bot process (`npm run dev` or `npm start`)
+6. **Check Console**: Look for error messages in the bot's console output
+
+### No One Added to Raid
+
+**Symptoms:** Created a raid but the roster is empty or missing members.
+
+**Solutions:**
+1. **Configure Raid Roles**: Run `/config raid-roles roles:YourRoleName` to set which Discord roles should be added
+2. **Verify Role Names**: Role names are case-sensitive - check spelling matches exactly
+3. **Use Role IDs**: If role names aren't working, use role IDs instead (right-click role → Copy ID with Developer Mode enabled)
+4. **Check Server Members Intent**: Ensure "Server Members Intent" is enabled in Discord Developer Portal → Bot section
+5. **Member Cache**: The bot needs to see server members. Try:
+   - Restarting the bot
+   - Waiting a few minutes for member cache to populate
+   - Ensure bot has "Read Members" permission
+6. **Custom Roles**: If using the `roles` parameter in `/raid create`, verify those role names/IDs are correct
+
+### Database Errors
+
+**Symptoms:** Error messages about database connection, schema, or queries.
+
+**Solutions:**
+1. **Generate Prisma Client**: Run `npm run db:generate` after any schema changes
+2. **Apply Migrations**: Run `npm run db:migrate` to update database structure
+3. **Check DATABASE_URL**: Verify the connection string in `.env` is correct
+4. **File Permissions**: For SQLite (`file:./dev.db`), ensure the file is writable
+5. **PostgreSQL Connection**: For production databases, verify:
+   - Database server is running
+   - Credentials are correct
+   - Network/firewall allows connection
+   - Database exists
+6. **Reset Development Database**:
+   ```bash
+   rm dev.db
+   npm run db:migrate
+   ```
+
+### Permission Errors
+
+**Symptoms:** "You don't have permission" when using raid management commands.
+
+**Solutions:**
+1. **Configure Leader Roles**: Run `/config leader-roles roles:Officer,RaidLeader`
+2. **Check Your Roles**: Ensure you have one of the configured leader roles
+3. **Alternative Permission**: If leader roles aren't configured, you need Discord's "ManageEvents" permission
+4. **Administrator Commands**: `/config` commands require Discord Administrator permission
+
+### Raid Embed Not Updating
+
+**Symptoms:** Changes to attendance don't reflect in the raid message.
+
+**Solutions:**
+1. **Use Refresh Command**: Run `/raid refresh raid_id:xyz` to force an update
+2. **Check Bot Permissions**: Ensure bot can edit messages in the channel
+3. **Message Deleted**: If the original message was deleted, create a new raid
+4. **Database Connection**: Check for database errors in console
+
+### Common Discord Permission Issues
+
+**Problem:** Bot can't send messages or embeds.
+
+**Solution:** Ensure the bot role has these permissions in the channel:
+- View Channel
+- Send Messages
+- Embed Links
+- Read Message History
+
+**Problem:** Bot can't scan server members for raid roster.
+
+**Solution:** 
+1. Enable "Server Members Intent" in Discord Developer Portal
+2. Ensure bot has "Read Members" permission in server settings
+
+**Problem:** Buttons don't work when clicked.
+
+**Solution:**
+1. Verify bot is online
+2. Check console for interaction errors
+3. Ensure bot token hasn't expired
+4. Try refreshing Discord (Ctrl+R)
 
 ## Contributing
 

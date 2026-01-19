@@ -116,7 +116,7 @@
       "Verify it describes late/opted-out/no-class sections",
       "Verify examples show expected output"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",
@@ -128,7 +128,7 @@
       "Verify it explains what refresh does (add new members, remove old, update design)",
       "Verify example syntax is shown: `/raid refresh raid_id:xyz`"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",
@@ -140,7 +140,7 @@
       "Verify it explains difference between using roles param vs configured roles",
       "Verify example shown: `/raid create date:... time:... title:... roles:Role1,Role2`"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",
@@ -152,7 +152,7 @@
       "Verify all /config subcommands listed",
       "Verify all parameters documented with descriptions"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",
@@ -164,6 +164,6 @@
       "Verify solutions are provided for each issue",
       "Verify common Discord permission issues documented"
     ],
-    "passes": false
+    "passes": true
   }
 ]

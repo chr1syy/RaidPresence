@@ -40,6 +40,12 @@ const command: Command = {
             .setDescription('Raid title/name')
             .setRequired(true)
         )
+        .addStringOption((option) =>
+          option
+            .setName('roles')
+            .setDescription('Custom Discord roles for this raid (comma-separated, overrides configured raid roles)')
+            .setRequired(false)
+        )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -149,6 +155,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const dateStr = interaction.options.get('date', true).value as string;
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
+  const customRoles = interaction.options.get('roles', false)?.value as string | undefined;
 
   // Get guild settings first for timezone
   const guildData = await prisma.guild.findUnique({
@@ -185,7 +192,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  const roleIds = guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
+  // Use custom roles if provided, otherwise use configured raid roles
+  const roleIds = customRoles 
+    ? customRoles.split(',').map((r: string) => r.trim()).filter(Boolean)
+    : guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
 
   let eligibleMembers = new Set<string>();
 
@@ -215,8 +225,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   if (eligibleMembers.size === 0) {
+    const rolesUsed = customRoles ? `custom roles: ${customRoles}` : 'configured raid roles';
     await interaction.editReply({
-      content: '❌ No eligible members found for this raid. Check your RAID_ROLES configuration.',
+      content: `❌ No eligible members found for this raid using ${rolesUsed}. Check your role configuration.`,
     });
     return;
   }

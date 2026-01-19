@@ -10,7 +10,7 @@
       "Verify each column shows role count and sorted player names",
       "Verify late/opted-out users appear in separate sections below columns"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -22,7 +22,7 @@
       "Verify section appears below Tank/Heal/DPS columns",
       "Verify late section shows count and player names"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -34,7 +34,7 @@
       "Verify section appears below Tank/Heal/DPS columns",
       "Verify opted-out section shows count and player names"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",
@@ -46,7 +46,7 @@
       "Click member selects class/spec",
       "Verify member moves to appropriate role column"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "functional",

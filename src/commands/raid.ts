@@ -43,7 +43,13 @@ const command: Command = {
         .addStringOption((option) =>
           option
             .setName('roles')
-            .setDescription('Custom Discord roles for this raid (comma-separated, overrides configured raid roles)')
+            .setDescription('Discord roles for this raid (comma-separated role names or IDs)')
+            .setRequired(true)
+        )
+        .addBooleanOption((option) =>
+          option
+            .setName('ping_roles')
+            .setDescription('Ping the specified roles when creating the raid')
             .setRequired(false)
         )
     )
@@ -155,7 +161,8 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const dateStr = interaction.options.get('date', true).value as string;
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
-  const customRoles = interaction.options.get('roles', false)?.value as string | undefined;
+  const rolesInput = interaction.options.get('roles', true).value as string;
+  const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
 
   // Get guild settings first for timezone
   const guildData = await prisma.guild.findUnique({
@@ -192,42 +199,36 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  // Use custom roles if provided, otherwise use configured raid roles
-  const roleIds = customRoles 
-    ? customRoles.split(',').map((r: string) => r.trim()).filter(Boolean)
-    : guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
+  // Parse the required roles parameter
+  const roleIds = rolesInput.split(',').map((r: string) => r.trim()).filter(Boolean);
+
+  if (roleIds.length === 0) {
+    await interaction.editReply({
+      content: '❌ No valid roles provided. Please specify at least one role.',
+    });
+    return;
+  }
 
   let eligibleMembers = new Set<string>();
 
-  if (roleIds.length > 0) {
-    // Fetch all members if not cached
-    await interaction.guild.members.fetch();
+  // Fetch all members if not cached
+  await interaction.guild.members.fetch();
 
-    for (const [memberId, member] of interaction.guild.members.cache) {
-      if (member.user.bot) continue;
+  for (const [memberId, member] of interaction.guild.members.cache) {
+    if (member.user.bot) continue;
 
-      const hasRaidRole = member.roles.cache.some((role) =>
-        roleIds.includes(role.id) || roleIds.includes(role.name)
-      );
+    const hasRaidRole = member.roles.cache.some((role) =>
+      roleIds.includes(role.id) || roleIds.includes(role.name)
+    );
 
-      if (hasRaidRole) {
-        eligibleMembers.add(memberId);
-      }
-    }
-  } else {
-    // No roles configured, include all non-bot members
-    await interaction.guild.members.fetch();
-    for (const [memberId, member] of interaction.guild.members.cache) {
-      if (!member.user.bot) {
-        eligibleMembers.add(memberId);
-      }
+    if (hasRaidRole) {
+      eligibleMembers.add(memberId);
     }
   }
 
   if (eligibleMembers.size === 0) {
-    const rolesUsed = customRoles ? `custom roles: ${customRoles}` : 'configured raid roles';
     await interaction.editReply({
-      content: `❌ No eligible members found for this raid using ${rolesUsed}. Check your role configuration.`,
+      content: `❌ No eligible members found for this raid using roles: ${rolesInput}. Check that members have these roles.`,
     });
     return;
   }
@@ -272,6 +273,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       channelId: interaction.channel.id,
       raidDate,
       description: title,
+      roles: rolesInput,
       createdBy: interaction.user.id,
     },
   });
@@ -332,7 +334,26 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Build role mentions if ping_roles is true
+  let content = '';
+  if (pingRoles) {
+    const roleMentions = roleIds
+      .map((roleIdOrName) => {
+        // Try to find role by ID first, then by name
+        const role = interaction.guild!.roles.cache.get(roleIdOrName) ||
+                     interaction.guild!.roles.cache.find(r => r.name === roleIdOrName);
+        return role ? `<@&${role.id}>` : null;
+      })
+      .filter(Boolean)
+      .join(' ');
+    
+    if (roleMentions) {
+      content = `${roleMentions} - New raid created!`;
+    }
+  }
+
   const message = await interaction.channel.send({
+    content: content || undefined,
     embeds: [embed],
     components: [row1, row2],
   });
@@ -845,9 +866,21 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `${trans.raidId}: ${raid.id}` })
     .setTimestamp();
 
-  // Send reminder mentioning everyone
+  // Build role mentions from raid's configured roles
+  const roleIds = raid.roles ? raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean) : [];
+  const roleMentions = roleIds
+    .map((roleIdOrName) => {
+      // Try to find role by ID first, then by name
+      const role = interaction.guild!.roles.cache.get(roleIdOrName) ||
+                   interaction.guild!.roles.cache.find(r => r.name === roleIdOrName);
+      return role ? `<@&${role.id}>` : null;
+    })
+    .filter(Boolean)
+    .join(' ');
+
+  // Send reminder mentioning the raid's roles
   await channel.send({
-    content: '@everyone',
+    content: roleMentions || '@everyone',
     embeds: [reminderEmbed],
   });
 

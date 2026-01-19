@@ -10,7 +10,7 @@ datasource db {
 model Guild {
   id              String   @id
   name            String
-  raidRoles       String   // Comma-separated role IDs or names for attendance
+  raidRoles       String // Comma-separated role IDs or names for attendance
   raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
   language        String   @default("en") // Language for bot messages (en, de)
   timezoneOffset  Int      @default(0) // Timezone offset in hours (e.g., +1 for GMT+1)
@@ -23,11 +23,11 @@ model Guild {
 
 model UserPreference {
   id        String   @id @default(cuid())
-  userId    String   // Discord user ID
+  userId    String // Discord user ID
   guildId   String
   username  String
-  wowClass  String?  // e.g., "Warrior", "Mage", etc.
-  wowSpec   String?  // e.g., "Protection", "Fire", etc.
+  wowClass  String? // e.g., "Warrior", "Mage", etc.
+  wowSpec   String? // e.g., "Protection", "Fire", etc.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -40,12 +40,13 @@ model UserPreference {
 model Raid {
   id          String   @id @default(cuid())
   guildId     String
-  channelId   String   // Channel where raid was created
-  messageId   String?  // Message ID of the raid embed
+  channelId   String // Channel where raid was created
+  messageId   String? // Message ID of the raid embed
   raidDate    DateTime
   description String?
+  roles       String   @default("") // Comma-separated role IDs or names used for this raid
   status      String   @default("open") // "open", "closed", "cancelled"
-  createdBy   String   // Discord user ID of raid leader
+  createdBy   String // Discord user ID of raid leader
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -54,16 +55,16 @@ model Raid {
 }
 
 model RaidAttendance {
-  id         String   @id @default(cuid())
-  raidId     String
-  userId     String   // Discord user ID
-  username   String
-  status     String   @default("attending") // "attending", "opted_out", or "late"
-  wowClass   String?  // Class at time of raid (can differ from preference)
-  wowSpec    String?  // Spec at time of raid
+  id          String    @id @default(cuid())
+  raidId      String
+  userId      String // Discord user ID
+  username    String
+  status      String    @default("attending") // "attending", "opted_out", or "late"
+  wowClass    String? // Class at time of raid (can differ from preference)
+  wowSpec     String? // Spec at time of raid
   respondedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   raid           Raid            @relation(fields: [raidId], references: [id], onDelete: Cascade)
   userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])

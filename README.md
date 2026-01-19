@@ -178,22 +178,25 @@ Create a new raid event with automatic roster population.
 - `date` *(required)*: Raid date in format YYYY-MM-DD (e.g., 2026-01-15)
 - `time` *(required)*: Raid time in 24-hour format HH:MM (e.g., 20:00)
 - `title` *(required)*: Custom name for the raid event
-- `roles` *(optional)*: Custom Discord roles for this raid (comma-separated). Overrides configured raid roles.
+- `roles` *(optional)*: Custom Discord roles for this raid (comma-separated role names or IDs). If not specified, uses guild's default raid roles.
+- `ping_roles` *(optional)*: Whether to mention the roles when creating the raid (default: false)
 
 **Examples:**
 ```
 /raid create date:2026-01-15 time:20:00 title:Heroic Raid Night
 /raid create date:2026-01-20 time:19:30 title:Mythic Progress roles:CoreRaider,Trial
+/raid create date:2026-01-22 time:20:00 title:Alt Run roles:Member ping_roles:true
 ```
 
 **Permissions:** Requires configured raid leader role or ManageEvents permission.
 
 **Behavior:**
-- Without `roles` parameter: Scans all members with configured raid roles (set via `/config raid-roles`)
-- With `roles` parameter: Only scans members with the specified custom roles
-- Creates an attendance list with everyone automatically marked as "attending"
+- Uses guild's default raid roles (configured via `/config raid-roles`) unless the `roles` parameter is specified
+- When `roles` parameter is provided: Uses those custom roles for this specific raid instead of guild defaults
+- Creates an attendance list with all eligible members automatically marked as "attending"
 - Pulls saved class/spec preferences for each member
 - Posts an interactive raid message with buttons in the channel
+- Optionally mentions the configured roles if `ping_roles` is set to true
 - Sends a private confirmation message to the creator
 
 #### `/raid list`
@@ -284,7 +287,7 @@ Send a reminder message for an upcoming raid.
 
 **Effects:**
 - Posts a reminder message in the channel
-- Mentions all members currently marked as attending
+- Mentions the raid's configured roles (not individual members)
 - Shows raid details (date, time, title)
 
 #### `/raid refresh`
@@ -356,7 +359,9 @@ Set Discord roles that are automatically added to raid rosters.
 **Notes:**
 - Role names are case-sensitive
 - Can use role names, role IDs, or a mix
-- Members with these roles will be auto-added to new raids (unless custom roles are specified in `/raid create`)
+- These roles serve as the default for new raids when the `roles` parameter is not specified in `/raid create`
+- Individual raids can override these defaults by specifying custom roles in the `/raid create` command
+- The `/raid refresh` command uses the raid's configured roles (custom or defaults) to update the roster
 
 #### `/config leader-roles`
 
@@ -391,11 +396,11 @@ Set the bot language for your server.
 ```
 
 **Parameters:**
-- `lang` *(required)*: Language code (en = English, de = Deutsch/German)
+- `lang` *(required)*: Language code (en = English, de = German (Deutsch))
 
 **Available Languages:**
 - `en`: English
-- `de`: Deutsch (German)
+- `de`: German (Deutsch)
 
 **Effects:**
 - All bot messages will appear in the selected language

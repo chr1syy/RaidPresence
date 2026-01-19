@@ -1,0 +1,28 @@
+# Progress log
+
+- 2026-01-09: Implemented core message-sending behavior via a minimal `ChatStore` (in-memory) with a Vitest unit test.
+  - Added `package.json` + `tsconfig.json` with `pnpm typecheck` and `pnpm test` scripts.
+  - Note: this environment denied running `pnpm`/`node` and `git add/commit` (permission prompt couldn’t be shown), so checks + commit must be done manually.
+  - Next: implement persistence after refresh/reopen (likely via a storage abstraction) and then real-time delivery.
+
+- 2026-01-19: Implemented `/raid refresh` command for raid roster and embed management.
+  - Added refresh subcommand to `/raid` command with proper permissions checking.
+  - Refreshes raid roster by scanning current eligible members with raid roles.
+  - Adds new members who gained raid role after raid creation.
+  - Removes members who lost raid role.
+  - Updates embed message with latest design and roster changes.
+  - Provides detailed feedback showing count of added/removed members.
+  - Marks three PRD features as passing: refresh adds members, refresh removes ineligible, refresh updates embed.
+  - Build passes with `npm run build`.
+  - Next: implement optional roles parameter for `/raid create` command.
+
+- 2026-01-19: Implemented optional roles parameter for `/raid create` command.
+  - Added optional 'roles' string parameter to `/raid create` subcommand.
+  - When roles parameter is provided, uses custom roles instead of configured raid roles.
+  - Custom roles are comma-separated role names or IDs (e.g., "Role1,Role2").
+  - When roles parameter is omitted, falls back to configured raid roles (existing behavior).
+  - Updated error message to indicate which roles were used when no eligible members found.
+  - Marks two PRD features as passing: custom roles parameter works, and default behavior unchanged.
+  - Build passes with `npm run build`.
+  - Next: work on embed layout or documentation features.
+

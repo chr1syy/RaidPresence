@@ -90,6 +90,17 @@ const command: Command = {
             .setRequired(true)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('refresh')
+        .setDescription('Refresh raid roster and embed (add new members, remove ineligible, update design)')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid to refresh')
+            .setRequired(true)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -109,6 +120,8 @@ const command: Command = {
       await handleCancelRaid(interaction);
     } else if (subcommand === 'remind') {
       await handleRemindRaid(interaction);
+    } else if (subcommand === 'refresh') {
+      await handleRefreshRaid(interaction);
     }
   },
 };
@@ -382,8 +395,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   // Group attending players by role
   const tankList: string[] = [];
   const healerList: string[] = [];
-  const meleeList: string[] = [];
-  const rangedList: string[] = [];
+  const dpsList: string[] = [];
   const noClassList: string[] = [];
 
   sortedAttending.forEach((a: typeof raid.attendance[0]) => {
@@ -396,72 +408,15 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
       : null;
     const prefix = specSymbol ? `${specSymbol} ` : '';
     const displayName = `${prefix}${a.username}`;
-    const line = `  • ${displayName}`;
+    const line = `${displayName}`;
 
     if (role === 'Tank') tankList.push(line);
     else if (role === 'Healer') healerList.push(line);
-    else if (role === 'Melee') meleeList.push(line);
-    else if (role === 'Ranged') rangedList.push(line);
+    else if (role === 'Melee' || role === 'Ranged') dpsList.push(line);
     else noClassList.push(line);
   });
 
-  // Build categorized attendance text
-  const attendanceCategories: string[] = [];
-
-  if (tankList.length > 0) {
-    attendanceCategories.push(`**${trans.tank} (${composition.tanks}):**\n${tankList.join('\n')}`);
-  }
-  if (healerList.length > 0) {
-    attendanceCategories.push(`**${trans.heal} (${composition.healers}):**\n${healerList.join('\n')}`);
-  }
-  if (meleeList.length > 0) {
-    attendanceCategories.push(`**${trans.melee} (${composition.melee}):**\n${meleeList.join('\n')}`);
-  }
-  if (rangedList.length > 0) {
-    attendanceCategories.push(`**${trans.ranged} (${composition.ranged}):**\n${rangedList.join('\n')}`);
-  }
-  if (noClassList.length > 0) {
-    attendanceCategories.push(`**${trans.noClass} (${composition.noClass}):**\n${noClassList.join('\n')}`);
-  }
-
-  const attendanceText = attendanceCategories.length > 0
-    ? attendanceCategories.join('\n\n')
-    : trans.noOneAttending;
-
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
-
-  // Helper to chunk long embed field values into multiple fields (Discord limit: 1024 chars)
-  const chunkFieldText = (name: string, text: string, inline = false) => {
-    const MAX = 1024;
-    if (text.length <= MAX) return [{ name, value: text, inline }];
-
-    const lines = text.split('\n');
-    const fields: { name: string; value: string; inline: boolean }[] = [];
-    let current = '';
-
-    for (const line of lines) {
-      const candidate = current ? `${current}\n${line}` : line;
-      if (candidate.length > MAX) {
-        if (current === '') {
-          // single line exceeds limit, truncate safely
-          fields.push({ name, value: `${line.slice(0, MAX - 1)}…`, inline });
-        } else {
-          fields.push({ name, value: current, inline });
-          current = line;
-        }
-      } else {
-        current = candidate;
-      }
-    }
-
-    if (current) fields.push({ name, value: current, inline });
-
-    if (fields.length > 1) {
-      return fields.map((f, i) => ({ name: `${name} (${i + 1}/${fields.length})`, value: f.value, inline: f.inline }));
-    }
-
-    return fields;
-  };
 
   // Determine raid status display
   let raidStatusText = trans.statusOpen;
@@ -479,16 +434,42 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     { name: trans.dateAndTime, value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
   ];
 
-  baseFields.push(...chunkFieldText(`✅ ${trans.attending} (${attending.length})`, attendanceText, false));
+  // 3-column layout: Tank | Healer | DPS
+  const dpsCount = composition.melee + composition.ranged;
+  
+  const tankText = tankList.length > 0 
+    ? tankList.join('\n') 
+    : '-';
+  const healerText = healerList.length > 0 
+    ? healerList.join('\n') 
+    : '-';
+  const dpsText = dpsList.length > 0 
+    ? dpsList.join('\n') 
+    : '-';
 
-  // Add running late section
+  baseFields.push(
+    { name: `🛡️ ${trans.tank} (${composition.tanks})`, value: tankText, inline: true },
+    { name: `💚 ${trans.heal} (${composition.healers})`, value: healerText, inline: true },
+    { name: `⚔️ DPS (${dpsCount})`, value: dpsText, inline: true }
+  );
+
+  // Add running late section below the 3-column layout
   if (runningLate.length > 0) {
-    const lateText = runningLate.map((a: typeof raid.attendance[0]) => `• ${a.username}`).join('\n');
-    baseFields.push(...chunkFieldText(`⏰ ${trans.runningLate} (${runningLate.length})`, lateText, false));
+    const lateText = runningLate.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
+    baseFields.push({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: lateText, inline: false });
   }
 
-  const optedOutText = optedOut.length > 0 ? optedOut.map((a: typeof raid.attendance[0]) => `• ${a.username}`).join('\n') : trans.noOneOptedOut;
-  baseFields.push(...chunkFieldText(`❌ ${trans.optedOut} (${optedOut.length})`, optedOutText, false));
+  // Add opted out section
+  if (optedOut.length > 0) {
+    const optedOutText = optedOut.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
+    baseFields.push({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: optedOutText, inline: false });
+  }
+
+  // Add no class section
+  if (noClassList.length > 0) {
+    const noClassText = noClassList.join('\n');
+    baseFields.push({ name: `❓ ${trans.noClass} (${composition.noClass})`, value: noClassText, inline: false });
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(`${raid.description || trans.raidEvent}`)
@@ -861,6 +842,206 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
 
   await interaction.editReply({
     content: t(raid.guild.language || 'en', 'raidReminderSent', { title: raid.description || 'Raid' }),
+  });
+}
+
+async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to refresh raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: {
+      guild: true,
+      attendance: true,
+    },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const guildData = raid.guild;
+
+  // Get members with raid roles (current eligible members)
+  const roleIds = guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
+
+  let currentEligibleMembers = new Set<string>();
+
+  if (roleIds.length > 0) {
+    // Fetch all members if not cached
+    await interaction.guild.members.fetch();
+
+    for (const [memberId, guildMember] of interaction.guild.members.cache) {
+      if (guildMember.user.bot) continue;
+
+      const hasRaidRole = guildMember.roles.cache.some((role) =>
+        roleIds.includes(role.id) || roleIds.includes(role.name)
+      );
+
+      if (hasRaidRole) {
+        currentEligibleMembers.add(memberId);
+      }
+    }
+  } else {
+    // No roles configured, include all non-bot members
+    await interaction.guild.members.fetch();
+    for (const [memberId, guildMember] of interaction.guild.members.cache) {
+      if (!guildMember.user.bot) {
+        currentEligibleMembers.add(memberId);
+      }
+    }
+  }
+
+  // Get current attendance records
+  const currentAttendance = raid.attendance;
+  const currentAttendanceIds = new Set(currentAttendance.map((a: typeof raid.attendance[0]) => a.userId));
+
+  // Find members to add (eligible but not in attendance)
+  const membersToAdd = Array.from(currentEligibleMembers).filter(
+    (memberId) => !currentAttendanceIds.has(memberId)
+  );
+
+  // Find members to remove (in attendance but not eligible)
+  const membersToRemove = currentAttendance.filter(
+    (a: typeof raid.attendance[0]) => !currentEligibleMembers.has(a.userId)
+  );
+
+  // Add new members
+  for (const userId of membersToAdd) {
+    const guildMember = interaction.guild.members.cache.get(userId);
+    if (guildMember) {
+      // Ensure UserPreference exists
+      await prisma.userPreference.upsert({
+        where: {
+          userId_guildId: {
+            userId,
+            guildId: interaction.guild.id,
+          },
+        },
+        update: {
+          username: guildMember.displayName,
+        },
+        create: {
+          userId,
+          guildId: interaction.guild.id,
+          username: guildMember.displayName,
+        },
+      });
+
+      // Get user preference for class/spec
+      const userPref = await prisma.userPreference.findUnique({
+        where: {
+          userId_guildId: {
+            userId,
+            guildId: interaction.guild.id,
+          },
+        },
+      });
+
+      // Add to attendance
+      await prisma.raidAttendance.create({
+        data: {
+          raidId: raid.id,
+          userId,
+          guildId: interaction.guild.id,
+          username: guildMember.displayName,
+          status: 'attending',
+          wowClass: userPref?.wowClass,
+          wowSpec: userPref?.wowSpec,
+        },
+      });
+    }
+  }
+
+  // Remove ineligible members
+  for (const attendance of membersToRemove) {
+    await prisma.raidAttendance.delete({
+      where: {
+        id: attendance.id,
+      },
+    });
+  }
+
+  // Update the raid embed
+  if (raid.messageId && raid.channelId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(raid.messageId);
+        const embed = await createRaidEmbed(raid.id, guildData.language);
+
+        // Recreate buttons
+        const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_opt_out_${raid.id}`)
+            .setLabel('Opt Out')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(raid.status !== 'open'),
+          new ButtonBuilder()
+            .setCustomId(`raid_opt_in_${raid.id}`)
+            .setLabel('Opt In')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(raid.status !== 'open'),
+          new ButtonBuilder()
+            .setCustomId(`raid_late_${raid.id}`)
+            .setLabel('Running Late')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(raid.status !== 'open'),
+          new ButtonBuilder()
+            .setCustomId(`raid_set_class_${raid.id}`)
+            .setLabel('Set Class/Spec')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(raid.status !== 'open')
+        );
+
+        await message.edit({ embeds: [embed], components: [buttons] });
+      }
+    } catch (error) {
+      console.error('Failed to update raid message:', error);
+    }
+  }
+
+  const addedCount = membersToAdd.length;
+  const removedCount = membersToRemove.length;
+
+  let statusMessage = '✅ Raid refreshed successfully!';
+  if (addedCount > 0 || removedCount > 0) {
+    statusMessage += `\n- Added ${addedCount} new member(s)\n- Removed ${removedCount} ineligible member(s)`;
+  } else {
+    statusMessage += '\nNo roster changes needed.';
+  }
+
+  await interaction.editReply({
+    content: statusMessage,
   });
 }
 

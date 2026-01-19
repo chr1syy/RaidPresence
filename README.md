@@ -5,7 +5,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 ## Features
 
 - **Reverse Sign-Up System**: All eligible members are automatically added to raid roster
-- **Multi-Server Ready**: Per-server configuration stored in database - ready for public deployment
+- **Multi-Server Ready**: Per-server configuration stored in database
 - **Role-Based Attendance**: Scan specific Discord roles to build attendance list
 - **Role-Based Permissions**: Configure which roles can create and manage raids
 - **Class/Spec Tracking**: Players can set and update their WoW class and specialization
@@ -15,19 +15,12 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 - **Raid Management**: List, delete, and track all raids
 - **Real-time Updates**: Raid roster updates automatically as players respond
 
-## 🚀 Quick Deploy to Railway (Free!)
+## Documentation
 
-**Ready to deploy in 10 minutes?** See **[QUICKSTART_RAILWAY.md](QUICKSTART_RAILWAY.md)**
-
-1. Push code to GitHub
-2. Connect to Railway.app (free tier)
-3. Add PostgreSQL database
-4. Set environment variables
-5. Bot goes live! ✅
-
-Cost: **FREE for small bots** ($5/month credit included)
-
----
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Roadmap](ROADMAP.md)** - Future development plans
+- **[License](LICENSE)** - MIT License
 
 ## Technology Stack
 
@@ -41,13 +34,15 @@ Cost: **FREE for small bots** ($5/month credit included)
 - Node.js 18+
 - npm or yarn
 - Discord Bot Token ([Create one here](https://discord.com/developers/applications))
+- PostgreSQL database (production) or SQLite (local development)
 
 ## Setup
 
 ### 1. Clone and Install
 
 ```bash
-cd /var/www/RaidPresence
+git clone https://github.com/yourusername/RaidPresence.git
+cd RaidPresence
 npm install
 ```
 
@@ -84,10 +79,9 @@ Edit `.env` file:
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_client_id_here
 DATABASE_URL="file:./dev.db"
-RAID_ROLES=role_name_or_id,another_role
 ```
 
-**RAID_ROLES**: Comma-separated list of Discord role names or IDs. Members with these roles will be automatically added to raids.
+For local development, SQLite is used by default. For production deployment, use PostgreSQL.
 
 ### 4. Setup Database
 
@@ -536,180 +530,16 @@ npm run db:migrate
 2. Import and register in `src/index.ts`
 3. Run `npm run deploy` to update Discord
 
-## Deploying as a Public Bot
+For more details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The bot is fully ready for multi-server deployment! Here's how:
+## Support
 
-### 1. Use PostgreSQL for Production
-
-For multiple servers, switch from SQLite to PostgreSQL:
-
-```bash
-# Update .env
-DATABASE_URL="postgresql://user:password@host:5432/raidpresence"
-
-# Run migration
-npm run db:migrate
-```
-
-### 2. Host on Cloud Platform
-
-Deploy to:
-- **Railway**: Easy deployment with PostgreSQL addon
-- **Heroku**: Free tier with Heroku Postgres
-- **DigitalOcean**: App Platform with managed PostgreSQL
-- **VPS**: Self-hosted with Docker
-
-### 3. Public Bot Invite Link
-
-After deploying, create an invite link:
-```
-https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=2147502080&scope=bot%20applications.commands
-```
-
-Required permissions:
-- Send Messages
-- Embed Links
-- Read Message History
-- Use Slash Commands
-- Manage Events
-- Read Members (for role scanning)
-
-### 4. Server Admin Instructions
-
-Point server admins to run these commands after inviting:
-```
-/config raid-roles roles:YourRoles
-/config leader-roles roles:YourLeaderRoles
-```
-
-Each server configures independently!
-
-## Roadmap
-
-### Phase 2 (Near Future)
-- [ ] Copy roster from previous raid (`/raid clone`)
-- [ ] Manual roster management (`/raid add`, `/raid remove`)
-- [ ] Raid status (Planning, Open, Locked, Completed)
-- [ ] Automated reminders
-- [ ] Export roster to text format
-- [ ] Raid history and statistics
-
-### Phase 3 (Scaling)
-- [x] Multi-server support with per-guild config
-- [ ] Sharding for large-scale deployment
-- [ ] PostgreSQL migration
-- [ ] Web dashboard for raid management
-- [ ] Calendar integration
-- [ ] Guild analytics
-
-### Phase 4 (Monetization)
-- [ ] Premium features (web interface, advanced stats)
-- [ ] Support for other games
-- [ ] Custom raid templates
-- [ ] Automated roster optimization
-
-## Troubleshooting
-
-### Bot Not Responding to Commands
-
-**Symptoms:** Slash commands don't appear or bot doesn't reply when commands are used.
-
-**Solutions:**
-1. **Verify Bot Token**: Check that `DISCORD_TOKEN` in `.env` is correct and hasn't expired
-2. **Check Bot Status**: Ensure the bot shows as "Online" in your Discord server member list
-3. **Deploy Commands**: Run `npm run deploy` to register slash commands with Discord
-4. **Check Permissions**: Verify the bot has these permissions:
-   - Send Messages
-   - Embed Links
-   - Use Slash Commands
-   - Read Message History
-5. **Restart Bot**: Stop and restart the bot process (`npm run dev` or `npm start`)
-6. **Check Console**: Look for error messages in the bot's console output
-
-### No One Added to Raid
-
-**Symptoms:** Created a raid but the roster is empty or missing members.
-
-**Solutions:**
-1. **Configure Raid Roles**: Run `/config raid-roles roles:YourRoleName` to set which Discord roles should be added
-2. **Verify Role Names**: Role names are case-sensitive - check spelling matches exactly
-3. **Use Role IDs**: If role names aren't working, use role IDs instead (right-click role → Copy ID with Developer Mode enabled)
-4. **Check Server Members Intent**: Ensure "Server Members Intent" is enabled in Discord Developer Portal → Bot section
-5. **Member Cache**: The bot needs to see server members. Try:
-   - Restarting the bot
-   - Waiting a few minutes for member cache to populate
-   - Ensure bot has "Read Members" permission
-6. **Custom Roles**: If using the `roles` parameter in `/raid create`, verify those role names/IDs are correct
-
-### Database Errors
-
-**Symptoms:** Error messages about database connection, schema, or queries.
-
-**Solutions:**
-1. **Generate Prisma Client**: Run `npm run db:generate` after any schema changes
-2. **Apply Migrations**: Run `npm run db:migrate` to update database structure
-3. **Check DATABASE_URL**: Verify the connection string in `.env` is correct
-4. **File Permissions**: For SQLite (`file:./dev.db`), ensure the file is writable
-5. **PostgreSQL Connection**: For production databases, verify:
-   - Database server is running
-   - Credentials are correct
-   - Network/firewall allows connection
-   - Database exists
-6. **Reset Development Database**:
-   ```bash
-   rm dev.db
-   npm run db:migrate
-   ```
-
-### Permission Errors
-
-**Symptoms:** "You don't have permission" when using raid management commands.
-
-**Solutions:**
-1. **Configure Leader Roles**: Run `/config leader-roles roles:Officer,RaidLeader`
-2. **Check Your Roles**: Ensure you have one of the configured leader roles
-3. **Alternative Permission**: If leader roles aren't configured, you need Discord's "ManageEvents" permission
-4. **Administrator Commands**: `/config` commands require Discord Administrator permission
-
-### Raid Embed Not Updating
-
-**Symptoms:** Changes to attendance don't reflect in the raid message.
-
-**Solutions:**
-1. **Use Refresh Command**: Run `/raid refresh raid_id:xyz` to force an update
-2. **Check Bot Permissions**: Ensure bot can edit messages in the channel
-3. **Message Deleted**: If the original message was deleted, create a new raid
-4. **Database Connection**: Check for database errors in console
-
-### Common Discord Permission Issues
-
-**Problem:** Bot can't send messages or embeds.
-
-**Solution:** Ensure the bot role has these permissions in the channel:
-- View Channel
-- Send Messages
-- Embed Links
-- Read Message History
-
-**Problem:** Bot can't scan server members for raid roster.
-
-**Solution:** 
-1. Enable "Server Members Intent" in Discord Developer Portal
-2. Ensure bot has "Read Members" permission in server settings
-
-**Problem:** Buttons don't work when clicked.
-
-**Solution:**
-1. Verify bot is online
-2. Check console for interaction errors
-3. Ensure bot token hasn't expired
-4. Try refreshing Discord (Ctrl+R)
+Having issues? Check out the [Troubleshooting Guide](TROUBLESHOOTING.md) for common problems and solutions.
 
 ## Contributing
 
-This is a personal project in active development. Contributions, ideas, and feedback are welcome!
+Contributions, ideas, and feedback are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE) for details.

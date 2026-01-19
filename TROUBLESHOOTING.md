@@ -23,15 +23,18 @@ Common issues and solutions for RaidPresence bot.
 **Symptoms:** Created a raid but the roster is empty or missing members.
 
 **Solutions:**
-1. **Configure Raid Roles**: Run `/config raid-roles roles:YourRoleName` to set which Discord roles should be added
-2. **Verify Role Names**: Role names are case-sensitive - check spelling matches exactly
-3. **Use Role IDs**: If role names aren't working, use role IDs instead (right-click role → Copy ID with Developer Mode enabled)
-4. **Check Server Members Intent**: Ensure "Server Members Intent" is enabled in Discord Developer Portal → Bot section
-5. **Member Cache**: The bot needs to see server members. Try:
+1. **Configure Default Raid Roles**: Run `/config raid-roles roles:YourRoleName` to set default roles, or specify roles directly when creating a raid with `/raid create ... roles:RoleName`
+2. **Specify Roles in Raid Command**: Include the `roles` parameter when creating the raid:
+   - `/raid create date:2026-01-15 time:20:00 title:Tuesday Raid roles:Raider`
+   - `/raid create date:2026-01-15 time:20:00 title:Tuesday Raid roles:"Raiders,Backups"`
+   - `/raid create date:2026-01-15 time:20:00 title:Tuesday Raid roles:123456789012345678` (using a role ID)
+3. **Verify Role Names**: Role names used in the `roles` parameter are case-sensitive — check that spelling and capitalization match the Discord role exactly
+4. **Use Role IDs if Needed**: If role names aren't working, use role IDs in the `roles` parameter instead (right-click role → Copy ID with Developer Mode enabled)
+5. **Check Server Members Intent**: Ensure "Server Members Intent" is enabled in Discord Developer Portal → Bot section
+6. **Member Cache**: The bot needs to see server members. Try:
    - Restarting the bot
    - Waiting a few minutes for member cache to populate
    - Ensure bot has "Read Members" permission
-6. **Custom Roles**: If using the `roles` parameter in `/raid create`, verify those role names/IDs are correct
 
 ## Database Errors
 

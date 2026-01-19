@@ -22,6 +22,7 @@ interface Translations {
   // Composition labels
   tank: string;
   heal: string;
+  dps: string;
   melee: string;
   ranged: string;
   noClass: string;
@@ -106,6 +107,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Composition labels
     tank: 'Tank',
     heal: 'Heal',
+    dps: 'DPS',
     melee: 'Melee',
     ranged: 'Ranged',
     noClass: 'No Class',
@@ -189,6 +191,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Composition labels
     tank: 'Tank',
     heal: 'Heiler',
+    dps: 'DPS',
     melee: 'Nahkampf',
     ranged: 'Fernkampf',
     noClass: 'Keine Klasse',

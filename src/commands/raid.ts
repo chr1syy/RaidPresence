@@ -7,12 +7,44 @@ import {
   ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  Guild,
 } from 'discord.js';
 import prisma from '../database/client';
 import { Command } from '../types';
 import { getSpecRole, getSpecSymbol, RoleComposition } from '../utils/wowData';
 import { canManageRaids } from '../utils/permissions';
 import { t, getTranslations } from '../utils/localization';
+
+/**
+ * Build role mentions from role IDs or names
+ * @param guild Discord guild instance
+ * @param roleIds Array of role IDs (snowflake strings) or exact role names (case-sensitive)
+ * @returns Space-separated string of role mentions (e.g., "<@&123> <@&456>"). 
+ *          Returns empty string if no valid roles are found. 
+ *          Invalid roles are logged as warnings and excluded from the result.
+ */
+function buildRoleMentions(guild: Guild, roleIds: string[]): string {
+  const roleMentions = roleIds
+    .map((roleIdOrName) => {
+      const trimmed = roleIdOrName.trim();
+      if (!trimmed) return null;
+      
+      // Try to find role by ID first (exact match), then by name (exact match)
+      const role = guild.roles.cache.get(trimmed) ||
+                   guild.roles.cache.find(r => r.name === trimmed);
+      
+      if (!role) {
+        console.warn(`Role not found: ${trimmed}`);
+        return null;
+      }
+      
+      return `<@&${role.id}>`;
+    })
+    .filter((mention) => mention !== null)
+    .join(' ');
+  
+  return roleMentions;
+}
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -44,7 +76,7 @@ const command: Command = {
           option
             .setName('roles')
             .setDescription('Discord roles for this raid (comma-separated role names or IDs)')
-            .setRequired(true)
+            .setRequired(false)
         )
         .addBooleanOption((option) =>
           option
@@ -161,10 +193,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const dateStr = interaction.options.get('date', true).value as string;
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
-  const rolesInput = interaction.options.get('roles', true).value as string;
+  const rolesInput = interaction.options.get('roles', false)?.value as string;
   const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
 
-  // Get guild settings first for timezone
+  // Get guild settings first for timezone and default roles
   const guildData = await prisma.guild.findUnique({
     where: { id: interaction.guild.id },
   });
@@ -172,6 +204,16 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!guildData) {
     await interaction.editReply({
       content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  // Determine which roles to use: custom roles from parameter, or guild defaults
+  const effectiveRolesInput = rolesInput || guildData.raidRoles;
+  
+  if (!effectiveRolesInput || effectiveRolesInput.trim() === '') {
+    await interaction.editReply({
+      content: '❌ No raid roles configured. Either specify roles in the command or configure default roles with `/config raid-roles`.',
     });
     return;
   }
@@ -199,12 +241,12 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  // Parse the required roles parameter
-  const roleIds = rolesInput.split(',').map((r: string) => r.trim()).filter(Boolean);
+  // Parse the roles parameter (or use guild defaults)
+  const roleIds = effectiveRolesInput.split(',').map((r: string) => r.trim()).filter(Boolean);
 
   if (roleIds.length === 0) {
     await interaction.editReply({
-      content: '❌ No valid roles provided. Please specify at least one role.',
+      content: '❌ No valid roles provided. Please specify at least one role or configure default roles with `/config raid-roles`.',
     });
     return;
   }
@@ -228,7 +270,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
 
   if (eligibleMembers.size === 0) {
     await interaction.editReply({
-      content: `❌ No eligible members found for this raid using roles: ${rolesInput}. Check that members have these roles.`,
+      content: `❌ No eligible members found with roles: ${effectiveRolesInput}. Verify that members have these roles (use role names or IDs, separated by commas).`,
     });
     return;
   }
@@ -273,7 +315,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       channelId: interaction.channel.id,
       raidDate,
       description: title,
-      roles: rolesInput,
+      roles: effectiveRolesInput,
       createdBy: interaction.user.id,
     },
   });
@@ -337,15 +379,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // Build role mentions if ping_roles is true
   let content = '';
   if (pingRoles) {
-    const roleMentions = roleIds
-      .map((roleIdOrName) => {
-        // Try to find role by ID first, then by name
-        const role = interaction.guild!.roles.cache.get(roleIdOrName) ||
-                     interaction.guild!.roles.cache.find(r => r.name === roleIdOrName);
-        return role ? `<@&${role.id}>` : null;
-      })
-      .filter(Boolean)
-      .join(' ');
+    const roleMentions = buildRoleMentions(interaction.guild!, roleIds);
     
     if (roleMentions) {
       content = `${roleMentions} - New raid created!`;
@@ -471,18 +505,18 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   
   const tankText = tankList.length > 0 
     ? tankList.join('\n') 
-    : '-';
+    : '\u200B';
   const healerText = healerList.length > 0 
     ? healerList.join('\n') 
-    : '-';
+    : '\u200B';
   const dpsText = dpsList.length > 0 
     ? dpsList.join('\n') 
-    : '-';
+    : '\u200B';
 
   baseFields.push(
     { name: `🛡️ ${trans.tank} (${composition.tanks})`, value: tankText, inline: true },
     { name: `💚 ${trans.heal} (${composition.healers})`, value: healerText, inline: true },
-    { name: `⚔️ DPS (${dpsCount})`, value: dpsText, inline: true }
+    { name: `⚔️ ${trans.dps} (${dpsCount})`, value: dpsText, inline: true }
   );
 
   // Add running late section below the 3-column layout
@@ -868,15 +902,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
 
   // Build role mentions from raid's configured roles
   const roleIds = raid.roles ? raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean) : [];
-  const roleMentions = roleIds
-    .map((roleIdOrName) => {
-      // Try to find role by ID first, then by name
-      const role = interaction.guild!.roles.cache.get(roleIdOrName) ||
-                   interaction.guild!.roles.cache.find(r => r.name === roleIdOrName);
-      return role ? `<@&${role.id}>` : null;
-    })
-    .filter(Boolean)
-    .join(' ');
+  const roleMentions = buildRoleMentions(interaction.guild!, roleIds);
 
   // Send reminder mentioning the raid's roles
   await channel.send({
@@ -936,7 +962,11 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   const guildData = raid.guild;
 
   // Get members with raid roles (current eligible members)
-  const roleIds = guildData.raidRoles.split(',').map((r: string) => r.trim()).filter(Boolean);
+  // Use raid-specific roles if available, otherwise fall back to guild defaults
+  const roleSource = raid.roles && raid.roles.trim().length > 0
+    ? raid.roles
+    : guildData.raidRoles;
+  const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
 
   let currentEligibleMembers = new Set<string>();
 
@@ -979,11 +1009,10 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     (a: typeof raid.attendance[0]) => !currentEligibleMembers.has(a.userId)
   );
 
-  // Add new members
+  // Ensure all new members have UserPreference records
   for (const userId of membersToAdd) {
     const guildMember = interaction.guild.members.cache.get(userId);
     if (guildMember) {
-      // Ensure UserPreference exists
       await prisma.userPreference.upsert({
         where: {
           userId_guildId: {
@@ -1000,37 +1029,53 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
           username: guildMember.displayName,
         },
       });
-
-      // Get user preference for class/spec
-      const userPref = await prisma.userPreference.findUnique({
-        where: {
-          userId_guildId: {
-            userId,
-            guildId: interaction.guild.id,
-          },
-        },
-      });
-
-      // Add to attendance
-      await prisma.raidAttendance.create({
-        data: {
-          raidId: raid.id,
-          userId,
-          guildId: interaction.guild.id,
-          username: guildMember.displayName,
-          status: 'attending',
-          wowClass: userPref?.wowClass,
-          wowSpec: userPref?.wowSpec,
-        },
-      });
     }
   }
 
-  // Remove ineligible members
-  for (const attendance of membersToRemove) {
-    await prisma.raidAttendance.delete({
+  // Fetch all user preferences at once for new members
+  const newMemberIds = Array.from(membersToAdd);
+  const userPrefs = await prisma.userPreference.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      userId: { in: newMemberIds },
+    },
+  });
+  
+  // Create a map for quick lookup
+  const prefsMap = new Map(userPrefs.map(pref => [pref.userId, pref]));
+
+  // Build attendance data for batch insert
+  const attendanceData = newMemberIds
+    .map((userId) => {
+      const guildMember = interaction.guild!.members.cache.get(userId);
+      if (!guildMember) return null;
+      
+      const pref = prefsMap.get(userId);
+      return {
+        raidId: raid.id,
+        userId,
+        guildId: interaction.guild!.id,
+        username: guildMember.displayName,
+        status: 'attending' as const,
+        wowClass: pref?.wowClass || null,
+        wowSpec: pref?.wowSpec || null,
+      };
+    })
+    .filter((data) => data !== null);
+
+  // Batch insert new attendance records
+  if (attendanceData.length > 0) {
+    await prisma.raidAttendance.createMany({
+      data: attendanceData,
+    });
+  }
+
+  // Batch delete removed members
+  if (membersToRemove.length > 0) {
+    const memberIdsToRemove = membersToRemove.map(attendance => attendance.id);
+    await prisma.raidAttendance.deleteMany({
       where: {
-        id: attendance.id,
+        id: { in: memberIdsToRemove },
       },
     });
   }
@@ -1042,27 +1087,30 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       if (channel?.isTextBased() && 'messages' in channel) {
         const message = await channel.messages.fetch(raid.messageId);
         const embed = await createRaidEmbed(raid.id, guildData.language);
+        
+        // Get translations for button labels
+        const trans = getTranslations(guildData.language);
 
-        // Recreate buttons
+        // Recreate buttons with translated labels
         const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
             .setCustomId(`raid_opt_out_${raid.id}`)
-            .setLabel('Opt Out')
+            .setLabel(trans.optOut)
             .setStyle(ButtonStyle.Danger)
             .setDisabled(raid.status !== 'open'),
           new ButtonBuilder()
             .setCustomId(`raid_opt_in_${raid.id}`)
-            .setLabel('Opt In')
+            .setLabel(trans.optIn)
             .setStyle(ButtonStyle.Success)
             .setDisabled(raid.status !== 'open'),
           new ButtonBuilder()
             .setCustomId(`raid_late_${raid.id}`)
-            .setLabel('Running Late')
+            .setLabel(trans.runningLateButton)
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(raid.status !== 'open'),
           new ButtonBuilder()
             .setCustomId(`raid_set_class_${raid.id}`)
-            .setLabel('Set Class/Spec')
+            .setLabel(trans.setClassSpec)
             .setStyle(ButtonStyle.Primary)
             .setDisabled(raid.status !== 'open')
         );

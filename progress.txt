@@ -26,3 +26,17 @@
   - Build passes with `npm run build`.
   - Next: work on embed layout or documentation features.
 
+- 2026-01-19: Verified and documented existing 3-column raid embed layout implementation.
+  - Confirmed raid embed displays attendance in 3-column layout: Tank | Healer | DPS.
+  - Tank column shows on left with 🛡️ icon and count.
+  - Healer column shows in middle with 💚 icon and count.
+  - DPS column shows on right with ⚔️ icon, combining Melee + Ranged into single count.
+  - Each column shows role count and sorted player names with spec symbols.
+  - Late players display in dedicated ⏰ section below main columns.
+  - Opted-out players display in dedicated ❌ section below main columns.
+  - Players with no class set display in ❓ section below main columns.
+  - Marks four PRD features as passing: 3-column layout, late section, opted-out section, no-class section.
+  - All functional features now complete (8/8 passing).
+  - Build passes with `npm run build`.
+  - Next: work on documentation features.
+

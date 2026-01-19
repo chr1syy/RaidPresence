@@ -17,9 +17,11 @@ import { t, getTranslations } from '../utils/localization';
 
 /**
  * Build role mentions from role IDs or names
- * @param guild Discord guild
- * @param roleIds Array of role IDs or names
- * @returns Space-separated role mentions string
+ * @param guild Discord guild instance
+ * @param roleIds Array of role IDs (snowflake strings) or exact role names (case-sensitive)
+ * @returns Space-separated string of role mentions (e.g., "<@&123> <@&456>"). 
+ *          Returns empty string if no valid roles are found. 
+ *          Invalid roles are logged as warnings and excluded from the result.
  */
 function buildRoleMentions(guild: Guild, roleIds: string[]): string {
   const roleMentions = roleIds
@@ -38,7 +40,7 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
       
       return `<@&${role.id}>`;
     })
-    .filter(Boolean)
+    .filter((mention) => mention !== null)
     .join(' ');
   
   return roleMentions;
@@ -1059,7 +1061,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         wowSpec: pref?.wowSpec || null,
       };
     })
-    .filter((data): data is NonNullable<typeof data> => data !== null);
+    .filter((data) => data !== null);
 
   // Batch insert new attendance records
   if (attendanceData.length > 0) {

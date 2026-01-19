@@ -40,3 +40,19 @@
   - Build passes with `npm run build`.
   - Next: work on documentation features.
 
+- 2026-01-19: Completed comprehensive documentation for all slash commands.
+  - Added complete "Slash Commands Reference" section to README with all commands and subcommands.
+  - Documented all 7 /raid subcommands: create, list, delete, close, cancel, remind, refresh.
+  - Documented all 5 /config subcommands: view, raid-roles, leader-roles, language, timezone.
+  - Each command includes: syntax, parameters (with required/optional indicators), examples, permissions, and behavior details.
+  - Updated "Player Interactions" section with detailed raid embed display documentation.
+  - Documented 3-column layout (Tank/Healer/DPS) with icons and sorting behavior.
+  - Documented special sections: Running Late, Opted Out, No Class.
+  - Expanded "Troubleshooting" section with comprehensive solutions.
+  - Added 6 major troubleshooting categories with detailed symptoms and solutions.
+  - Covers: bot not responding, no one added to raid, database errors, permission errors, embed not updating, common Discord permission issues.
+  - Marks five PRD documentation features as passing: commands documentation, 3-column layout docs, refresh command docs, custom roles docs, troubleshooting section.
+  - All PRD features now complete (13/13 passing - 8 functional + 5 documentation).
+  - Build passes with `npm run build`.
+  - PRD complete!
+

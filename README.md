@@ -5,7 +5,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 ## Features
 
 - **Reverse Sign-Up System**: All eligible members are automatically added to raid roster
-- **Multi-Server Ready**: Per-server configuration stored in database - ready for public deployment
+- **Multi-Server Ready**: Per-server configuration stored in database
 - **Role-Based Attendance**: Scan specific Discord roles to build attendance list
 - **Role-Based Permissions**: Configure which roles can create and manage raids
 - **Class/Spec Tracking**: Players can set and update their WoW class and specialization
@@ -15,19 +15,12 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 - **Raid Management**: List, delete, and track all raids
 - **Real-time Updates**: Raid roster updates automatically as players respond
 
-## 🚀 Quick Deploy to Railway (Free!)
+## Documentation
 
-**Ready to deploy in 10 minutes?** See **[QUICKSTART_RAILWAY.md](QUICKSTART_RAILWAY.md)**
-
-1. Push code to GitHub
-2. Connect to Railway.app (free tier)
-3. Add PostgreSQL database
-4. Set environment variables
-5. Bot goes live! ✅
-
-Cost: **FREE for small bots** ($5/month credit included)
-
----
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
+- **[Roadmap](ROADMAP.md)** - Future development plans
+- **[License](LICENSE)** - MIT License
 
 ## Technology Stack
 
@@ -41,13 +34,15 @@ Cost: **FREE for small bots** ($5/month credit included)
 - Node.js 18+
 - npm or yarn
 - Discord Bot Token ([Create one here](https://discord.com/developers/applications))
+- PostgreSQL database (production) or SQLite (local development)
 
 ## Setup
 
 ### 1. Clone and Install
 
 ```bash
-cd /var/www/RaidPresence
+git clone https://github.com/yourusername/RaidPresence.git
+cd RaidPresence
 npm install
 ```
 
@@ -84,10 +79,9 @@ Edit `.env` file:
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_client_id_here
 DATABASE_URL="file:./dev.db"
-RAID_ROLES=role_name_or_id,another_role
 ```
 
-**RAID_ROLES**: Comma-separated list of Discord role names or IDs. Members with these roles will be automatically added to raids.
+For local development, SQLite is used by default. For production deployment, use PostgreSQL.
 
 ### 4. Setup Database
 
@@ -165,81 +159,325 @@ No need to restart the bot or edit configuration files!
 
 ## Usage
 
-### Creating a Raid
+## Slash Commands Reference
 
-Use the slash command in any channel:
+### `/raid` Command
 
+Main command for creating and managing raid events.
+
+#### `/raid create`
+
+Create a new raid event with automatic roster population.
+
+**Syntax:**
 ```
-/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night
+/raid create date:YYYY-MM-DD time:HH:MM title:Raid Title [roles:Role1,Role2]
 ```
 
 **Parameters:**
-- `date`: Format YYYY-MM-DD
-- `time`: 24-hour format HH:MM
-- `title`: Raid title/name (required)
+- `date` *(required)*: Raid date in format YYYY-MM-DD (e.g., 2026-01-15)
+- `time` *(required)*: Raid time in 24-hour format HH:MM (e.g., 20:00)
+- `title` *(required)*: Custom name for the raid event
+- `roles` *(optional)*: Custom Discord roles for this raid (comma-separated role names or IDs). If not specified, uses guild's default raid roles.
+- `ping_roles` *(optional)*: Whether to mention the roles when creating the raid (default: false)
+
+**Examples:**
+```
+/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night
+/raid create date:2026-01-20 time:19:30 title:Mythic Progress roles:CoreRaider,Trial
+/raid create date:2026-01-22 time:20:00 title:Alt Run roles:Member ping_roles:true
+```
 
 **Permissions:** Requires configured raid leader role or ManageEvents permission.
 
-The bot will:
-1. Scan for all members with configured raid roles
-2. Create an attendance list with everyone marked as "attending"
-3. Pull saved class/spec preferences for each member
-4. Post a public interactive raid message with buttons
-5. Send you a private confirmation message
+**Behavior:**
+- Uses guild's default raid roles (configured via `/config raid-roles`) unless the `roles` parameter is specified
+- When `roles` parameter is provided: Uses those custom roles for this specific raid instead of guild defaults
+- Creates an attendance list with all eligible members automatically marked as "attending"
+- Pulls saved class/spec preferences for each member
+- Posts an interactive raid message with buttons in the channel
+- Optionally mentions the configured roles if `ping_roles` is set to true
+- Sends a private confirmation message to the creator
 
-### Listing Raids
+#### `/raid list`
 
-View all upcoming raids:
+View all upcoming raids for the server.
 
+**Syntax:**
 ```
 /raid list
 ```
 
-Shows all future raids with:
-- Raid title and date
-- Attendance count (attending/total)
-- Raid ID for management
+**Shows:**
+- Raid title and date/time
+- Attendance count (attending/total roster)
+- Raid ID for use with management commands
+- All raids sorted by date
 
-### Deleting a Raid
+#### `/raid delete`
 
-Delete a raid event:
+Permanently delete a raid event.
 
+**Syntax:**
 ```
 /raid delete raid_id:xyz123
 ```
 
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid (shown in `/raid list`)
+
 **Permissions:** Requires configured raid leader role or ManageEvents permission.
 
-This will:
-- Delete the raid message from the channel
-- Remove all attendance records
-- Delete the raid from the database
+**Effects:**
+- Deletes the raid message from the channel
+- Removes all attendance records from database
+- Permanently deletes the raid event
+
+#### `/raid close`
+
+Close a raid to prevent further attendance changes.
+
+**Syntax:**
+```
+/raid close raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Disables all interactive buttons on the raid message
+- Prevents players from changing attendance status
+- Locks the roster for final planning
+
+#### `/raid cancel`
+
+Cancel a raid event and notify attendees.
+
+**Syntax:**
+```
+/raid cancel raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Marks the raid as cancelled in the embed
+- Keeps the raid message visible but indicates cancellation status
+- Maintains attendance records for reference
+
+#### `/raid remind`
+
+Send a reminder message for an upcoming raid.
+
+**Syntax:**
+```
+/raid remind raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Effects:**
+- Posts a reminder message in the channel
+- Mentions the raid's configured roles (not individual members)
+- Shows raid details (date, time, title)
+
+#### `/raid refresh`
+
+Refresh raid roster by re-scanning members and updating the embed.
+
+**Syntax:**
+```
+/raid refresh raid_id:xyz123
+```
+
+**Parameters:**
+- `raid_id` *(required)*: The unique ID of the raid
+
+**Permissions:** Requires configured raid leader role or ManageEvents permission.
+
+**Use Cases:**
+- Add members who gained raid role after raid creation
+- Remove members who lost raid role
+- Update embed with latest design/layout changes
+- Refresh roster after role changes
+
+**Effects:**
+- Re-scans all eligible members based on current raid roles
+- Adds new members who now have raid role
+- Removes members who no longer have raid role
+- Updates the raid embed message with latest design
+- Shows count of members added/removed
+
+### `/config` Command
+
+Configure bot settings for your Discord server. Each server has independent configuration.
+
+**Permissions:** All `/config` commands require Administrator permission.
+
+#### `/config view`
+
+View current server configuration.
+
+**Syntax:**
+```
+/config view
+```
+
+**Shows:**
+- Raid attendance roles (for auto-roster)
+- Raid leader roles (for permissions)
+- Bot language setting
+- Timezone setting
+
+#### `/config raid-roles`
+
+Set Discord roles that are automatically added to raid rosters.
+
+**Syntax:**
+```
+/config raid-roles roles:Role1,Role2,Role3
+```
+
+**Parameters:**
+- `roles` *(required)*: Comma-separated role names or IDs
+
+**Examples:**
+```
+/config raid-roles roles:Raider,Member,Trial
+/config raid-roles roles:123456789,987654321
+```
+
+**Notes:**
+- Role names are case-sensitive
+- Can use role names, role IDs, or a mix
+- These roles serve as the default for new raids when the `roles` parameter is not specified in `/raid create`
+- Individual raids can override these defaults by specifying custom roles in the `/raid create` command
+- The `/raid refresh` command uses the raid's configured roles (custom or defaults) to update the roster
+
+#### `/config leader-roles`
+
+Set Discord roles that can create and manage raids.
+
+**Syntax:**
+```
+/config leader-roles roles:Officer,Raid Leader
+```
+
+**Parameters:**
+- `roles` *(required)*: Comma-separated role names or IDs
+
+**Examples:**
+```
+/config leader-roles roles:Officer,Raid Leader
+/config leader-roles roles:123456789
+```
+
+**Notes:**
+- Members with these roles can use all `/raid` management commands
+- If not configured, defaults to members with ManageEvents permission
+- Role names are case-sensitive
+
+#### `/config language`
+
+Set the bot language for your server.
+
+**Syntax:**
+```
+/config language lang:en
+```
+
+**Parameters:**
+- `lang` *(required)*: Language code (en = English, de = German (Deutsch))
+
+**Available Languages:**
+- `en`: English
+- `de`: German (Deutsch)
+
+**Effects:**
+- All bot messages will appear in the selected language
+- Raid embeds, buttons, and responses are translated
+
+#### `/config timezone`
+
+Set timezone offset for raid times.
+
+**Syntax:**
+```
+/config timezone offset:1
+```
+
+**Parameters:**
+- `offset` *(required)*: Timezone offset in hours (range: -12 to +14)
+
+**Examples:**
+```
+/config timezone offset:0    # GMT/UTC
+/config timezone offset:1    # GMT+1 (CET)
+/config timezone offset:-5   # GMT-5 (EST)
+/config timezone offset:8    # GMT+8 (CST/PHT)
+```
+
+**Effects:**
+- Raid times will be created using this timezone
+- Discord timestamps still display in each user's local timezone
+
+## Player Interactions
 
 ### Managing Attendance
 
-Players can interact with the raid message using buttons:
+Players can interact with the raid message using interactive buttons:
 
-- **Opt Out**: Remove yourself from the raid
-- **Opt In**: Re-join the raid if you opted out
+**Available Buttons:**
+- **Opt Out**: Remove yourself from the raid roster if you cannot attend
+- **Opt In**: Re-join the raid if you previously opted out
+- **Running Late**: Mark yourself as late while remaining on the roster
 - **Set Class/Spec**: Select your WoW class and specialization
+
+All changes are instant and update the raid embed in real-time.
 
 ### Class/Spec Selection
 
-When clicking "Set Class/Spec":
-1. Select your WoW class from dropdown
-2. Select your specialization
-3. Your preference is saved for all future raids
-4. Attendance list automatically updates and sorts by role (Tank → Healer → DPS)
-5. Can be changed anytime
+When clicking the "Set Class/Spec" button:
 
-### Raid Display
+1. **Select Class**: Choose your WoW class from the dropdown menu
+2. **Select Spec**: Choose your active specialization
+3. **Auto-Save**: Your preference is saved to your user profile
+4. **Auto-Update**: The raid embed immediately updates with your spec symbol and correct role
+5. **Auto-Sort**: You're automatically sorted into the correct role column (Tank/Healer/DPS)
+6. **Persistent**: Your class/spec is remembered for all future raids
+7. **Flexible**: Change your spec anytime by clicking the button again
 
-The raid message shows:
-- **Title**: Your custom raid title
-- **Date & Time**: Discord timestamp (displays in user's timezone)
-- **Composition**: Role breakdown (Tanks: X • Healers: Y • DPS: Z)
-- **Attending**: Sorted by role - Tanks first, then Healers, then DPS
-- **Opted Out**: List of players who can't attend
+### Raid Embed Display
+
+The raid embed shows a clean, organized 3-column layout:
+
+**Header:**
+- Raid title (customizable)
+- Date & time (Discord timestamp - displays in each user's local timezone)
+- Role composition summary (Tanks: X • Healers: Y • DPS: Z)
+
+**Main Columns (3-column layout):**
+- **🛡️ Tanks**: Left column with tank count and player list
+- **💚 Healers**: Middle column with healer count and player list  
+- **⚔️ DPS**: Right column with combined Melee + Ranged DPS count and player list
+
+Each player name includes their spec symbol (e.g., ⚔️ for Arms Warrior, 🛡️ for Protection Paladin).
+
+**Special Sections (below main columns):**
+- **⏰ Running Late**: Players who marked themselves as running late
+- **❌ Opted Out**: Players who cannot attend
+- **❓ No Class**: Players who haven't set their class/spec yet
+
+All sections show player count and sorted player names.
 
 ## Database Schema
 
@@ -297,100 +535,16 @@ npm run db:migrate
 2. Import and register in `src/index.ts`
 3. Run `npm run deploy` to update Discord
 
-## Deploying as a Public Bot
+For more details, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The bot is fully ready for multi-server deployment! Here's how:
+## Support
 
-### 1. Use PostgreSQL for Production
-
-For multiple servers, switch from SQLite to PostgreSQL:
-
-```bash
-# Update .env
-DATABASE_URL="postgresql://user:password@host:5432/raidpresence"
-
-# Run migration
-npm run db:migrate
-```
-
-### 2. Host on Cloud Platform
-
-Deploy to:
-- **Railway**: Easy deployment with PostgreSQL addon
-- **Heroku**: Free tier with Heroku Postgres
-- **DigitalOcean**: App Platform with managed PostgreSQL
-- **VPS**: Self-hosted with Docker
-
-### 3. Public Bot Invite Link
-
-After deploying, create an invite link:
-```
-https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=2147502080&scope=bot%20applications.commands
-```
-
-Required permissions:
-- Send Messages
-- Embed Links
-- Read Message History
-- Use Slash Commands
-- Manage Events
-- Read Members (for role scanning)
-
-### 4. Server Admin Instructions
-
-Point server admins to run these commands after inviting:
-```
-/config raid-roles roles:YourRoles
-/config leader-roles roles:YourLeaderRoles
-```
-
-Each server configures independently!
-
-## Roadmap
-
-### Phase 2 (Near Future)
-- [ ] Copy roster from previous raid (`/raid clone`)
-- [ ] Manual roster management (`/raid add`, `/raid remove`)
-- [ ] Raid status (Planning, Open, Locked, Completed)
-- [ ] Automated reminders
-- [ ] Export roster to text format
-- [ ] Raid history and statistics
-
-### Phase 3 (Scaling)
-- [x] Multi-server support with per-guild config
-- [ ] Sharding for large-scale deployment
-- [ ] PostgreSQL migration
-- [ ] Web dashboard for raid management
-- [ ] Calendar integration
-- [ ] Guild analytics
-
-### Phase 4 (Monetization)
-- [ ] Premium features (web interface, advanced stats)
-- [ ] Support for other games
-- [ ] Custom raid templates
-- [ ] Automated roster optimization
-
-## Troubleshooting
-
-**Bot not responding to commands:**
-- Verify bot token in `.env`
-- Check bot has necessary permissions
-- Ensure commands were deployed: `npm run deploy`
-- Check bot is online in Discord
-
-**No one added to raid:**
-- Verify `RAID_ROLES` in `.env` matches your Discord role names or IDs
-- Check bot has "Server Members Intent" enabled
-- Ensure bot can see members (may need to fetch members)
-
-**Database errors:**
-- Run `npm run db:generate` after schema changes
-- Run `npm run db:migrate` to apply migrations
+Having issues? Check out the [Troubleshooting Guide](TROUBLESHOOTING.md) for common problems and solutions.
 
 ## Contributing
 
-This is a personal project in active development. Contributions, ideas, and feedback are welcome!
+Contributions, ideas, and feedback are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE) for details.

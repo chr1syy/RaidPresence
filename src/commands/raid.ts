@@ -1094,12 +1094,12 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         // Recreate buttons with translated labels
         const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`raid_opt_out_${raid.id}`)
+            .setCustomId(`raid_optout_${raid.id}`)
             .setLabel(trans.optOut)
             .setStyle(ButtonStyle.Danger)
             .setDisabled(raid.status !== 'open'),
           new ButtonBuilder()
-            .setCustomId(`raid_opt_in_${raid.id}`)
+            .setCustomId(`raid_optin_${raid.id}`)
             .setLabel(trans.optIn)
             .setStyle(ButtonStyle.Success)
             .setDisabled(raid.status !== 'open'),
@@ -1109,7 +1109,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(raid.status !== 'open'),
           new ButtonBuilder()
-            .setCustomId(`raid_set_class_${raid.id}`)
+            .setCustomId(`raid_class_${raid.id}`)
             .setLabel(trans.setClassSpec)
             .setStyle(ButtonStyle.Primary)
             .setDisabled(raid.status !== 'open')

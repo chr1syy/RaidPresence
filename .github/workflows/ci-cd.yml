@@ -1,0 +1,57 @@
+# GitHub Actions CI/CD Workflow for RaidPresence
+# 
+# This workflow automatically triggers on semantic version tags (v*.*.*)
+# and orchestrates the CI/CD pipeline. It:
+# 1. Checks out the code from the repository
+# 2. Sets up Node.js environment
+# 3. Installs dependencies
+# 4. Runs TypeScript compilation checks (npm test)
+# 5. Blocks deployment if tests fail, allows it on success
+#
+# Once this workflow succeeds, Railway's integration automatically
+# deploys the build without requiring manual intervention.
+
+name: CI/CD Pipeline
+
+# Trigger configuration: only run on semantic version tags
+# Matches patterns like: v0.1.0, v1.2.3, v2.0.0, etc.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  # Single job that runs all CI/CD checks and validation
+  test-and-validate:
+    # Run on the latest Ubuntu runner
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository code
+      # Uses GitHub's official checkout action (v4)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js environment
+      # Uses v18.x for compatibility with project dependencies
+      # Enables npm cache for faster dependency installation
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+
+      # Step 3: Install dependencies using npm ci
+      # npm ci (clean install) is preferred in CI environments as it:
+      # - Installs exact versions from package-lock.json
+      # - Ensures reproducible builds
+      # - Fails fast if package-lock.json is out of sync
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Run TypeScript compilation checks
+      # Executes: npm test -> tsc --noEmit
+      # This validates TypeScript type safety without emitting output files
+      # Fails the workflow if any TypeScript compilation errors are detected
+      - name: Run tests (TypeScript type checks)
+        run: npm test

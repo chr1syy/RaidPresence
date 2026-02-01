@@ -14,7 +14,9 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "test": "jest",
+    "test": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test:jest": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "postinstall": "prisma generate"

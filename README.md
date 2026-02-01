@@ -1,7 +1,7 @@
 # RaidPresence
 
 [![CI/CD Pipeline](https://github.com/chr1syy/RaidPresence/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/chr1syy/RaidPresence/actions/workflows/ci-cd.yml)
-[![Made with Maestro](docs/assets/made-with-maestro.svg)](https://github.com/pedramamini/Maestro)
+[![Made with Maestro](https://github.com/pedramamini/Maestro/blob/main/docs/assets/made-with-maestro.svg)](https://github.com/pedramamini/Maestro)
 [![Discord Server](https://img.shields.io/badge/discord-join%20us-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/TxXfbY52fy)
 [![Add Bot](https://img.shields.io/badge/discord-add%20bot-5865F2?logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=1457999774224613489)
 [![Homepage](https://img.shields.io/badge/homepage-raidpresence.dev-blue)](https://raidpresence.dev/)

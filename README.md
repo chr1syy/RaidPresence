@@ -1,5 +1,7 @@
 # RaidPresence
 
+[![CI/CD Pipeline](https://github.com/chr1syy/RaidPresence/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/chr1syy/RaidPresence/actions/workflows/ci-cd.yml)
+
 A Discord bot for World of Warcraft raid attendance management with **reverse sign-up** system. Instead of requiring raiders to opt-in, everyone on the roster is automatically signed up and must opt-out if they can't attend.
 
 ## Features
@@ -17,6 +19,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 
 ## Documentation
 
+- **[CI/CD Badges](CI-BADGES.md)** - Repository build status badges
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[Roadmap](ROADMAP.md)** - Future development plans

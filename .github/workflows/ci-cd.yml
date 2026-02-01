@@ -1,24 +1,24 @@
 # GitHub Actions CI/CD Workflow for RaidPresence
 # 
-# This workflow automatically triggers on semantic version tags (v*.*.*)
+# This workflow automatically triggers on every push to main branch
 # and orchestrates the CI/CD pipeline. It:
 # 1. Checks out the code from the repository
 # 2. Sets up Node.js environment
 # 3. Installs dependencies
 # 4. Runs TypeScript compilation checks (npm test)
-# 5. Blocks deployment if tests fail, allows it on success
+# 5. Notifies Discord of success or failure
+# 6. Blocks deployment if tests fail (Railway waits for this to pass)
 #
 # Once this workflow succeeds, Railway's integration automatically
 # deploys the build without requiring manual intervention.
 
 name: CI/CD Pipeline
 
-# Trigger configuration: only run on semantic version tags
-# Matches patterns like: v0.1.0, v1.2.3, v2.0.0, etc.
+# Trigger configuration: run on every push to main branch
 on:
   push:
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+    branches:
+      - main
 
 jobs:
   # Single job that runs all CI/CD checks and validation
@@ -56,21 +56,19 @@ jobs:
       - name: Run tests (TypeScript type checks)
         run: npm test
 
-      # Optional Step 5: Send notification to Discord on test failure
-      # Uncomment and configure the DISCORD_WEBHOOK_URL secret to enable this feature
-      # See NOTIFICATIONS-SETUP.md for instructions on setting up Discord webhooks
-      # This step only runs if the previous steps fail (due to "if: failure()" condition)
-      - name: Notify Discord on failure
-        if: failure()
+      # Step 5: Notify Discord on success
+      # Sends a success notification to Discord webhook
+      - name: Notify Discord on success
+        if: success()
         run: |
           curl -X POST -H 'Content-type: application/json' \
             --data "{
-              \"content\": \"❌ **RaidPresence CI/CD Pipeline Failed**\",
+              \"content\": \"✅ **RaidPresence CI/CD Pipeline Succeeded**\",
               \"embeds\": [
                 {
-                  \"title\": \"Build Failed on \${{ github.ref_name }}\",
-                  \"description\": \"Tests failed during CI/CD pipeline execution\",
-                  \"color\": 16711680,
+                  \"title\": \"Build Passed on \${{ github.ref_name }}\",
+                  \"description\": \"Tests passed successfully during CI/CD pipeline execution\",
+                  \"color\": 65280,
                   \"fields\": [
                     {
                       \"name\": \"Repository\",
@@ -78,7 +76,7 @@ jobs:
                       \"inline\": true
                     },
                     {
-                      \"name\": \"Branch/Tag\",
+                      \"name\": \"Branch\",
                       \"value\": \"\${{ github.ref_name }}\",
                       \"inline\": true
                     },
@@ -104,60 +102,48 @@ jobs:
             \${{ secrets.DISCORD_WEBHOOK_URL }}
         continue-on-error: true
 
-      # Optional Step 6: Send notification to Slack on test failure
-      # Uncomment and configure the SLACK_WEBHOOK_URL secret to enable this feature
-      # See NOTIFICATIONS-SETUP.md for instructions on setting up Slack webhooks
-      # This step only runs if the previous steps fail (due to "if: failure()" condition)
-      - name: Notify Slack on failure
+      # Step 6: Notify Discord on failure
+      # Sends a failure notification to Discord webhook
+      - name: Notify Discord on failure
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' \
             --data "{
-              \"text\": \"❌ RaidPresence CI/CD Pipeline Failed\",
-              \"blocks\": [
+              \"content\": \"❌ **RaidPresence CI/CD Pipeline Failed**\",
+              \"embeds\": [
                 {
-                  \"type\": \"header\",
-                  \"text\": {
-                    \"type\": \"plain_text\",
-                    \"text\": \"Build Failed on \${{ github.ref_name }}\"
-                  }
-                },
-                {
-                  \"type\": \"section\",
+                  \"title\": \"Build Failed on \${{ github.ref_name }}\",
+                  \"description\": \"Tests failed during CI/CD pipeline execution\",
+                  \"color\": 16711680,
                   \"fields\": [
                     {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*Repository:*\n\${{ github.repository }}\"
+                      \"name\": \"Repository\",
+                      \"value\": \"\${{ github.repository }}\",
+                      \"inline\": true
                     },
                     {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*Branch/Tag:*\n\${{ github.ref_name }}\"
+                      \"name\": \"Branch\",
+                      \"value\": \"\${{ github.ref_name }}\",
+                      \"inline\": true
                     },
                     {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*Author:*\n\${{ github.event.head_commit.author.name }}\"
+                      \"name\": \"Commit Message\",
+                      \"value\": \"\${{ github.event.head_commit.message }}\",
+                      \"inline\": false
                     },
                     {
-                      \"type\": \"mrkdwn\",
-                      \"text\": \"*Message:*\n\${{ github.event.head_commit.message }}\"
-                    }
-                  ]
-                },
-                {
-                  \"type\": \"actions\",
-                  \"elements\": [
+                      \"name\": \"Author\",
+                      \"value\": \"\${{ github.event.head_commit.author.name }}\",
+                      \"inline\": true
+                    },
                     {
-                      \"type\": \"button\",
-                      \"text\": {
-                        \"type\": \"plain_text\",
-                        \"text\": \"View Workflow Run\"
-                      },
-                      \"url\": \"\${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}\",
-                      \"style\": \"danger\"
+                      \"name\": \"Workflow URL\",
+                      \"value\": \"[\${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}](View Run)\",
+                      \"inline\": false
                     }
                   ]
                 }
               ]
             }" \
-            \${{ secrets.SLACK_WEBHOOK_URL }}
+            \${{ secrets.DISCORD_WEBHOOK_URL }}
         continue-on-error: true

@@ -120,13 +120,156 @@ RaidPresence/
 
 ## Testing
 
-Currently, testing is done manually in Discord. When testing:
+### Automated Test Suite
+
+RaidPresence uses **Jest** for automated testing with comprehensive coverage of core functionality.
+
+#### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode (re-run on file changes)
+npm test -- --watch
+
+# Run tests with coverage report
+npm test -- --coverage
+
+# Run specific test file
+npm test -- raid-edit.test.ts
+```
+
+#### Test Structure
+
+Tests are located in `src/commands/__tests__/` and use the naming convention `*.test.ts`.
+
+**Example test file structure:**
+```
+src/commands/__tests__/
+├── raid-edit.test.ts       # Tests for raid edit functionality
+└── __snapshots__/          # Snapshot files (auto-generated)
+```
+
+#### Test Coverage
+
+The test suite includes:
+
+**Permission Checks**
+- Verify users without `canManageRaids` permission are rejected
+- Test when member is null
+- Validate permission checking logic
+
+**Guild and Channel Validation**
+- Ensure guild exists before processing
+- Verify channel is valid and accessible
+- Handle missing guild/channel gracefully
+
+**Raid Validation**
+- Verify raid exists before editing
+- Check raid belongs to correct guild
+- Reject closed raids
+- Reject cancelled raids
+
+**Date/Time Validation**
+- Accept valid YYYY-MM-DD date format
+- Reject invalid date formats
+- Validate month range (1-12)
+- Validate day range based on month and leap years
+- Reject non-existent dates (e.g., Feb 30)
+- Accept leap year dates correctly
+- Reject past dates (raids must be in future)
+- Accept valid HH:MM time format (24-hour)
+- Handle edge cases (00:00, 23:59)
+- Validate hour (0-23) and minute (0-59) ranges
+- Handle timezone-adjusted date calculations
+
+**Changes Validation**
+- Reject when no changes are provided
+- Track changes for date updates
+- Track changes for title updates
+- Handle multiple simultaneous changes
+
+**Member Scanning**
+- Add new members when raid roles are expanded
+- Remove members when raid roles are restricted
+- Handle mixed scenarios (add some, remove some)
+- Handle empty roster after removal
+- Create attendance records with correct defaults
+
+**Embed and Message Handling**
+- Update embeds in-place without re-sending
+- Handle missing messageId gracefully
+- Handle missing channelId gracefully
+- Handle channel fetch failures
+
+#### Test Configuration
+
+Jest configuration in `jest.config.js`:
+- **Preset**: `ts-jest` (TypeScript support)
+- **Environment**: Node.js
+- **Test Match**: `**/__tests__/**/*.test.ts`
+- **Coverage Threshold**: 50% minimum for branches, functions, lines, and statements
+- **Setup File**: `src/__tests__/setup.ts` (suppresses console output during tests)
+
+#### Writing New Tests
+
+When adding new features, create tests in the appropriate `__tests__` directory:
+
+1. Create test file with `.test.ts` extension
+2. Use `describe()` blocks to organize test groups
+3. Use `it()` or `test()` for individual test cases
+4. Mock external dependencies (database, Discord API, etc.)
+5. Test success paths, error paths, and edge cases
+
+**Example test structure:**
+```typescript
+import { yourFunction } from '../yourfile';
+
+// Mock external dependencies
+jest.mock('../../database/client');
+
+describe('yourFunction()', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('when conditions are valid', () => {
+    it('should return expected result', async () => {
+      // Arrange
+      const input = { /* test data */ };
+      
+      // Act
+      const result = await yourFunction(input);
+      
+      // Assert
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('when conditions are invalid', () => {
+    it('should throw error', async () => {
+      // Arrange
+      const input = { /* invalid data */ };
+      
+      // Act & Assert
+      await expect(yourFunction(input)).rejects.toThrow();
+    });
+  });
+});
+```
+
+### Manual Testing
+
+For features not covered by automated tests, perform manual testing:
 
 1. **Test in a Test Server**: Use a dedicated Discord server for testing
 2. **Test All Paths**: Test success cases, error cases, and edge cases
 3. **Test Permissions**: Verify permission checks work correctly
 4. **Test Database**: Ensure data is stored and retrieved correctly
 5. **Test Multi-Server**: If applicable, test with multiple servers
+6. **Test Localization**: Verify messages appear in correct language
+7. **Test Edge Cases**: Test with unusual but valid inputs
 
 ## Database Management
 

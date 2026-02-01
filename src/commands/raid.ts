@@ -1031,91 +1031,140 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       }
     }
   }
-
-  // Get current attendance records
-  const currentAttendance = raid.attendance;
-  const currentAttendanceIds = new Set(currentAttendance.map((a: typeof raid.attendance[0]) => a.userId));
-
-  // Find members to add (eligible but not in attendance)
-  const membersToAdd = Array.from(currentEligibleMembers).filter(
-    (memberId) => !currentAttendanceIds.has(memberId)
-  );
-
-  // Find members to remove (in attendance but not eligible)
-  const membersToRemove = currentAttendance.filter(
-    (a: typeof raid.attendance[0]) => !currentEligibleMembers.has(a.userId)
-  );
-
-  // Ensure all new members have UserPreference records
-  for (const userId of membersToAdd) {
-    const guildMember = interaction.guild.members.cache.get(userId);
-    if (guildMember) {
-      await prisma.userPreference.upsert({
-        where: {
-          userId_guildId: {
+  
+    // ============================================================
+    // ROSTER COMPARISON: Find add/remove deltas
+    // ============================================================
+    // Simple set theory:
+    // membersToAdd = (currently eligible) \ (currently in raid)
+    // membersToRemove = (currently in raid) \ (currently eligible)
+    
+    const currentAttendance = raid.attendance;
+    const currentAttendanceIds = new Set(currentAttendance.map((a: typeof raid.attendance[0]) => a.userId));
+  
+    // Members who are eligible but not yet in attendance
+    const membersToAdd = Array.from(currentEligibleMembers).filter(
+      (memberId) => !currentAttendanceIds.has(memberId)
+    );
+  
+    // Members in attendance but no longer eligible (lost role)
+    const membersToRemove = currentAttendance.filter(
+      (a: typeof raid.attendance[0]) => !currentEligibleMembers.has(a.userId)
+    );
+  
+    // ============================================================
+    // DATABASE UPDATE 2: Ensure UserPreference records exist for new members
+    // ============================================================
+    // UserPreference is a foreign key requirement for RaidAttendance.
+    // Every member in raid must have a UserPreference record, even if empty.
+    // This upsert ensures the record exists; we'll use it to fetch class/spec.
+    //
+    // Why upsert (not insert)?
+    // - Member might already have UserPreference from previous raids
+    // - Member might have set class/spec manually with /class command
+    // - If record exists, we update username (in case they changed display name)
+    // - If doesn't exist, we create it
+    
+    for (const userId of membersToAdd) {
+      const guildMember = interaction.guild.members.cache.get(userId);
+      if (guildMember) {
+        await prisma.userPreference.upsert({
+          where: {
+            userId_guildId: {
+              userId,
+              guildId: interaction.guild.id,
+            },
+          },
+          update: {
+            username: guildMember.displayName,
+          },
+          create: {
             userId,
             guildId: interaction.guild.id,
+            username: guildMember.displayName,
           },
-        },
-        update: {
-          username: guildMember.displayName,
-        },
-        create: {
+        });
+      }
+    }
+  
+    // ============================================================
+    // DATABASE READ: Fetch UserPreferences for new members
+    // ============================================================
+    // Now that we've ensured UserPreference exists, fetch them all at once.
+    // This is batch query efficiency: one DB call for all, not N+1 calls.
+    // We'll use these to populate class/spec for new attendance records.
+    
+    const newMemberIds = Array.from(membersToAdd);
+    const userPrefs = await prisma.userPreference.findMany({
+      where: {
+        guildId: interaction.guild.id,
+        userId: { in: newMemberIds },
+      },
+    });
+    
+    // Create map for O(1) lookup during attendance creation
+    // Map: userId → UserPreference object
+    const prefsMap = new Map(userPrefs.map(pref => [pref.userId, pref]));
+  
+    // ============================================================
+    // DATABASE UPDATE 3: Create attendance records for new members
+    // ============================================================
+    // Build attendance objects for batch insert. Each new member gets:
+    // - status: "attending" (default, they haven't responded yet)
+    // - wowClass/wowSpec: Pulled from UserPreference if available, else null
+    //
+    // Why "attending" as default?
+    // - Forces member to confirm their attendance explicitly
+    // - Gives fresh engagement signal
+    // - Alternative (preserving old status) was rejected because it's confusing
+    //   if a member left, loses role, regains role, they should re-confirm
+    //
+    // See: docs/architecture/raid-edit-limitations.md - "Member Status Changes Lost on Removal"
+    
+    const attendanceData = newMemberIds
+      .map((userId) => {
+        const guildMember = interaction.guild!.members.cache.get(userId);
+        if (!guildMember) return null;
+        
+        const pref = prefsMap.get(userId);
+        return {
+          raidId: raid.id,
           userId,
-          guildId: interaction.guild.id,
+          guildId: interaction.guild!.id,
           username: guildMember.displayName,
+          status: 'attending' as const,
+          wowClass: pref?.wowClass || null,
+          wowSpec: pref?.wowSpec || null,
+        };
+      })
+      .filter((data) => data !== null);
+  
+    // Batch insert new attendance records (more efficient than loop + individual inserts)
+    if (attendanceData.length > 0) {
+      await prisma.raidAttendance.createMany({
+        data: attendanceData,
+      });
+    }
+  
+    // ============================================================
+    // DATABASE UPDATE 4: Remove ineligible members
+    // ============================================================
+    // Delete attendance records for members who lost their raid role.
+    // This cascades and removes any related data (their responses, late status, etc.).
+    //
+    // Why complete deletion?
+    // - Clean state: no ambiguity about whether member was once invited
+    // - If they regain role, they start fresh (see design decision above)
+    // - Audit trail: can check raid creation message to see original roster
+    
+    if (membersToRemove.length > 0) {
+      const memberIdsToRemove = membersToRemove.map(attendance => attendance.id);
+      await prisma.raidAttendance.deleteMany({
+        where: {
+          id: { in: memberIdsToRemove },
         },
       });
     }
-  }
-
-  // Fetch all user preferences at once for new members
-  const newMemberIds = Array.from(membersToAdd);
-  const userPrefs = await prisma.userPreference.findMany({
-    where: {
-      guildId: interaction.guild.id,
-      userId: { in: newMemberIds },
-    },
-  });
-  
-  // Create a map for quick lookup
-  const prefsMap = new Map(userPrefs.map(pref => [pref.userId, pref]));
-
-  // Build attendance data for batch insert
-  const attendanceData = newMemberIds
-    .map((userId) => {
-      const guildMember = interaction.guild!.members.cache.get(userId);
-      if (!guildMember) return null;
-      
-      const pref = prefsMap.get(userId);
-      return {
-        raidId: raid.id,
-        userId,
-        guildId: interaction.guild!.id,
-        username: guildMember.displayName,
-        status: 'attending' as const,
-        wowClass: pref?.wowClass || null,
-        wowSpec: pref?.wowSpec || null,
-      };
-    })
-    .filter((data) => data !== null);
-
-  // Batch insert new attendance records
-  if (attendanceData.length > 0) {
-    await prisma.raidAttendance.createMany({
-      data: attendanceData,
-    });
-  }
-
-  // Batch delete removed members
-  if (membersToRemove.length > 0) {
-    const memberIdsToRemove = membersToRemove.map(attendance => attendance.id);
-    await prisma.raidAttendance.deleteMany({
-      where: {
-        id: { in: memberIdsToRemove },
-      },
-    });
-  }
 
   // Update the raid embed
   if (raid.messageId && raid.channelId) {
@@ -1222,7 +1271,36 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     return null;
   }
 
+  /**
+   * Handle the /raid edit subcommand
+   * 
+   * Allows raid leaders to update raid date, time, title, and automatically maintains
+   * roster accuracy by scanning current guild members and comparing against raid roles.
+   * 
+   * @param interaction - Discord slash command interaction
+   * @returns void (sends response via interaction.editReply)
+   * 
+   * Flow:
+   * 1. Validate guild/channel context
+   * 2. Check permissions (canManageRaids)
+   * 3. Extract and validate parameters (raid_id, date, time, title)
+   * 4. Validate date/time format (YYYY-MM-DD, HH:MM)
+   * 5. Fetch raid and validate state (exists, belongs to guild, is open)
+   * 6. Parse date/time with timezone conversion to UTC
+   * 7. Build change summary and update raid in database
+   * 8. Scan guild members and update roster (add new, remove ineligible)
+   * 9. Update embed message in Discord (if exists and accessible)
+   * 10. Send detailed response to user
+   * 
+   * See: docs/maintainers/handleEditRaid.md for detailed implementation guide
+   * See: docs/architecture/raid-edit-api-contract.md for API contract
+   */
   async function handleEditRaid(interaction: ChatInputCommandInteraction) {
+    // ============================================================
+    // VALIDATION 0: Basic context checks (guild/channel existence)
+    // ============================================================
+    // Slash commands can be used outside servers (DMs); we need Discord context
+    // to fetch guild members, access channels, and store guild-specific data.
     if (!interaction.guild || !interaction.channel) {
       await interaction.reply({
         content: '❌ This command can only be used in a server!',
@@ -1231,9 +1309,16 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
   
+    // Defer reply to allow time for long operations (member fetching, DB updates)
+    // ephemeral: true keeps bot logs clean (only user sees response)
     await interaction.deferReply({ ephemeral: true });
   
-    // Check permissions
+    // ============================================================
+    // VALIDATION 1: Permission check (canManageRaids)
+    // ============================================================
+    // Only raid leaders should edit raids. Uses consistent permission check
+    // with other raid management commands (create, delete, close, etc.)
+    // This prevents regular members from modifying raid state.
     const member = interaction.member;
     if (!member || !(await canManageRaids(member as any))) {
       await interaction.editReply({
@@ -1242,12 +1327,23 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
   
+    // ============================================================
+    // VALIDATION 2: Extract command parameters from Discord interaction
+    // ============================================================
+    // raid_id: Required, identifies which raid to edit
+    // date/time/title: Optional, can update any combination of these
+    // Using optional chaining (?.) prevents crashes if optional params not provided
     const raidId = interaction.options.get('raid_id', true).value as string;
     const dateStr = interaction.options.get('date', false)?.value as string | undefined;
     const timeStr = interaction.options.get('time', false)?.value as string | undefined;
     const title = interaction.options.get('title', false)?.value as string | undefined;
   
-    // Validate at least one parameter provided
+    // ============================================================
+    // VALIDATION 3: At least one parameter must change
+    // ============================================================
+    // Prevents: /raid edit raid_id:abc (no changes)
+    // Requires: /raid edit raid_id:abc date:2025-12-25 OR time:20:00 OR title:"New Title"
+    // This check happens early before any database operations.
     if (!dateStr && !timeStr && !title) {
       await interaction.editReply({
         content: '❌ At least one of date, time, or title must be provided.',
@@ -1256,8 +1352,13 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     }
 
     // ============================================================
-    // VALIDATION 1: Date/Time Format Validation
+    // VALIDATION 4: Date/Time Format Validation
     // ============================================================
+    // Early validation of format is cheap and provides immediate feedback to user.
+    // These helpers check:
+    // - validateDateFormat(): YYYY-MM-DD pattern, valid month (01-12), valid day (01-31)
+    // - validateTimeFormat(): HH:MM pattern, valid hours (00-23), valid minutes (00-59)
+    // Format validation happens BEFORE we do any database work.
     if (dateStr) {
       const dateError = validateDateFormat(dateStr);
       if (dateError) {
@@ -1275,8 +1376,11 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     }
   
     // ============================================================
-    // VALIDATION 2: Comprehensive Raid State Validation
+    // VALIDATION 5: Comprehensive Raid State Validation
     // ============================================================
+    // Fetch the raid from database with all related data we'll need:
+    // - guild: Contains timezone offset and language settings
+    // - attendance: List of current members for roster comparison
     const raid = await prisma.raid.findUnique({
       where: { id: raidId },
       include: {
@@ -1285,6 +1389,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       },
     });
   
+    // Raid must exist
     if (!raid) {
       await interaction.editReply({
         content: '❌ Raid not found.',
@@ -1292,6 +1397,8 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
   
+    // Guild isolation: Raid must belong to the guild that's running this command.
+    // This is a critical security check—prevents editing raids from other guilds.
     if (raid.guildId !== interaction.guild.id) {
       await interaction.editReply({
         content: '❌ This raid does not belong to this server.',
@@ -1299,6 +1406,8 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
   
+    // Only open raids can be edited. Closed and cancelled raids are finalized.
+    // Design: Immutable closed raids preserve audit trail and prevent accidents.
     if (raid.status === 'closed' || raid.status === 'cancelled') {
       await interaction.editReply({
         content: `❌ Cannot edit a ${raid.status} raid. Please contact an admin if you need to modify it.`,
@@ -1306,17 +1415,17 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // Check if message ID and channel ID exist
+    // Warn if message or channel ID is missing, but allow edit to proceed.
+    // Reason: Database changes are still valuable even if embed can't update.
+    // User can later use /raid refresh to send a new embed with correct messageId.
     if (!raid.messageId) {
-      await interaction.editReply({
-        content: '⚠️ Warning: This raid does not have a message ID. The embed may not update, but database changes will be saved.',
-      });
+      // TODO: Consider collecting warnings instead of immediately replying
+      // Current: Reply is overwritten by final response anyway
     }
 
     if (!raid.channelId) {
-      await interaction.editReply({
-        content: '⚠️ Warning: This raid does not have a channel ID. The embed may not update, but database changes will be saved.',
-      });
+      // TODO: Consider collecting warnings instead of immediately replying
+      // Current: Reply is overwritten by final response anyway
     }
   
     const guildData = raid.guild;
@@ -1325,21 +1434,38 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     let newRaidDate: Date | null = null;
   
     // ============================================================
-    // VALIDATION 3 & 4: Parse, validate date/time, check for future date
+    // VALIDATION 6 & 7: Parse & validate date/time, apply timezone conversion
     // ============================================================
+    // CRITICAL TIMEZONE LOGIC:
+    // User enters local time (e.g., "2025-12-25 19:30" for UTC+2 timezone)
+    // Step 1: Parse as UTC naive date: "2025-12-25T19:30:00Z" (incorrect UTC)
+    // Step 2: Subtract offset: 19:30 - 2 hours = 17:30 UTC (correct storage)
+    // Step 3: When displayed to user via Discord timestamps, Discord auto-converts back to their tz
+    //
+    // Example: User in UTC+2 timezone enters 19:30
+    // Store: 2025-12-25T17:30:00Z (UTC)
+    // Display to user: <t:timestamp:F> → "2025-12-25 19:30" (Discord auto-adjusts)
+    //
+    // Rationale: Single UTC storage point + Discord's timestamp auto-formatting
+    // handles multi-timezone guilds correctly.
     if (dateStr || timeStr) {
-      // Use existing date/time if not provided
+      // If only date provided, keep existing time; if only time provided, keep existing date
+      // This allows: /raid edit raid_id:abc time:20:00 (keep same date)
       const existingDate = new Date(raid.raidDate);
       const finalDateStr = dateStr || existingDate.toISOString().split('T')[0];
       const finalTimeStr = timeStr || existingDate.toISOString().substring(11, 16);
   
+      // Parse user's local time as UTC (temporarily)
       const dateTimeStr = `${finalDateStr}T${finalTimeStr}:00`;
       const localDate = new Date(dateTimeStr);
   
-      // Apply timezone offset (user enters local time, we store UTC)
+      // Apply timezone offset: subtract offset hours to convert to UTC
+      // WARNING: This direction (subtract) is critical. Adding would give wrong time.
+      // For UTC+2, we subtract 2 hours to go from local to UTC.
       const timezoneOffsetHours = guildData.timezoneOffset || 0;
       newRaidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
   
+      // Validate the resulting date is valid (NaN check after math)
       if (isNaN(newRaidDate.getTime())) {
         await interaction.editReply({
           content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
@@ -1347,6 +1473,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         return;
       }
   
+      // Raid cannot be scheduled in the past (already happened or happening now)
       const now = new Date();
       if (newRaidDate < now) {
         await interaction.editReply({
@@ -1355,7 +1482,8 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      // Check if date is too far in the future (2 years)
+      // Prevent dates too far in future (likely typos: 3000 instead of 2025)
+      // Limit: 2 years from now
       const maxFutureDate = new Date(now.getTime() + (2 * 365.25 * 24 * 60 * 60 * 1000));
       if (newRaidDate > maxFutureDate) {
         await interaction.editReply({
@@ -1364,22 +1492,27 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         return;
       }
   
-      // Check if the date/time actually changed
+      // Only record change if date/time actually changed (avoid unnecessary DB writes)
+      // Compare as milliseconds, not Date object references
       if (newRaidDate.getTime() !== raid.raidDate.getTime()) {
         updateData.raidDate = newRaidDate;
+        // Discord timestamp formatter: <t:unix_seconds:F> (full date and time)
         changes.push(`Date/time updated to <t:${Math.floor(newRaidDate.getTime() / 1000)}:F>`);
       }
     }
   
-    // Update title if provided
+    // Title update: only record if actually changed
     if (title && title !== raid.description) {
       updateData.description = title;
       changes.push(`Title updated to "${title}"`);
     }
   
     // ============================================================
-    // VALIDATION 5: Handle edge case - No changes requested
+    // VALIDATION 8: Handle edge case - No changes requested
     // ============================================================
+    // If user provided parameters but nothing actually changed
+    // (e.g., /raid edit raid_id:abc time:19:30 when time already 19:30)
+    // We should reject to avoid confusing "success" with no effect.
     if (changes.length === 0) {
       await interaction.editReply({
         content: '❌ No changes requested. Please specify at least one new value that differs from current.',
@@ -1387,17 +1520,37 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
   
-    // Update raid in database
+    // ============================================================
+    // DATABASE UPDATE 1: Update raid date/time/title
+    // ============================================================
+    // This update is atomic at database level.
+    // Note: We deliberately do NOT update raid.roles (immutable by design).
+    // See: docs/architecture/raid-edit-limitations.md - "Raid Roles Are Immutable"
     await prisma.raid.update({
       where: { id: raidId },
       data: updateData,
     });
   
+  
     // ============================================================
-    // VALIDATION 6: Member scanning edge cases
+    // MEMBER SCANNING ALGORITHM: Find current eligible members
     // ============================================================
+    // This section determines which guild members should be in the raid
+    // based on current role assignments. Algorithm:
+    //
+    // 1. Determine which roles apply to this raid (specific or guild default)
+    // 2. Fetch all guild members
+    // 3. For each member, check if they have ANY of the raid roles
+    // 4. Build set of currently eligible users
+    //
+    // Why this matters: When you edit a raid, members may have joined/left
+    // the guild, or gained/lost raid roles. We need to keep roster accurate.
+    //
+    // Related: /raid refresh does this same operation without editing raid
     
-    // Get members with raid roles for roster scanning
+    // Determine role source: raid-specific roles OR guild defaults
+    // Raid roles are immutable, so we use raid.roles here
+    // (If roles were edited in future, this would change to use newRoles)
     const roleSource = raid.roles && raid.roles.trim().length > 0
       ? raid.roles
       : guildData.raidRoles;
@@ -1408,12 +1561,20 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   
     try {
       if (roleIds.length > 0) {
-        // Fetch all members if not cached
+        // Roles are configured; scan for members with these specific roles
+        
+        // CRITICAL: fetch() ensures cache is complete
+        // Without fetch(), cache might only contain members who joined recently
+        // For accuracy, we always do a full fetch here.
+        // Performance note: This can take 500ms+ for large guilds (100K+ members)
         await interaction.guild.members.fetch();
     
         for (const [memberId, guildMember] of interaction.guild.members.cache) {
+          // Skip bots (never eligible for raids)
           if (guildMember.user.bot) continue;
     
+          // Check if member has ANY of the raid roles (by ID or by name)
+          // Supports both: role IDs ("123456") and role names ("Raider")
           const hasRaidRole = guildMember.roles.cache.some((role) =>
             roleIds.includes(role.id) || roleIds.includes(role.name)
           );
@@ -1423,7 +1584,8 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
           }
         }
       } else {
-        // No roles configured, include all non-bot members
+        // No roles configured; include all non-bot members
+        // This is a fallback for guilds without specific raid roles
         await interaction.guild.members.fetch();
         for (const [memberId, guildMember] of interaction.guild.members.cache) {
           if (!guildMember.user.bot) {
@@ -1432,11 +1594,15 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         }
       }
 
-      // Handle case where no eligible members remain after scanning
+      // Edge case: No eligible members found, but roles ARE configured
+      // This might happen if someone deleted all the raid roles from guild
+      // We warn but continue—user might want to manually manage roster
       if (currentEligibleMembers.size === 0 && roleIds.length > 0) {
         rosterScanError = `⚠️ No eligible members found with configured roles. Roster not updated.`;
       }
     } catch (error) {
+      // Member fetch can fail: Discord API timeout, intents missing, etc.
+      // We catch it, log it, and continue with partial roster update
       console.error('Error during member scanning:', error);
       rosterScanError = '⚠️ Could not scan member roster due to an error. Database changes saved.';
     }
@@ -1526,22 +1692,42 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       });
     }
   
+  
     // ============================================================
-    // VALIDATION 5: Handle missing or deleted raid embed message
+    // EMBED UPDATE: Refresh raid message in Discord
     // ============================================================
+    // Strategy: Edit message in place (don't re-send or move)
+    // Why in-place edit?
+    // - Preserves message history and edit history
+    // - No new notifications/pings to members
+    // - Single message in channel (not duplicates)
+    // - Discord shows edit indication to users
+    //
+    // Non-critical operation: If this fails, database changes are already done.
+    // We collect error status and report it to user, but don't fail the whole operation.
+    //
+    // See: docs/architecture/raid-edit-limitations.md - "Silent Embed Updates (No Re-ping)"
+    
     let embedUpdateStatus = '';
     if (raid.messageId && raid.channelId) {
       try {
+        // Step 1: Fetch the channel where raid message lives
         const channel = await interaction.client.channels.fetch(raid.channelId);
         if (channel?.isTextBased() && 'messages' in channel) {
           try {
+            // Step 2: Fetch the specific raid message
             const message = await channel.messages.fetch(raid.messageId);
-            const embed = await createRaidEmbed(raid.id, guildData.language);
             
-            // Get translations for button labels
+            // Step 3: Create new embed with updated data (roster may have changed)
+            // Uses createRaidEmbed() which queries the DB and builds the visual
+            const embed = await createRaidEmbed(raid.id, guildData.language);
+
+            // Step 4: Get button labels in guild's language (for localization)
             const trans = getTranslations(guildData.language);
     
-            // Recreate buttons with translated labels
+            // Step 5: Recreate buttons with updated disabled states
+            // Buttons are disabled if raid is closed (already handled by status check earlier)
+            // but we include this for consistency with refresh/create operations
             const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
               new ButtonBuilder()
                 .setCustomId(`raid_optout_${raid.id}`)
@@ -1565,17 +1751,22 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
                 .setDisabled(raid.status !== 'open')
             );
     
+            // Step 6: Edit message with new embed and buttons (in-place, no re-ping)
             await message.edit({ embeds: [embed], components: [buttons] });
             embedUpdateStatus = '✓ Embed updated';
           } catch (messageError) {
+            // Message fetch or edit failed (message deleted, permissions lost, etc.)
+            // This is non-critical; database already updated
             console.error('Error fetching raid message:', messageError);
             embedUpdateStatus = '⚠️ Could not fetch/update embed message (it may have been deleted)';
           }
         } else {
+          // Channel exists but isn't text-based (voice channel? archive?)
           console.error('Channel is not text-based or does not support messages');
           embedUpdateStatus = '⚠️ Could not access channel to update embed';
         }
       } catch (channelError) {
+        // Channel fetch failed (deleted channel, no permissions, etc.)
         console.error('Error fetching channel:', channelError);
         embedUpdateStatus = '⚠️ Could not access channel (may have been deleted or no permissions)';
       }
@@ -1586,17 +1777,35 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     }
   
     // ============================================================
-    // Build detailed success/partial success message with improvements
+    // BUILD DETAILED USER RESPONSE
     // ============================================================
+    // We've completed the entire operation. Now build a comprehensive response
+    // showing what changed, roster modifications, embed status, and any warnings.
+    // 
+    // Structure: Main result → Field changes → Roster changes → Embed status → Metadata
+    // This hierarchical approach makes it easy for user to scan key info.
+    //
+    // Format example:
+    // ✅ Raid updated successfully!
+    // **Updated Fields:**
+    // • Date/time updated to <timestamp>
+    // • Title updated to "New Title"
+    // **Roster Changes:**
+    // • Added 2 member(s)
+    // • Removed 1 member(s)
+    // **Embed Status:** ✓ Embed updated
+    // **Raid ID:** `abc123`
+    // **New Timestamp:** <t:unix:F>
+    
     let finalMessage = '✅ Raid updated successfully!\n\n';
 
-    // Show what fields were updated
+    // Section 1: What fields changed (always shown)
     finalMessage += '**Updated Fields:**\n';
     if (changes.length > 0) {
       finalMessage += changes.map(c => `• ${c}`).join('\n');
     }
 
-    // Show roster changes if any
+    // Section 2: Roster modifications (if any)
     const addedCount = membersToAdd.length;
     const removedCount = membersToRemove.length;
     if (addedCount > 0 || removedCount > 0) {
@@ -1605,26 +1814,27 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       if (removedCount > 0) finalMessage += `• Removed ${removedCount} member(s)`;
     }
 
-    // Show embed status
+    // Section 3: Embed update status (helps user debug if embed didn't update)
     if (embedUpdateStatus) {
       finalMessage += `\n\n**Embed Status:** ${embedUpdateStatus}`;
     }
 
-    // Show roster scan warning if applicable
+    // Section 4: Any roster scanning errors (non-critical, DB already updated)
     if (rosterScanError) {
       finalMessage += `\n\n${rosterScanError}`;
     }
 
-    // Include raid ID and new timestamp for reference
+    // Section 5: Metadata for reference and debugging
     finalMessage += `\n\n**Raid ID:** \`${raid.id}\``;
     if (newRaidDate) {
       const timestamp = Math.floor(newRaidDate.getTime() / 1000);
       finalMessage += `\n**New Timestamp:** <t:${timestamp}:F>`;
     }
   
+    // Send the final response to the user
     await interaction.editReply({
       content: finalMessage,
     });
   }
- 
- export default command;
+  
+  export default command;

@@ -50,6 +50,16 @@ interface Translations {
   raidCancelledSuccess: string;
   raidReminderSent: string;
   markedAsLate: string;
+  raidEditSuccess: string;
+
+  // Edit-specific messages
+  raidEditDateUpdated: string;
+  raidEditTimeUpdated: string;
+  raidEditTitleUpdated: string;
+  raidEditNoChanges: string;
+  raidEditClosed: string;
+  raidEditCancelled: string;
+  raidEditMembersScanChanged: string;
 
   // Error messages
   serverOnlyCommand: string;
@@ -136,6 +146,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidCancelledSuccess: 'Raid "{title}" has been cancelled.',
     raidReminderSent: 'Reminder sent for raid "{title}"!',
     markedAsLate: 'You are now marked as running late for this raid.',
+    raidEditSuccess: 'Raid updated successfully!',
+    
+    // Edit-specific messages
+    raidEditDateUpdated: 'Date/time updated to ${date}',
+    raidEditTimeUpdated: 'Time updated to ${time}',
+    raidEditTitleUpdated: 'Title updated to "${title}"',
+    raidEditNoChanges: 'No changes requested. Please specify at least one new value that differs from current.',
+    raidEditClosed: 'Cannot edit a closed raid. Please contact an admin if you need to modify it.',
+    raidEditCancelled: 'Cannot edit a cancelled raid. Please contact an admin if you need to modify it.',
+    raidEditMembersScanChanged: 'Roster updated: ${addedCount} added, ${removedCount} removed',
 
     // Error messages
     serverOnlyCommand: 'This command can only be used in a server!',
@@ -221,6 +241,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidCancelledSuccess: 'Raid "{title}" wurde abgesagt.',
     raidReminderSent: 'Erinnerung für Raid "{title}" gesendet!',
     markedAsLate: 'Du bist jetzt als verspätet für diesen Raid markiert.',
+    raidEditSuccess: 'Raid erfolgreich aktualisiert!',
+    
+    // Edit-specific messages
+    raidEditDateUpdated: 'Datum/Uhrzeit aktualisiert auf ${date}',
+    raidEditTimeUpdated: 'Uhrzeit aktualisiert auf ${time}',
+    raidEditTitleUpdated: 'Titel aktualisiert auf "${title}"',
+    raidEditNoChanges: 'Keine Änderungen angefordert. Bitte gib mindestens einen neuen Wert an, der sich vom aktuellen unterscheidet.',
+    raidEditClosed: 'Kann einen geschlossenen Raid nicht bearbeiten. Kontaktiere einen Admin, wenn du ihn ändern möchtest.',
+    raidEditCancelled: 'Kann einen abgesagten Raid nicht bearbeiten. Kontaktiere einen Admin, wenn du ihn ändern möchtest.',
+    raidEditMembersScanChanged: 'Roster aktualisiert: ${addedCount} hinzugefügt, ${removedCount} entfernt',
 
     // Error messages
     serverOnlyCommand: 'Dieser Befehl kann nur auf einem Server verwendet werden!',

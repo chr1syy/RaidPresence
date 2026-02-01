@@ -14,6 +14,9 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "postinstall": "prisma generate"
   },
   "keywords": [
@@ -31,8 +34,12 @@
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.10.2",
+    "jest": "^30.2.0",
+    "jest-mock-extended": "^4.0.0",
     "prisma": "^5.22.0",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

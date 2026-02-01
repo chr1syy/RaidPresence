@@ -145,6 +145,35 @@ const command: Command = {
             .setRequired(true)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('edit')
+        .setDescription('Edit a raid event (date, time, title)')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid to edit')
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('date')
+            .setDescription('New raid date (YYYY-MM-DD format)')
+            .setRequired(false)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('time')
+            .setDescription('New raid time (HH:MM 24h format)')
+            .setRequired(false)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('New raid title')
+            .setRequired(false)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -162,13 +191,15 @@ const command: Command = {
       await handleCloseRaid(interaction);
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
-    } else if (subcommand === 'remind') {
-      await handleRemindRaid(interaction);
-    } else if (subcommand === 'refresh') {
-      await handleRefreshRaid(interaction);
-    }
-  },
-};
+     } else if (subcommand === 'remind') {
+       await handleRemindRaid(interaction);
+     } else if (subcommand === 'refresh') {
+       await handleRefreshRaid(interaction);
+     } else if (subcommand === 'edit') {
+       await handleEditRaid(interaction);
+     }
+   },
+ };
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
@@ -1138,9 +1169,311 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     statusMessage += '\nNo roster changes needed.';
   }
 
-  await interaction.editReply({
-    content: statusMessage,
-  });
-}
-
-export default command;
+   await interaction.editReply({
+     content: statusMessage,
+   });
+ }
+ 
+ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
+   if (!interaction.guild || !interaction.channel) {
+     await interaction.reply({
+       content: '❌ This command can only be used in a server!',
+       ephemeral: true,
+     });
+     return;
+   }
+ 
+   await interaction.deferReply({ ephemeral: true });
+ 
+   // Check permissions
+   const member = interaction.member;
+   if (!member || !(await canManageRaids(member as any))) {
+     await interaction.editReply({
+       content: '❌ You do not have permission to edit raids. Ask your server admin to configure raid leader roles.',
+     });
+     return;
+   }
+ 
+   const raidId = interaction.options.get('raid_id', true).value as string;
+   const dateStr = interaction.options.get('date', false)?.value as string | undefined;
+   const timeStr = interaction.options.get('time', false)?.value as string | undefined;
+   const title = interaction.options.get('title', false)?.value as string | undefined;
+ 
+   // Validate at least one parameter provided
+   if (!dateStr && !timeStr && !title) {
+     await interaction.editReply({
+       content: '❌ At least one of date, time, or title must be provided.',
+     });
+     return;
+   }
+ 
+   // Fetch raid from database
+   const raid = await prisma.raid.findUnique({
+     where: { id: raidId },
+     include: {
+       guild: true,
+       attendance: true,
+     },
+   });
+ 
+   if (!raid) {
+     await interaction.editReply({
+       content: '❌ Raid not found.',
+     });
+     return;
+   }
+ 
+   if (raid.guildId !== interaction.guild.id) {
+     await interaction.editReply({
+       content: '❌ This raid does not belong to this server.',
+     });
+     return;
+   }
+ 
+   if (raid.status === 'closed' || raid.status === 'cancelled') {
+     await interaction.editReply({
+       content: `❌ Cannot edit a ${raid.status} raid.`,
+     });
+     return;
+   }
+ 
+   const guildData = raid.guild;
+   const updateData: any = {};
+   const changes: string[] = [];
+ 
+   // Parse and validate date/time if provided
+   if (dateStr || timeStr) {
+     // Use existing date/time if not provided
+     const existingDate = new Date(raid.raidDate);
+     const finalDateStr = dateStr || existingDate.toISOString().split('T')[0];
+     const finalTimeStr = timeStr || existingDate.toISOString().substring(11, 16);
+ 
+     const dateTimeStr = `${finalDateStr}T${finalTimeStr}:00`;
+     const localDate = new Date(dateTimeStr);
+ 
+     // Apply timezone offset (user enters local time, we store UTC)
+     const timezoneOffsetHours = guildData.timezoneOffset || 0;
+     const newRaidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+ 
+     if (isNaN(newRaidDate.getTime())) {
+       await interaction.editReply({
+         content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
+       });
+       return;
+     }
+ 
+     if (newRaidDate < new Date()) {
+       await interaction.editReply({
+         content: '❌ Raid date must be in the future!',
+       });
+       return;
+     }
+ 
+     // Check if the date/time actually changed
+     if (newRaidDate.getTime() !== raid.raidDate.getTime()) {
+       updateData.raidDate = newRaidDate;
+       changes.push(`Date/time updated to <t:${Math.floor(newRaidDate.getTime() / 1000)}:F>`);
+     }
+   }
+ 
+   // Update title if provided
+   if (title && title !== raid.description) {
+     updateData.description = title;
+     changes.push(`Title updated to "${title}"`);
+   }
+ 
+   // Check if any updates were actually made
+   if (changes.length === 0) {
+     await interaction.editReply({
+       content: '❌ No changes were made (provided values are the same as current values).',
+     });
+     return;
+   }
+ 
+   // Update raid in database
+   await prisma.raid.update({
+     where: { id: raidId },
+     data: updateData,
+   });
+ 
+   // Get members with raid roles for roster scanning
+   const roleSource = raid.roles && raid.roles.trim().length > 0
+     ? raid.roles
+     : guildData.raidRoles;
+   const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
+ 
+   let currentEligibleMembers = new Set<string>();
+ 
+   if (roleIds.length > 0) {
+     // Fetch all members if not cached
+     await interaction.guild.members.fetch();
+ 
+     for (const [memberId, guildMember] of interaction.guild.members.cache) {
+       if (guildMember.user.bot) continue;
+ 
+       const hasRaidRole = guildMember.roles.cache.some((role) =>
+         roleIds.includes(role.id) || roleIds.includes(role.name)
+       );
+ 
+       if (hasRaidRole) {
+         currentEligibleMembers.add(memberId);
+       }
+     }
+   } else {
+     // No roles configured, include all non-bot members
+     await interaction.guild.members.fetch();
+     for (const [memberId, guildMember] of interaction.guild.members.cache) {
+       if (!guildMember.user.bot) {
+         currentEligibleMembers.add(memberId);
+       }
+     }
+   }
+ 
+   // Get current attendance records
+   const currentAttendance = raid.attendance;
+   const currentAttendanceIds = new Set(currentAttendance.map((a: typeof raid.attendance[0]) => a.userId));
+ 
+   // Find members to add (eligible but not in attendance)
+   const membersToAdd = Array.from(currentEligibleMembers).filter(
+     (memberId) => !currentAttendanceIds.has(memberId)
+   );
+ 
+   // Find members to remove (in attendance but not eligible)
+   const membersToRemove = currentAttendance.filter(
+     (a: typeof raid.attendance[0]) => !currentEligibleMembers.has(a.userId)
+   );
+ 
+   // Ensure all new members have UserPreference records
+   for (const userId of membersToAdd) {
+     const guildMember = interaction.guild.members.cache.get(userId);
+     if (guildMember) {
+       await prisma.userPreference.upsert({
+         where: {
+           userId_guildId: {
+             userId,
+             guildId: interaction.guild.id,
+           },
+         },
+         update: {
+           username: guildMember.displayName,
+         },
+         create: {
+           userId,
+           guildId: interaction.guild.id,
+           username: guildMember.displayName,
+         },
+       });
+     }
+   }
+ 
+   // Fetch all user preferences for new members
+   const newMemberIds = Array.from(membersToAdd);
+   const userPrefs = await prisma.userPreference.findMany({
+     where: {
+       guildId: interaction.guild.id,
+       userId: { in: newMemberIds },
+     },
+   });
+   
+   // Create a map for quick lookup
+   const prefsMap = new Map(userPrefs.map(pref => [pref.userId, pref]));
+ 
+   // Build attendance data for batch insert
+   const attendanceData = newMemberIds
+     .map((userId) => {
+       const guildMember = interaction.guild!.members.cache.get(userId);
+       if (!guildMember) return null;
+       
+       const pref = prefsMap.get(userId);
+       return {
+         raidId: raid.id,
+         userId,
+         guildId: interaction.guild!.id,
+         username: guildMember.displayName,
+         status: 'attending' as const,
+         wowClass: pref?.wowClass || null,
+         wowSpec: pref?.wowSpec || null,
+       };
+     })
+     .filter((data) => data !== null);
+ 
+   // Batch insert new attendance records
+   if (attendanceData.length > 0) {
+     await prisma.raidAttendance.createMany({
+       data: attendanceData,
+     });
+   }
+ 
+   // Batch delete removed members
+   if (membersToRemove.length > 0) {
+     const memberIdsToRemove = membersToRemove.map(attendance => attendance.id);
+     await prisma.raidAttendance.deleteMany({
+       where: {
+         id: { in: memberIdsToRemove },
+       },
+     });
+   }
+ 
+   // Update the raid embed
+   if (raid.messageId && raid.channelId) {
+     try {
+       const channel = await interaction.client.channels.fetch(raid.channelId);
+       if (channel?.isTextBased() && 'messages' in channel) {
+         const message = await channel.messages.fetch(raid.messageId);
+         const embed = await createRaidEmbed(raid.id, guildData.language);
+         
+         // Get translations for button labels
+         const trans = getTranslations(guildData.language);
+ 
+         // Recreate buttons with translated labels
+         const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+           new ButtonBuilder()
+             .setCustomId(`raid_optout_${raid.id}`)
+             .setLabel(trans.optOut)
+             .setStyle(ButtonStyle.Danger)
+             .setDisabled(raid.status !== 'open'),
+           new ButtonBuilder()
+             .setCustomId(`raid_optin_${raid.id}`)
+             .setLabel(trans.optIn)
+             .setStyle(ButtonStyle.Success)
+             .setDisabled(raid.status !== 'open'),
+           new ButtonBuilder()
+             .setCustomId(`raid_late_${raid.id}`)
+             .setLabel(trans.runningLateButton)
+             .setStyle(ButtonStyle.Secondary)
+             .setDisabled(raid.status !== 'open'),
+           new ButtonBuilder()
+             .setCustomId(`raid_class_${raid.id}`)
+             .setLabel(trans.setClassSpec)
+             .setStyle(ButtonStyle.Primary)
+             .setDisabled(raid.status !== 'open')
+         );
+ 
+         await message.edit({ embeds: [embed], components: [buttons] });
+       }
+     } catch (error) {
+       console.error('Failed to update raid embed:', error);
+     }
+   }
+ 
+   // Build confirmation message
+   let confirmationMessage = '✅ Raid updated successfully!\n\n**Changes:**\n';
+   confirmationMessage += changes.map(c => `• ${c}`).join('\n');
+ 
+   const addedCount = membersToAdd.length;
+   const removedCount = membersToRemove.length;
+ 
+   if (addedCount > 0 || removedCount > 0) {
+     confirmationMessage += '\n\n**Roster changes:**\n';
+     if (addedCount > 0) confirmationMessage += `• Added ${addedCount} new member(s)\n`;
+     if (removedCount > 0) confirmationMessage += `• Removed ${removedCount} ineligible member(s)`;
+   } else {
+     confirmationMessage += '\n\n(No roster changes needed)';
+   }
+ 
+   await interaction.editReply({
+     content: confirmationMessage,
+   });
+ }
+ 
+ export default command;

@@ -13,6 +13,7 @@ interface Translations {
   noOneRunningLate: string;
   raidId: string;
   raidStatus: string;
+  totalParticipants: string;
 
   // Raid status labels
   statusOpen: string;
@@ -98,6 +99,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     noOneRunningLate: 'No one running late',
     raidId: 'Raid ID',
     raidStatus: 'Status',
+    totalParticipants: 'Total Participants',
 
     // Raid status labels
     statusOpen: '🟢 Open',
@@ -182,6 +184,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     noOneRunningLate: 'Niemand verspätet',
     raidId: 'Raid ID',
     raidStatus: 'Status',
+    totalParticipants: 'Teilnehmer insgesamt',
 
     // Raid status labels
     statusOpen: '🟢 Offen',

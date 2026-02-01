@@ -30,3 +30,6 @@ progress.txt
 plans/
 prompts/
 .ralph*
+
+# AutoRun
+Auto Run Docs/*

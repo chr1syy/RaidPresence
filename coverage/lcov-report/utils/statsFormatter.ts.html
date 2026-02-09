@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for commands/setup.ts</title>
+    <title>Code coverage report for utils/statsFormatter.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">commands</a> setup.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> statsFormatter.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>23/23</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>20/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/15</span>
+                <span class='fraction'>23/23</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -170,7 +170,61 @@
 <a name='L105'></a><a href='#L105'>105</a>
 <a name='L106'></a><a href='#L106'>106</a>
 <a name='L107'></a><a href='#L107'>107</a>
-<a name='L108'></a><a href='#L108'>108</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -178,41 +232,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -250,6 +296,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">103x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -258,6 +305,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">25x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -268,122 +316,230 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import {</span>
-  SlashCommandBuilder,
-  CommandInteraction,
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-  Colors,
-  PermissionFlagsBits,
-} from 'discord.js';
-<span class="cstat-no" title="statement not covered" >import prisma from '../database/client';</span>
-import { Command } from '../types';
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-yes">71x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">64x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">21x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { EmbedBuilder } from 'discord.js';
+import { t, getTranslations } from './localization';
+import { getReliabilityScore } from './statsCalculator';
+import type { RaidStats, GuildStats } from './statsCalculator';
 &nbsp;
-const command: Command = <span class="cstat-no" title="statement not covered" >{</span>
-  data: new SlashCommandBuilder()
-    .setName('setup')
-    .setDescription('Get help setting up the bot for your server')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
-&nbsp;
-<span class="fstat-no" title="function not covered" >  async </span>execute(interaction: CommandInteraction) {
-<span class="cstat-no" title="statement not covered" >    if (!interaction.isChatInputCommand()) <span class="cstat-no" title="statement not covered" >return;</span></span>
-<span class="cstat-no" title="statement not covered" >    await handleSetup(interaction);</span>
-  },
-};
-&nbsp;
-async function <span class="fstat-no" title="function not covered" >handleSetup(</span>interaction: ChatInputCommandInteraction) {
-<span class="cstat-no" title="statement not covered" >  if (!interaction.guild) {</span>
-<span class="cstat-no" title="statement not covered" >    await interaction.reply({</span>
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-<span class="cstat-no" title="statement not covered" >    return;</span>
-  }
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  await interaction.deferReply({ ephemeral: true });</span>
-&nbsp;
-  // Get current configuration
-  const guildData = <span class="cstat-no" title="statement not covered" >await prisma.guild.findUnique({</span>
-    where: { id: interaction.guild.id },
-  });
-&nbsp;
-  const raidRoles = <span class="cstat-no" title="statement not covered" >guildData?.raidRoles || 'Not configured';</span>
-  const leaderRoles = <span class="cstat-no" title="statement not covered" >guildData?.raidLeaderRoles || 'Not configured';</span>
-&nbsp;
-  const setupEmbed = <span class="cstat-no" title="statement not covered" >new EmbedBuilder()</span>
-    .setTitle('🛠️ RaidPresence Setup Guide')
-    .setColor(Colors.Blue)
-    .setDescription(
-      'Welcome to RaidPresence! Here\'s how to set up your server:\n\n' +
-      '**What is RaidPresence?**\n' +
-      'A reverse sign-up bot for WoW raids. Everyone is auto-added to raids and must opt-out if they can\'t attend.'
-    )
-    .addFields(
-      {
-        name: '📊 Current Configuration',
-        value: `**Raid Roles:** \`${raidRoles}\`\n**Leader Roles:** \`${leaderRoles}\``,
-        inline: false,
-      },
-      {
-        name: '1️⃣ Set Raid Attendance Roles',
-        value: '```/config raid-roles roles:Raider,Member,Trial```\n' +
-               '**What it does:** Members with these roles are automatically added to all raid rosters.\n' +
-               '**Example:** If you set "Raider,Trial", anyone with the Raider OR Trial role gets added.',
-        inline: false,
-      },
-      {
-        name: '2️⃣ Set Raid Leader Roles',
-        value: '```/config leader-roles roles:Officer,Raid Leader```\n' +
-               '**What it does:** Only members with these roles can create/delete raids.\n' +
-               '**Note:** Server admins can always create raids regardless of this setting.',
-        inline: false,
-      },
-      {
-        name: '3️⃣ Create Your First Raid',
-        value: '```/raid create date:2026-01-15 time:20:00 title:Heroic Night```\n' +
-               '**What happens:** Bot creates a raid message with all eligible members listed as attending.',
-        inline: false,
-      },
-      {
-        name: '💡 Tips for Role Names',
-        value: '• Use exact role names (case-sensitive)\n' +
-               '• Or use role IDs (right-click role → Copy ID)\n' +
-               '• Separate multiple roles with commas\n' +
-               '• No spaces after commas!',
-        inline: false,
-      },
-      {
-        name: '📋 Other Useful Commands',
-        value: '• `/config view` - Check current settings\n' +
-               '• `/raid list` - View upcoming raids\n' +
-               '• `/raid delete raid_id:xyz` - Delete a raid',
-        inline: false,
-      },
-      {
-        name: '❓ Need Help?',
-        value: 'Players can:\n' +
-               '• Click **"Opt Out"** to remove themselves from a raid\n' +
-               '• Click **"Opt In"** to re-join if they opted out\n' +
-               '• Click **"Set Class/Spec"** to choose their character',
-        inline: false,
-      }
-    )
-    .setFooter({ text: 'Run /config view to check your settings anytime' })
-    .setTimestamp();
-&nbsp;
-<span class="cstat-no" title="statement not covered" >  await interaction.editReply({ embeds: [setupEmbed] });</span>
+/**
+ * Minimal raid info needed to build a stats embed.
+ */
+export interface RaidInfo {
+  id: string;
+  description: string | null;
 }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export default command;</span>
+/**
+ * Format a single-raid statistics embed.
+ *
+ * @param raid  - Basic raid info (id + description)
+ * @param stats - Pre-calculated RaidStats
+ * @param language - 'en' | 'de'
+ * @returns EmbedBuilder ready to send
+ */
+export function formatRaidStatsEmbed(
+  raid: RaidInfo,
+  stats: RaidStats,
+  language: string,
+): EmbedBuilder {
+  const trans = getTranslations(language);
+  const reliability = getReliabilityScore(stats.attendanceRate);
+&nbsp;
+  const embed = new EmbedBuilder()
+    .setTitle(t(language, 'statsRaidTitle', { title: raid.description || 'Raid' }))
+    .setColor(stats.attendanceRate &gt;= 80 ? 0x00ae86 : stats.attendanceRate &gt;= 50 ? 0xffd700 : 0xff4500)
+    .addFields(
+      {
+        name: trans.statsAttendanceRate,
+        value: `${stats.attendingCount}/${stats.totalMembers} (${stats.attendanceRate}%)`,
+        inline: true,
+      },
+      {
+        name: trans.statsReliability,
+        value: `${reliability.emoji} ${reliability.label}`,
+        inline: true,
+      },
+      { name: '\u200B', value: '\u200B', inline: true },
+      {
+        name: trans.statsAttending,
+        value: `${stats.attendingCount}`,
+        inline: true,
+      },
+      {
+        name: trans.statsOptedOut,
+        value: `${stats.optedOutCount}`,
+        inline: true,
+      },
+      {
+        name: trans.statsRunningLate,
+        value: `${stats.lateCount}`,
+        inline: true,
+      },
+      {
+        name: trans.statsComposition,
+        value: [
+          `🛡️ ${trans.tank}: ${stats.composition.tanks}`,
+          `💚 ${trans.heal}: ${stats.composition.healers}`,
+          `⚔️ ${trans.melee}: ${stats.composition.melee}`,
+          `🎯 ${trans.ranged}: ${stats.composition.ranged}`,
+        ].join('\n'),
+        inline: true,
+      },
+      {
+        name: trans.statsClassDistribution,
+        value: stats.classDistribution.length &gt; 0
+          ? stats.classDistribution
+              .slice(0, 10)
+              .map((c) =&gt; `${c.className}: ${c.count}`)
+              .join('\n')
+          : '-',
+        inline: true,
+      },
+    )
+    .setFooter({ text: `Raid ID: ${raid.id}` })
+    .setTimestamp();
+&nbsp;
+  return embed;
+}
+&nbsp;
+/**
+ * Format a guild-wide statistics embed.
+ *
+ * @param stats    - Pre-calculated GuildStats
+ * @param period   - 'week' | 'month' | 'all'
+ * @param language - 'en' | 'de'
+ * @returns EmbedBuilder ready to send
+ */
+export function formatGuildStatsEmbed(
+  stats: GuildStats,
+  period: string,
+  language: string,
+): EmbedBuilder {
+  const trans = getTranslations(language);
+&nbsp;
+  const periodLabel = period === 'week'
+    ? trans.statsPeriodWeek
+    : period === 'all'
+      ? trans.statsPeriodAll
+      : trans.statsPeriodMonth;
+&nbsp;
+  const embed = new EmbedBuilder()
+    .setTitle(t(language, 'statsGuildTitle', { period: periodLabel }))
+    .setColor(stats.averageAttendanceRate &gt;= 80 ? 0x00ae86 : stats.averageAttendanceRate &gt;= 50 ? 0xffd700 : 0xff4500)
+    .addFields(
+      {
+        name: trans.statsTotalRaids,
+        value: `${stats.totalRaids}`,
+        inline: true,
+      },
+      {
+        name: trans.statsAttendanceRate,
+        value: `${stats.averageAttendanceRate}%`,
+        inline: true,
+      },
+      {
+        name: trans.statsTotalRaiders,
+        value: `${stats.totalRaiders}`,
+        inline: true,
+      },
+    );
+&nbsp;
+  if (stats.topAttendees.length &gt; 0) {
+    const topList = stats.topAttendees
+      .slice(0, 10)
+      .map((p, i) =&gt; {
+        const score = getReliabilityScore(p.attendanceRate);
+        return `${i + 1}. ${p.username} — ${p.raidsAttended}/${p.totalRaids} (${p.attendanceRate}%) ${score.emoji}`;
+      })
+      .join('\n');
+&nbsp;
+    embed.addFields({
+      name: trans.statsTopAttendees,
+      value: topList,
+      inline: false,
+    });
+  }
+&nbsp;
+  if (stats.classDistribution.length &gt; 0) {
+    embed.addFields({
+      name: trans.statsClassDistribution,
+      value: stats.classDistribution
+        .slice(0, 10)
+        .map((c) =&gt; `${c.className}: ${c.count}`)
+        .join('\n'),
+      inline: false,
+    });
+  }
+&nbsp;
+  embed.setTimestamp();
+&nbsp;
+  return embed;
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

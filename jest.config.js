@@ -5,7 +5,10 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: [
-    'src/commands/__tests__/**/*.test.ts',
+    'src/commands/**/*.ts',
+    'src/utils/**/*.ts',
+    '!src/**/__tests__/**',
+    '!src/**/__mocks__/**',
   ],
   coverageThreshold: {
     global: {

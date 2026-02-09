@@ -410,6 +410,24 @@ describe('handleRemindRaid()', () => {
       expect(sendCall.content).toBeDefined();
     });
 
+    it('should reject reminder when channel is not text-based', async () => {
+      const raid = makeRaid();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(raid);
+
+      const interaction = buildMockInteraction();
+      // Override client.channels.fetch to return a non-text-based channel
+      interaction.client.channels.fetch = jest.fn().mockResolvedValue({
+        isTextBased: jest.fn().mockReturnValue(false),
+      });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Could not send reminder to raid channel'),
+        })
+      );
+    });
+
     it('should fall back to @everyone when no valid roles', async () => {
       const raid = makeRaid({ roles: 'nonexistent-role' });
       (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(raid);

@@ -18,6 +18,8 @@ import { calculateRaidStats, calculateGuildStats } from '../utils/statsCalculato
 import type { AttendanceRecord } from '../utils/statsCalculator';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsFormatter';
 import { formatStatusEmbed } from '../utils/statusFormatter';
+import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory, getTrendEmoji, formatResponseTime } from '../utils/attendanceAnalytics';
+import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 
 /**
  * Build role mentions from role IDs or names
@@ -240,6 +242,28 @@ const command: Command = {
             .setRequired(false)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('attendance')
+        .setDescription('View a player\'s attendance history and reliability')
+        .addUserOption((option) =>
+          option
+            .setName('player')
+            .setDescription('The player to check')
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('period')
+            .setDescription('Time period to analyze')
+            .addChoices(
+              { name: 'Last 30 days', value: 'month' },
+              { name: 'Last 90 days', value: 'quarter' },
+              { name: 'All time', value: 'all' }
+            )
+            .setRequired(false)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -269,6 +293,8 @@ const command: Command = {
        await handleStatsCommand(interaction);
      } else if (subcommand === 'status') {
        await handleStatusCommand(interaction);
+     } else if (subcommand === 'attendance') {
+       await handleAttendanceCommand(interaction);
      }
    },
  };
@@ -2103,6 +2129,70 @@ async function handleStatsCommand(interaction: ChatInputCommandInteraction) {
 
     await interaction.editReply({ embeds: [embed] });
   }
+}
+
+async function handleAttendanceCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const targetUser = interaction.options.getUser('player', true);
+  const period = (interaction.options.get('period', false)?.value as string) || 'month';
+
+  // Get guild data for language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  const lang = guildData.language || 'en';
+  const trans = getTranslations(lang);
+
+  // Validate player exists in guild
+  const playerPref = await prisma.userPreference.findUnique({
+    where: {
+      userId_guildId: {
+        userId: targetUser.id,
+        guildId: interaction.guild.id,
+      },
+    },
+  });
+
+  if (!playerPref) {
+    await interaction.editReply({
+      content: t(lang, 'attendancePlayerNotFound', { player: targetUser.username }),
+    });
+    return;
+  }
+
+  // Calculate stats
+  const stats = await calculatePlayerStats(targetUser.id, interaction.guild.id, period);
+  const roleDistribution = await getPlayerRoleDistribution(targetUser.id, interaction.guild.id);
+  const history = await getPlayerAttendanceHistory(targetUser.id, interaction.guild.id, period);
+
+  // Build embed
+  const embed = formatAttendanceEmbed(
+    targetUser.username,
+    stats,
+    roleDistribution,
+    history.slice(0, 5), // Last 5 raids
+    period,
+    lang,
+  );
+
+  await interaction.editReply({ embeds: [embed] });
 }
 
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {

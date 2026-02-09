@@ -128,6 +128,26 @@ interface Translations {
   statsPeriodMonth: string;
   statsPeriodAll: string;
   statsNoRaidsFound: string;
+
+  // Attendance command
+  attendanceRecord: string;
+  attendanceRaidsInvited: string;
+  attendanceRaidsAttended: string;
+  attendanceOptedOut: string;
+  attendanceRunningLate: string;
+  attendanceReliabilityScore: string;
+  attendanceTrend: string;
+  attendanceMainRole: string;
+  attendanceAltRoles: string;
+  attendanceAvgResponseTime: string;
+  attendanceRecentRaids: string;
+  attendancePlayerNotFound: string;
+  attendancePeriodMonth: string;
+  attendancePeriodQuarter: string;
+  attendancePeriodAll: string;
+  attendanceNoRaids: string;
+  attendanceAttended: string;
+  attendanceMissed: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -259,6 +279,26 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodMonth: 'Last 30 days',
     statsPeriodAll: 'All time',
     statsNoRaidsFound: 'No raids found for this period.',
+
+    // Attendance command
+    attendanceRecord: 'Attendance Record: {player}',
+    attendanceRaidsInvited: 'Raids Invited',
+    attendanceRaidsAttended: 'Raids Attended',
+    attendanceOptedOut: 'Opted Out',
+    attendanceRunningLate: 'Running Late',
+    attendanceReliabilityScore: 'Reliability Score',
+    attendanceTrend: 'Trend',
+    attendanceMainRole: 'Main Role',
+    attendanceAltRoles: 'Alt Roles',
+    attendanceAvgResponseTime: 'Avg Response Time',
+    attendanceRecentRaids: 'Recent Raids',
+    attendancePlayerNotFound: 'Player {player} has no raid history in this server.',
+    attendancePeriodMonth: 'Last 30 days',
+    attendancePeriodQuarter: 'Last 90 days',
+    attendancePeriodAll: 'All time',
+    attendanceNoRaids: 'No raids found for this period.',
+    attendanceAttended: 'Attended',
+    attendanceMissed: 'Missed',
   },
 
   de: {
@@ -389,6 +429,26 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodMonth: 'Letzte 30 Tage',
     statsPeriodAll: 'Gesamt',
     statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
+
+    // Attendance command
+    attendanceRecord: 'Anwesenheit: {player}',
+    attendanceRaidsInvited: 'Raids eingeladen',
+    attendanceRaidsAttended: 'Raids teilgenommen',
+    attendanceOptedOut: 'Abgemeldet',
+    attendanceRunningLate: 'Verspätet',
+    attendanceReliabilityScore: 'Zuverlässigkeit',
+    attendanceTrend: 'Trend',
+    attendanceMainRole: 'Hauptrolle',
+    attendanceAltRoles: 'Nebenrollen',
+    attendanceAvgResponseTime: 'Durchschn. Antwortzeit',
+    attendanceRecentRaids: 'Letzte Raids',
+    attendancePlayerNotFound: 'Spieler {player} hat keine Raid-Historie auf diesem Server.',
+    attendancePeriodMonth: 'Letzte 30 Tage',
+    attendancePeriodQuarter: 'Letzte 90 Tage',
+    attendancePeriodAll: 'Gesamt',
+    attendanceNoRaids: 'Keine Raids für diesen Zeitraum gefunden.',
+    attendanceAttended: 'Teilgenommen',
+    attendanceMissed: 'Verpasst',
   },
 };
 

@@ -264,4 +264,99 @@ describe('/raid status command', () => {
     const findManyArgs = (prisma.raid.findMany as jest.Mock).mock.calls[0][0];
     expect(findManyArgs.include.attendance).toBe(true);
   });
+
+  it('should limit to 7 raids via take parameter', async () => {
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const findManyArgs = (prisma.raid.findMany as jest.Mock).mock.calls[0][0];
+    expect(findManyArgs.take).toBe(7);
+  });
+
+  it('should show GOOD status indicator for 50-79% attendance', async () => {
+    // 6/10 = 60% => GOOD
+    const attendance = [
+      ...Array.from({ length: 6 }, (_, i) => ({
+        id: `a${i}`, raidId: 'raid-1', userId: `u${i}`, guildId: 'guild-123',
+        username: `P${i}`, status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms',
+      })),
+      ...Array.from({ length: 4 }, (_, i) => ({
+        id: `a${i + 6}`, raidId: 'raid-1', userId: `u${i + 6}`, guildId: 'guild-123',
+        username: `P${i + 6}`, status: 'opted_out', wowClass: null, wowSpec: null,
+      })),
+    ];
+    const raids = [makeRaid({ attendance })];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+    expect(embed.data.description).toContain('✅ GOOD');
+    expect(embed.data.description).toContain('6/10');
+    expect(embed.data.description).toContain('60%');
+    // Yellow color for GOOD status
+    expect(embed.data.color).toBe(0xffd700);
+  });
+
+  it('should handle raid with zero attendance records', async () => {
+    const raids = [makeRaid({ attendance: [] })];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+    expect(embed.data.description).toContain('0/0');
+    expect(embed.data.description).toContain('0%');
+    expect(embed.data.description).toContain('⚠️ LOW');
+  });
+
+  it('should use green color when all raids have full roster', async () => {
+    const fullAttendance = Array.from({ length: 10 }, (_, i) => ({
+      id: `a${i}`, raidId: 'raid-1', userId: `u${i}`, guildId: 'guild-123',
+      username: `P${i}`, status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms',
+    }));
+    const raids = [makeRaid({ attendance: fullAttendance })];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+    expect(embed.data.color).toBe(0x00ae86);
+    expect(embed.data.description).toContain('✅ FULL');
+  });
+
+  it('should count late players as attending in roster', async () => {
+    const attendance = [
+      { id: 'a1', raidId: 'raid-1', userId: 'u1', guildId: 'guild-123', username: 'P1', status: 'late', wowClass: 'Warrior', wowSpec: 'Protection' },
+      { id: 'a2', raidId: 'raid-1', userId: 'u2', guildId: 'guild-123', username: 'P2', status: 'late', wowClass: 'Priest', wowSpec: 'Holy' },
+      { id: 'a3', raidId: 'raid-1', userId: 'u3', guildId: 'guild-123', username: 'P3', status: 'opted_out', wowClass: 'Mage', wowSpec: 'Fire' },
+    ];
+    const raids = [makeRaid({ attendance })];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+    // 2 late out of 3 total = 67%
+    expect(embed.data.description).toContain('2/3');
+    expect(embed.data.description).toContain('67%');
+  });
+
+  it('should display null description as fallback title', async () => {
+    const raids = [makeRaid({ description: null })];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    const interaction = buildMockInteraction();
+    await command.execute(interaction);
+
+    const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+    // Should use fallback title (raidEvent translation)
+    expect(embed.data.description).toContain('Raid Event');
+  });
 });

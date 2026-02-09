@@ -14,6 +14,8 @@ import { Command } from '../types';
 import { getSpecRole, getSpecSymbol, RoleComposition } from '../utils/wowData';
 import { canManageRaids } from '../utils/permissions';
 import { t, getTranslations } from '../utils/localization';
+import { calculateRaidStats, calculateGuildStats, getReliabilityScore } from '../utils/statsCalculator';
+import type { AttendanceRecord } from '../utils/statsCalculator';
 
 /**
  * Build role mentions from role IDs or names
@@ -203,6 +205,28 @@ const command: Command = {
             .setRequired(false)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('stats')
+        .setDescription('View raid attendance statistics')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid (leave blank for guild stats)')
+            .setRequired(false)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('period')
+            .setDescription('Time period: week, month, all')
+            .addChoices(
+              { name: 'Last 7 days', value: 'week' },
+              { name: 'Last 30 days', value: 'month' },
+              { name: 'All time', value: 'all' }
+            )
+            .setRequired(false)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -228,6 +252,8 @@ const command: Command = {
        await handleEditRaid(interaction);
      } else if (subcommand === 'clone') {
        await handleCloneRaid(interaction);
+     } else if (subcommand === 'stats') {
+       await handleStatsCommand(interaction);
      }
    },
  };
@@ -1868,6 +1894,219 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     });
   }
   
+async function handleStatsCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const raidId = interaction.options.get('raid_id', false)?.value as string | undefined;
+  const period = (interaction.options.get('period', false)?.value as string) || 'month';
+
+  // Get guild data for language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  const lang = guildData.language || 'en';
+  const trans = getTranslations(lang);
+
+  if (raidId) {
+    // Single raid stats
+    const raid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      include: { attendance: true },
+    });
+
+    if (!raid) {
+      await interaction.editReply({ content: trans.raidNotFound });
+      return;
+    }
+
+    if (raid.guildId !== interaction.guild.id) {
+      await interaction.editReply({ content: trans.raidNotInServer });
+      return;
+    }
+
+    const attendance: AttendanceRecord[] = raid.attendance.map((a) => ({
+      userId: a.userId,
+      username: a.username,
+      status: a.status,
+      wowClass: a.wowClass,
+      wowSpec: a.wowSpec,
+    }));
+
+    const stats = calculateRaidStats(attendance);
+    const reliability = getReliabilityScore(stats.attendanceRate);
+
+    const embed = new EmbedBuilder()
+      .setTitle(t(lang, 'statsRaidTitle', { title: raid.description || 'Raid' }))
+      .setColor(0x00ae86)
+      .addFields(
+        {
+          name: trans.statsAttendanceRate,
+          value: `${stats.attendingCount}/${stats.totalMembers} (${stats.attendanceRate}%)`,
+          inline: true,
+        },
+        {
+          name: trans.statsReliability,
+          value: `${reliability.emoji} ${reliability.label}`,
+          inline: true,
+        },
+        { name: '\u200B', value: '\u200B', inline: true },
+        {
+          name: trans.statsAttending,
+          value: `${stats.attendingCount}`,
+          inline: true,
+        },
+        {
+          name: trans.statsOptedOut,
+          value: `${stats.optedOutCount}`,
+          inline: true,
+        },
+        {
+          name: trans.statsRunningLate,
+          value: `${stats.lateCount}`,
+          inline: true,
+        },
+        {
+          name: trans.statsComposition,
+          value: [
+            `🛡️ ${trans.tank}: ${stats.composition.tanks}`,
+            `💚 ${trans.heal}: ${stats.composition.healers}`,
+            `⚔️ ${trans.melee}: ${stats.composition.melee}`,
+            `🎯 ${trans.ranged}: ${stats.composition.ranged}`,
+          ].join('\n'),
+          inline: true,
+        },
+        {
+          name: trans.statsClassDistribution,
+          value: stats.classDistribution.length > 0
+            ? stats.classDistribution
+                .slice(0, 10)
+                .map((c) => `${c.className}: ${c.count}`)
+                .join('\n')
+            : '-',
+          inline: true,
+        }
+      )
+      .setFooter({ text: `Raid ID: ${raid.id}` })
+      .setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  } else {
+    // Guild-wide stats
+    const now = new Date();
+    let startDate: Date;
+
+    if (period === 'week') {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === 'all') {
+      startDate = new Date(0);
+    } else {
+      // default: month
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const raids = await prisma.raid.findMany({
+      where: {
+        guildId: interaction.guild.id,
+        raidDate: { gte: startDate },
+      },
+      include: { attendance: true },
+      orderBy: { raidDate: 'desc' },
+    });
+
+    if (raids.length === 0) {
+      await interaction.editReply({ content: trans.statsNoRaidsFound });
+      return;
+    }
+
+    const raidData = raids.map((r) => ({
+      id: r.id,
+      attendance: r.attendance.map((a) => ({
+        userId: a.userId,
+        username: a.username,
+        status: a.status,
+        wowClass: a.wowClass,
+        wowSpec: a.wowSpec,
+      })),
+    }));
+
+    const guildStats = calculateGuildStats(raidData);
+
+    const periodLabel = period === 'week'
+      ? trans.statsPeriodWeek
+      : period === 'all'
+        ? trans.statsPeriodAll
+        : trans.statsPeriodMonth;
+
+    const embed = new EmbedBuilder()
+      .setTitle(t(lang, 'statsGuildTitle', { period: periodLabel }))
+      .setColor(0x00ae86)
+      .addFields(
+        {
+          name: trans.statsTotalRaids,
+          value: `${guildStats.totalRaids}`,
+          inline: true,
+        },
+        {
+          name: trans.statsAttendanceRate,
+          value: `${guildStats.averageAttendanceRate}%`,
+          inline: true,
+        },
+        {
+          name: trans.statsTotalRaiders,
+          value: `${guildStats.totalRaiders}`,
+          inline: true,
+        }
+      );
+
+    if (guildStats.topAttendees.length > 0) {
+      const topList = guildStats.topAttendees
+        .slice(0, 10)
+        .map((p, i) => {
+          const score = getReliabilityScore(p.attendanceRate);
+          return `${i + 1}. ${p.username} — ${p.raidsAttended}/${p.totalRaids} (${p.attendanceRate}%) ${score.emoji}`;
+        })
+        .join('\n');
+
+      embed.addFields({
+        name: trans.statsTopAttendees,
+        value: topList,
+        inline: false,
+      });
+    }
+
+    if (guildStats.classDistribution.length > 0) {
+      embed.addFields({
+        name: trans.statsClassDistribution,
+        value: guildStats.classDistribution
+          .slice(0, 10)
+          .map((c) => `${c.className}: ${c.count}`)
+          .join('\n'),
+        inline: false,
+      });
+    }
+
+    embed.setTimestamp();
+
+    await interaction.editReply({ embeds: [embed] });
+  }
+}
+
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
     await interaction.reply({

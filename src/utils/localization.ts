@@ -96,6 +96,24 @@ interface Translations {
   // Raid reminder
   reminderTitle: string;
   reminderMessage: string;
+
+  // Stats command
+  statsRaidTitle: string;
+  statsGuildTitle: string;
+  statsAttendanceRate: string;
+  statsAttending: string;
+  statsOptedOut: string;
+  statsRunningLate: string;
+  statsComposition: string;
+  statsClassDistribution: string;
+  statsTopAttendees: string;
+  statsTotalRaids: string;
+  statsTotalRaiders: string;
+  statsReliability: string;
+  statsPeriodWeek: string;
+  statsPeriodMonth: string;
+  statsPeriodAll: string;
+  statsNoRaidsFound: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -195,6 +213,24 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid Reminder',
     reminderMessage: 'The raid **{title}** starts <t:{timestamp}:R>!\n\nPlease confirm your attendance if you haven\'t already.',
+
+    // Stats command
+    statsRaidTitle: 'Statistics: {title}',
+    statsGuildTitle: 'Guild Statistics ({period})',
+    statsAttendanceRate: 'Attendance Rate',
+    statsAttending: 'Attending',
+    statsOptedOut: 'Opted Out',
+    statsRunningLate: 'Running Late',
+    statsComposition: 'Role Composition',
+    statsClassDistribution: 'Class Distribution',
+    statsTopAttendees: 'Top Attendees',
+    statsTotalRaids: 'Total Raids',
+    statsTotalRaiders: 'Total Raiders',
+    statsReliability: 'Reliability',
+    statsPeriodWeek: 'Last 7 days',
+    statsPeriodMonth: 'Last 30 days',
+    statsPeriodAll: 'All time',
+    statsNoRaidsFound: 'No raids found for this period.',
   },
 
   de: {
@@ -293,6 +329,24 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid-Erinnerung',
     reminderMessage: 'Der Raid **{title}** beginnt <t:{timestamp}:R>!\n\nBitte bestätige deine Teilnahme, falls du es noch nicht getan hast.',
+
+    // Stats command
+    statsRaidTitle: 'Statistiken: {title}',
+    statsGuildTitle: 'Server-Statistiken ({period})',
+    statsAttendanceRate: 'Teilnahmequote',
+    statsAttending: 'Anwesend',
+    statsOptedOut: 'Abgemeldet',
+    statsRunningLate: 'Verspätet',
+    statsComposition: 'Rollenzusammensetzung',
+    statsClassDistribution: 'Klassenverteilung',
+    statsTopAttendees: 'Top-Teilnehmer',
+    statsTotalRaids: 'Raids insgesamt',
+    statsTotalRaiders: 'Spieler insgesamt',
+    statsReliability: 'Zuverlässigkeit',
+    statsPeriodWeek: 'Letzte 7 Tage',
+    statsPeriodMonth: 'Letzte 30 Tage',
+    statsPeriodAll: 'Gesamt',
+    statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
   },
 };
 

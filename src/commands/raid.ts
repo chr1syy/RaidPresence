@@ -17,6 +17,7 @@ import { t, getTranslations } from '../utils/localization';
 import { calculateRaidStats, calculateGuildStats } from '../utils/statsCalculator';
 import type { AttendanceRecord } from '../utils/statsCalculator';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsFormatter';
+import { formatStatusEmbed } from '../utils/statusFormatter';
 
 /**
  * Build role mentions from role IDs or names
@@ -214,6 +215,11 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
+        .setName('status')
+        .setDescription('View all upcoming raids at a glance')
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
         .setName('stats')
         .setDescription('View raid attendance statistics')
         .addStringOption((option) =>
@@ -261,6 +267,8 @@ const command: Command = {
        await handleCloneRaid(interaction);
      } else if (subcommand === 'stats') {
        await handleStatsCommand(interaction);
+     } else if (subcommand === 'status') {
+       await handleStatusCommand(interaction);
      }
    },
  };
@@ -1926,6 +1934,69 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     });
   }
   
+async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Get guild data for language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  const lang = guildData.language || 'en';
+  const trans = getTranslations(lang);
+
+  // Fetch all open raids for this guild ordered by date, limit to 7
+  const now = new Date();
+  const raids = await prisma.raid.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      status: 'open',
+      raidDate: { gte: now },
+    },
+    orderBy: { raidDate: 'asc' },
+    take: 7,
+    include: { attendance: true },
+  });
+
+  if (raids.length === 0) {
+    await interaction.editReply({
+      content: trans.statusNoUpcomingRaids,
+    });
+    return;
+  }
+
+  const statusRaids = raids.map((r) => ({
+    id: r.id,
+    description: r.description,
+    raidDate: r.raidDate,
+    status: r.status,
+    attendance: r.attendance.map((a) => ({
+      status: a.status,
+      wowClass: a.wowClass,
+      wowSpec: a.wowSpec,
+    })),
+  }));
+
+  const embed = formatStatusEmbed(statusRaids, lang);
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
 async function handleStatsCommand(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     await interaction.reply({

@@ -100,6 +100,15 @@ interface Translations {
   optedOutPlayers: string;
   noOptedOutPlayers: string;
 
+  // Status dashboard command
+  statusTitle: string;
+  statusNoUpcomingRaids: string;
+  statusRoster: string;
+  statusFull: string;
+  statusGood: string;
+  statusLow: string;
+  statusTimeUntil: string;
+
   // Stats command
   statsRaidTitle: string;
   statsGuildTitle: string;
@@ -220,6 +229,15 @@ const translations: Record<SupportedLanguage, Translations> = {
     optedOutPlayers: 'Currently Opted Out',
     noOptedOutPlayers: 'No one has opted out.',
 
+    // Status dashboard command
+    statusTitle: 'Upcoming Raids',
+    statusNoUpcomingRaids: 'No upcoming raids scheduled.',
+    statusRoster: 'Roster',
+    statusFull: 'FULL',
+    statusGood: 'GOOD',
+    statusLow: 'LOW',
+    statusTimeUntil: 'Time Until',
+
     // Stats command
     statsRaidTitle: 'Statistics: {title}',
     statsGuildTitle: 'Guild Statistics ({period})',
@@ -338,6 +356,15 @@ const translations: Record<SupportedLanguage, Translations> = {
     customMessage: 'Nachricht vom Raidleiter',
     optedOutPlayers: 'Derzeit abgemeldet',
     noOptedOutPlayers: 'Niemand hat sich abgemeldet.',
+
+    // Status dashboard command
+    statusTitle: 'Anstehende Raids',
+    statusNoUpcomingRaids: 'Keine anstehenden Raids geplant.',
+    statusRoster: 'Aufstellung',
+    statusFull: 'VOLL',
+    statusGood: 'GUT',
+    statusLow: 'NIEDRIG',
+    statusTimeUntil: 'Zeit bis',
 
     // Stats command
     statsRaidTitle: 'Statistiken: {title}',

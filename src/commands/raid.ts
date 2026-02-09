@@ -174,6 +174,35 @@ const command: Command = {
             .setRequired(false)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('clone')
+        .setDescription('Clone an existing raid to create a new one')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid to clone')
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('date')
+            .setDescription('New raid date (YYYY-MM-DD)')
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('time')
+            .setDescription('New raid time (HH:MM in 24h format)')
+            .setRequired(false)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('New raid title (optional, defaults to original)')
+            .setRequired(false)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -197,6 +226,8 @@ const command: Command = {
        await handleRefreshRaid(interaction);
      } else if (subcommand === 'edit') {
        await handleEditRaid(interaction);
+     } else if (subcommand === 'clone') {
+       await handleCloneRaid(interaction);
      }
    },
  };
@@ -1837,4 +1868,259 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     });
   }
   
+async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild || !interaction.channel) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to clone raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+  const dateStr = interaction.options.get('date', true).value as string;
+  const timeStr = interaction.options.get('time', false)?.value as string | undefined;
+  const titleOverride = interaction.options.get('title', false)?.value as string | undefined;
+
+  // Fetch source raid with guild data
+  const sourceRaid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!sourceRaid) {
+    await interaction.editReply({
+      content: t(interaction.guild.id ? 'en' : 'en', 'raidNotFound'),
+    });
+    return;
+  }
+
+  // Ensure raid belongs to this guild
+  if (sourceRaid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const lang = sourceRaid.guild.language || 'en';
+  const trans = getTranslations(lang);
+
+  // Validate date format
+  const dateError = validateDateFormat(dateStr);
+  if (dateError) {
+    await interaction.editReply({ content: dateError });
+    return;
+  }
+
+  // Determine time: use provided time, or extract from source raid
+  let effectiveTimeStr: string;
+  if (timeStr) {
+    const timeError = validateTimeFormat(timeStr);
+    if (timeError) {
+      await interaction.editReply({ content: timeError });
+      return;
+    }
+    effectiveTimeStr = timeStr;
+  } else {
+    // Extract time from source raid (convert back from UTC to local)
+    const timezoneOffsetHours = sourceRaid.guild.timezoneOffset || 0;
+    const localDate = new Date(sourceRaid.raidDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
+    const hours = String(localDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(localDate.getUTCMinutes()).padStart(2, '0');
+    effectiveTimeStr = `${hours}:${minutes}`;
+  }
+
+  // Parse and validate date/time with timezone offset
+  const dateTimeStr = `${dateStr}T${effectiveTimeStr}:00`;
+  const localDate = new Date(dateTimeStr);
+  const timezoneOffsetHours = sourceRaid.guild.timezoneOffset || 0;
+  const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+
+  if (isNaN(raidDate.getTime())) {
+    await interaction.editReply({
+      content: trans.invalidDateTime,
+    });
+    return;
+  }
+
+  if (raidDate < new Date()) {
+    await interaction.editReply({
+      content: trans.raidMustBeFuture,
+    });
+    return;
+  }
+
+  // Use source raid's roles to find eligible members
+  const effectiveRolesInput = sourceRaid.roles;
+  if (!effectiveRolesInput || effectiveRolesInput.trim() === '') {
+    await interaction.editReply({
+      content: '❌ Source raid has no roles configured. Cannot clone.',
+    });
+    return;
+  }
+
+  const roleIds = effectiveRolesInput.split(',').map((r: string) => r.trim()).filter(Boolean);
+
+  // Fetch guild members and find eligible ones
+  let eligibleMembers = new Set<string>();
+  await interaction.guild.members.fetch();
+
+  for (const [memberId, guildMember] of interaction.guild.members.cache) {
+    if (guildMember.user.bot) continue;
+
+    const hasRaidRole = guildMember.roles.cache.some((role) =>
+      roleIds.includes(role.id) || roleIds.includes(role.name)
+    );
+
+    if (hasRaidRole) {
+      eligibleMembers.add(memberId);
+    }
+  }
+
+  if (eligibleMembers.size === 0) {
+    await interaction.editReply({
+      content: trans.noEligibleMembers,
+    });
+    return;
+  }
+
+  // Ensure all eligible members have UserPreference records
+  for (const userId of eligibleMembers) {
+    const guildMember = interaction.guild.members.cache.get(userId);
+    if (guildMember) {
+      await prisma.userPreference.upsert({
+        where: {
+          userId_guildId: {
+            userId,
+            guildId: interaction.guild.id,
+          },
+        },
+        update: {
+          username: guildMember.displayName,
+        },
+        create: {
+          userId,
+          guildId: interaction.guild.id,
+          username: guildMember.displayName,
+        },
+      });
+    }
+  }
+
+  // Get user preferences for class/spec
+  const userPrefs = await prisma.userPreference.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      userId: { in: Array.from(eligibleMembers) },
+    },
+  });
+
+  const prefsMap = new Map<string, typeof userPrefs[0]>(userPrefs.map((p: typeof userPrefs[0]) => [p.userId, p]));
+
+  // Determine the title for the new raid
+  const newTitle = titleOverride || sourceRaid.description || 'Cloned Raid';
+
+  // Create cloned raid
+  const newRaid = await prisma.raid.create({
+    data: {
+      guildId: interaction.guild.id,
+      channelId: interaction.channel.id,
+      raidDate,
+      description: newTitle,
+      roles: sourceRaid.roles,
+      createdBy: interaction.user.id,
+      createdFromTemplateId: sourceRaid.id,
+      clonedAt: new Date(),
+    },
+  });
+
+  // Create attendance records for all eligible members with their saved class/spec
+  const attendanceData = Array.from(eligibleMembers).map((userId) => {
+    const guildMember = interaction.guild!.members.cache.get(userId);
+    const pref = prefsMap.get(userId);
+    return {
+      raidId: newRaid.id,
+      userId,
+      guildId: interaction.guild!.id,
+      username: guildMember?.displayName || 'Unknown',
+      status: 'attending' as const,
+      wowClass: pref?.wowClass || null,
+      wowSpec: pref?.wowSpec || null,
+    };
+  });
+
+  await prisma.raidAttendance.createMany({
+    data: attendanceData,
+  });
+
+  // Create embed
+  const embed = await createRaidEmbed(newRaid.id, lang);
+
+  // Create buttons
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_optin_${newRaid.id}`)
+      .setLabel(trans.optIn)
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`raid_late_${newRaid.id}`)
+      .setLabel(trans.runningLateButton)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`raid_optout_${newRaid.id}`)
+      .setLabel(trans.optOut)
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_class_${newRaid.id}`)
+      .setLabel(trans.setClassSpec)
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  // Send public raid message to channel
+  if (!interaction.channel || !('send' in interaction.channel)) {
+    await interaction.editReply({
+      content: trans.cannotSendMessage,
+    });
+    return;
+  }
+
+  const message = await interaction.channel.send({
+    embeds: [embed],
+    components: [row1, row2],
+  });
+
+  // Update raid with message ID
+  await prisma.raid.update({
+    where: { id: newRaid.id },
+    data: { messageId: message.id },
+  });
+
+  // Format the source date for display
+  const sourceLocalDate = new Date(sourceRaid.raidDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
+  const sourceDateDisplay = sourceLocalDate.toISOString().split('T')[0];
+
+  await interaction.editReply({
+    content: t(lang, 'cloneRaidSuccess', {
+      title: sourceRaid.description || 'Raid',
+      date: dateStr,
+      count: eligibleMembers.size,
+    }),
+  });
+}
+
   export default command;

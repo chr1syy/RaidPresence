@@ -52,6 +52,9 @@ interface Translations {
   markedAsLate: string;
   raidEditSuccess: string;
 
+  // Clone-specific messages
+  cloneRaidSuccess: string;
+
   // Edit-specific messages
   raidEditDateUpdated: string;
   raidEditTimeUpdated: string;
@@ -147,7 +150,10 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidReminderSent: 'Reminder sent for raid "{title}"!',
     markedAsLate: 'You are now marked as running late for this raid.',
     raidEditSuccess: 'Raid updated successfully!',
-    
+
+    // Clone-specific messages
+    cloneRaidSuccess: 'Cloned "{title}" to {date} with {count} members!',
+
     // Edit-specific messages
     raidEditDateUpdated: 'Date/time updated to ${date}',
     raidEditTimeUpdated: 'Time updated to ${time}',
@@ -242,7 +248,10 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidReminderSent: 'Erinnerung für Raid "{title}" gesendet!',
     markedAsLate: 'Du bist jetzt als verspätet für diesen Raid markiert.',
     raidEditSuccess: 'Raid erfolgreich aktualisiert!',
-    
+
+    // Clone-specific messages
+    cloneRaidSuccess: '"{title}" geklont auf {date} mit {count} Mitgliedern!',
+
     // Edit-specific messages
     raidEditDateUpdated: 'Datum/Uhrzeit aktualisiert auf ${date}',
     raidEditTimeUpdated: 'Uhrzeit aktualisiert auf ${time}',

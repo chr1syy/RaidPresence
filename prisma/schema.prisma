@@ -50,6 +50,13 @@ model Raid {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Template/Clone fields
+  templateName         String?   // Optional: save raid as template name
+  isTemplate           Boolean   @default(false) // Is this a template?
+  createdFromTemplateId String?  // Track which raid this was cloned from
+  templateVersion      Int       @default(1) // Version for future template iterations
+  clonedAt             DateTime? // When this raid was cloned from a template
+
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
 }

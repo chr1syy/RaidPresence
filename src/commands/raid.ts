@@ -136,6 +136,12 @@ const command: Command = {
             .setDescription('The ID of the raid to remind about')
             .setRequired(true)
         )
+        .addStringOption((option) =>
+          option
+            .setName('message')
+            .setDescription('Custom message to include in reminder (optional)')
+            .setRequired(false)
+        )
     )
     .addSubcommand((subcommand) =>
       subcommand

@@ -54,6 +54,8 @@ interface Translations {
 
   // Clone-specific messages
   cloneRaidSuccess: string;
+  cloneNoRoles: string;
+  cloneDefaultTitle: string;
 
   // Edit-specific messages
   raidEditDateUpdated: string;
@@ -183,6 +185,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
     // Clone-specific messages
     cloneRaidSuccess: 'Cloned "{title}" to {date} with {count} members!',
+    cloneNoRoles: 'Source raid has no roles configured. Cannot clone.',
+    cloneDefaultTitle: 'Cloned Raid',
 
     // Edit-specific messages
     raidEditDateUpdated: 'Date/time updated to ${date}',
@@ -311,6 +315,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
     // Clone-specific messages
     cloneRaidSuccess: '"{title}" geklont auf {date} mit {count} Mitgliedern!',
+    cloneNoRoles: 'Quell-Raid hat keine Rollen konfiguriert. Klonen nicht möglich.',
+    cloneDefaultTitle: 'Geklonter Raid',
 
     // Edit-specific messages
     raidEditDateUpdated: 'Datum/Uhrzeit aktualisiert auf ${date}',

@@ -2138,7 +2138,7 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
   if (!sourceRaid) {
     await interaction.editReply({
-      content: t(interaction.guild.id ? 'en' : 'en', 'raidNotFound'),
+      content: '❌ ' + t('en', 'raidNotFound'),
     });
     return;
   }
@@ -2203,7 +2203,7 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const effectiveRolesInput = sourceRaid.roles;
   if (!effectiveRolesInput || effectiveRolesInput.trim() === '') {
     await interaction.editReply({
-      content: '❌ Source raid has no roles configured. Cannot clone.',
+      content: '❌ ' + trans.cloneNoRoles,
     });
     return;
   }
@@ -2267,7 +2267,7 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const prefsMap = new Map<string, typeof userPrefs[0]>(userPrefs.map((p: typeof userPrefs[0]) => [p.userId, p]));
 
   // Determine the title for the new raid
-  const newTitle = titleOverride || sourceRaid.description || 'Cloned Raid';
+  const newTitle = titleOverride || sourceRaid.description || trans.cloneDefaultTitle;
 
   // Create cloned raid
   const newRaid = await prisma.raid.create({

@@ -96,6 +96,9 @@ interface Translations {
   // Raid reminder
   reminderTitle: string;
   reminderMessage: string;
+  customMessage: string;
+  optedOutPlayers: string;
+  noOptedOutPlayers: string;
 
   // Stats command
   statsRaidTitle: string;
@@ -213,6 +216,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid Reminder',
     reminderMessage: 'The raid **{title}** starts <t:{timestamp}:R>!\n\nPlease confirm your attendance if you haven\'t already.',
+    customMessage: 'Message from Raid Leader',
+    optedOutPlayers: 'Currently Opted Out',
+    noOptedOutPlayers: 'No one has opted out.',
 
     // Stats command
     statsRaidTitle: 'Statistics: {title}',
@@ -329,6 +335,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid-Erinnerung',
     reminderMessage: 'Der Raid **{title}** beginnt <t:{timestamp}:R>!\n\nBitte bestätige deine Teilnahme, falls du es noch nicht getan hast.',
+    customMessage: 'Nachricht vom Raidleiter',
+    optedOutPlayers: 'Derzeit abgemeldet',
+    noOptedOutPlayers: 'Niemand hat sich abgemeldet.',
 
     // Stats command
     statsRaidTitle: 'Statistiken: {title}',

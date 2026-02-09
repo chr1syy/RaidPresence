@@ -942,6 +942,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   }
 
   const raidId = interaction.options.get('raid_id', true).value as string;
+  const customMessage = interaction.options.get('message', false)?.value as string | undefined;
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
@@ -972,7 +973,8 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const trans = getTranslations(raid.guild.language || 'en');
+  const lang = raid.guild.language || 'en';
+  const trans = getTranslations(lang);
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
 
   // Get channel to send reminder
@@ -984,22 +986,45 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Get list of people who haven't responded (still "attending" but no respondedAt)
-  const notResponded = raid.attendance.filter(
-    (a: typeof raid.attendance[0]) => a.status === 'attending' && !a.respondedAt
+  // Get opted-out players for leader awareness
+  const optedOut = raid.attendance.filter(
+    (a: typeof raid.attendance[0]) => a.status === 'opted_out'
   );
 
   const reminderEmbed = new EmbedBuilder()
     .setTitle(trans.reminderTitle)
     .setColor(0xffa500)
     .setDescription(
-      t(raid.guild.language || 'en', 'reminderMessage', {
+      t(lang, 'reminderMessage', {
         title: raid.description || trans.raidEvent,
         timestamp: timestamp.toString(),
       })
     )
     .setFooter({ text: `${trans.raidId}: ${raid.id}` })
     .setTimestamp();
+
+  // Add custom message prominently at top if provided
+  if (customMessage) {
+    // Truncate to Discord embed field value limit (1024 chars)
+    const truncatedMessage = customMessage.length > 1024
+      ? customMessage.substring(0, 1021) + '...'
+      : customMessage;
+    reminderEmbed.addFields({
+      name: `📣 ${trans.customMessage}`,
+      value: truncatedMessage,
+      inline: false,
+    });
+  }
+
+  // Show opted-out players so leader can see who's missing
+  if (optedOut.length > 0) {
+    const optedOutList = optedOut.map((a: typeof raid.attendance[0]) => a.username).join(', ');
+    reminderEmbed.addFields({
+      name: `❌ ${trans.optedOutPlayers} (${optedOut.length})`,
+      value: optedOutList,
+      inline: false,
+    });
+  }
 
   // Build role mentions from raid's configured roles
   const roleIds = raid.roles ? raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean) : [];
@@ -1012,7 +1037,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   });
 
   await interaction.editReply({
-    content: t(raid.guild.language || 'en', 'raidReminderSent', { title: raid.description || 'Raid' }),
+    content: t(lang, 'raidReminderSent', { title: raid.description || 'Raid' }),
   });
 }
 

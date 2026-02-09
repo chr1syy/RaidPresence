@@ -6,11 +6,6 @@ Future development plans for RaidPresence.
 
 **Status:** Planning
 
-- [ ] **Clone Previous Raid** (`/raid clone`)
-  - Copy roster from a previous raid
-  - Preserve attendance preferences
-  - Quick setup for recurring raids
-
 - [ ] **Manual Roster Management**
   - `/raid add` - Manually add specific members to a raid
   - `/raid remove` - Remove specific members from roster
@@ -31,12 +26,6 @@ Future development plans for RaidPresence.
   - Export to text format
   - Copy-paste friendly output
   - Support for different game UIs (WoW addons, etc.)
-
-- [ ] **Raid History & Statistics**
-  - View past raids
-  - Attendance statistics per player
-  - Most played classes/specs
-  - Attendance trends
 
 ## Phase 3: Scaling & Multi-Server
 
@@ -106,13 +95,21 @@ Future development plans for RaidPresence.
 
 ## Completed Features
 
-### Phase 1: Core Functionality ✅
+### Phase 1 Quick Wins ✅
+
+- [x] **Raid Clone** (`/raid clone`) - Clone existing raids with new date/time, preserving roles and rescanning members
+- [x] **Attendance Stats** (`/raid stats`) - Per-raid and guild-wide attendance analytics with reliability scoring
+- [x] **Custom Reminders** (`/raid remind message:`) - Custom leader messages and opted-out player visibility in reminders
+- [x] **Status Dashboard** (`/raid status`) - At-a-glance view of up to 7 upcoming raids with roster status indicators
+- [x] Database index optimization for stats and status queries
+
+### Core Functionality ✅
 
 - [x] Reverse sign-up system (auto-add eligible members)
 - [x] Role-based attendance tracking
 - [x] Class/spec selection and persistence
 - [x] Interactive Discord UI (buttons, select menus)
-- [x] Raid CRUD operations (create, list, delete)
+- [x] Raid CRUD operations (create, list, edit, delete)
 - [x] Per-server configuration
 - [x] Permission system (raid leaders, admins)
 - [x] Multi-language support (English, German)
@@ -150,4 +147,4 @@ Current development priorities (highest to lowest):
 
 ---
 
-*Last updated: 2026-01-19*
+*Last updated: 2026-02-09*

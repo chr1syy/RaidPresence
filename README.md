@@ -10,6 +10,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 
 ## ✨ Features
 
+### Core
 - **Reverse Sign-Up System**: All eligible members automatically added to raid roster
 - **Multi-Server Ready**: Per-server configuration stored in database
 - **Role-Based Attendance**: Scan specific Discord roles to build attendance list
@@ -18,8 +19,15 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 - **Role Sorting**: Attendance list sorted by role (Tank → Healer → DPS)
 - **User Preferences**: Remembers class/spec for future raids
 - **Interactive UI**: Modern Discord buttons and select menus
-- **Raid Management**: List, delete, and track all raids
+- **Raid Management**: Create, list, edit, delete, close, cancel, and refresh raids
 - **Real-time Updates**: Raid roster updates automatically as players respond
+- **Multi-Language**: English and German localization with timezone support
+
+### Raid Tools
+- **Raid Clone** (`/raid clone`): Quickly create a new raid from an existing one — copies roles, rescans members, fresh attendance
+- **Attendance Stats** (`/raid stats`): Per-raid or guild-wide attendance analytics with reliability scoring and class distribution
+- **Custom Reminders** (`/raid remind`): Send reminders with optional custom messages and opted-out player visibility
+- **Status Dashboard** (`/raid status`): At-a-glance view of upcoming raids with roster fill and role breakdown
 
 ## 📚 Documentation
 
@@ -32,6 +40,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 
 ### Additional Resources
 
+- **[🆕 Phase 1 Features](docs/features/phase1-features.md)** - Clone, Stats, Reminders, Status Dashboard
 - **[🐛 Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[💪 Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[🗺️ Roadmap](ROADMAP.md)** - Future development plans
@@ -113,6 +122,8 @@ RaidPresence/
 │   ├── commands/
 │   │   ├── RAID-COMMAND.md      # /raid command reference
 │   │   └── CONFIG-COMMAND.md    # /config command reference
+│   ├── features/
+│   │   └── phase1-features.md   # Phase 1 feature docs
 │   └── guides/
 │       ├── SETUP-GUIDE.md       # Installation & setup
 │       └── PLAYER-GUIDE.md      # Player interaction guide

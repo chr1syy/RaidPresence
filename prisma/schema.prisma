@@ -59,6 +59,9 @@ model Raid {
 
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
+
+  @@index([guildId, status])
+  @@index([raidDate])
 }
 
 model RaidAttendance {
@@ -78,4 +81,6 @@ model RaidAttendance {
   guildId        String
 
   @@unique([raidId, userId])
+  @@index([raidId, status])
+  @@index([userId, guildId, status])
 }

@@ -25,9 +25,12 @@ import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
-import { getBadgeEmoji, formatPlayerBadgesDetailed, getBadgeName } from '../utils/badgeFormatter';
-import { awardManualBadge } from '../utils/badgeManager';
+import { analyzeRaidFeedback, getGuildMorale } from '../utils/feedbackAnalyzer';
+import { formatRaidFeedbackEmbed, formatGuildMoraleEmbed } from '../utils/feedbackFormatter';
+import { pendingRaidCreations } from '../events/buttonHandler';
 import { BadgeType } from '@prisma/client';
+import { formatPlayerBadgesDetailed, getBadgeName, getBadgeEmoji } from '../utils/badgeFormatter';
+import { awardManualBadge } from '../utils/badgeManager';
 
 /**
  * Build role mentions from role IDs or names
@@ -60,336 +63,345 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
   return roleMentions;
 }
 
-const command: Command = {
-  data: new SlashCommandBuilder()
-    .setName('raid')
-    .setDescription('Manage raid events')
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('create')
-        .setDescription('Create a new raid event')
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('Raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('Raid time (HH:MM in 24h format)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('Raid title/name')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('roles')
-            .setDescription('Discord roles for this raid (comma-separated role names or IDs)')
-            .setRequired(false)
-        )
-        .addBooleanOption((option) =>
-          option
-            .setName('ping_roles')
-            .setDescription('Ping the specified roles when creating the raid')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('list')
-        .setDescription('List all upcoming raids')
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('delete')
-        .setDescription('Delete a raid event')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to delete')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('close')
-        .setDescription('Close a raid (no further changes allowed)')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to close')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('cancel')
-        .setDescription('Cancel a raid event')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to cancel')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('remind')
-        .setDescription('Send a reminder for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to remind about')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('message')
-            .setDescription('Custom message to include in reminder (optional)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('refresh')
-        .setDescription('Refresh raid roster and embed (add new members, remove ineligible, update design)')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to refresh')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('edit')
-        .setDescription('Edit a raid event (date, time, title)')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to edit')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('New raid date (YYYY-MM-DD format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('New raid time (HH:MM 24h format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('New raid title')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('clone')
-        .setDescription('Clone an existing raid to create a new one')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to clone')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('New raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('New raid time (HH:MM in 24h format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('New raid title (optional, defaults to original)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('status')
-        .setDescription('View all upcoming raids at a glance')
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('stats')
-        .setDescription('View raid attendance statistics')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid (leave blank for guild stats)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period: week, month, all')
-            .addChoices(
-              { name: 'Last 7 days', value: 'week' },
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('attendance')
-        .setDescription('View a player\'s attendance history and reliability')
-        .addUserOption((option) =>
-          option
-            .setName('player')
-            .setDescription('The player to check')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period to analyze')
-            .addChoices(
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'Last 90 days', value: 'quarter' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('suggest')
-        .setDescription('Get composition suggestions for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to analyze')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('notes')
-        .setDescription('View all notes for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid ID')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('pin')
-        .setDescription('Archive a raid to keep history clean')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to archive')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unpin')
-        .setDescription('Restore an archived raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to restore')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('search')
-        .setDescription('Search archived raids')
-        .addStringOption((option) =>
-          option
-            .setName('query')
-            .setDescription('Search by raid name or player')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Filter by time period')
-            .addChoices(
-              { name: 'Last 7 days', value: '7' },
-              { name: 'Last 30 days', value: '30' },
-              { name: 'Last 90 days', value: '90' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('badges')
-        .setDescription('View badges for a player')
-        .addUserOption((option) =>
-          option
-            .setName('player')
-            .setDescription('The player to check badges for')
-            .setRequired(false)
-        )
-     )
-     .addSubcommand((subcommand) =>
-       subcommand
-         .setName('award-badge')
-         .setDescription('Award a badge to a player (admin only)')
-         .addUserOption((option) =>
-           option
-             .setName('player')
-             .setDescription('The player to award to')
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('badge')
-             .setDescription('Which badge to award')
-             .addChoices(
-               { name: 'Perfect Attendance', value: 'PERFECT_ATTENDANCE' },
-               { name: 'Tank Main', value: 'TANK_MAIN' },
-               { name: 'Healer Hero', value: 'HEALER_HERO' },
-               { name: 'Damage Dealer', value: 'DAMAGE_DEALER' },
-               { name: 'Sharpshooter', value: 'SHARPSHOOTER' },
-               { name: 'Always On Time', value: 'ALWAYS_ON_TIME' },
-               { name: 'Early Bird', value: 'EARLY_BIRD' },
-               { name: 'Team Player', value: 'TEAM_PLAYER' },
-               { name: 'Reliable Member', value: 'RELIABLE_MEMBER' },
-               { name: 'Rising Star', value: 'RISING_STAR' },
-               { name: 'Veteran Raider', value: 'VETERAN_RAIDER' },
-               { name: 'Leader\'s Choice', value: 'LEADERS_CHOICE' },
-             )
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('reason')
-             .setDescription('Why award this badge? (optional)')
-             .setRequired(false)
-         )
-     )
-     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
+const data = new SlashCommandBuilder()
+  .setName('raid')
+  .setDescription('Manage raid events')
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('create')
+      .setDescription('Create a new raid event')
+      .addStringOption((option) =>
+        option
+          .setName('date')
+          .setDescription('Raid date (YYYY-MM-DD)')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('time')
+          .setDescription('Raid time (HH:MM in 24h format)')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('title')
+          .setDescription('Raid title/name')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('roles')
+          .setDescription('Discord roles for this raid (comma-separated role names or IDs)')
+      )
+      .addBooleanOption((option) =>
+        option
+          .setName('ping_roles')
+          .setDescription('Whether to ping the raid roles when creating')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('list')
+      .setDescription('List upcoming raids')
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('delete')
+      .setDescription('Delete a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to delete')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('close')
+      .setDescription('Close a raid to stop sign-ups')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to close')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('cancel')
+      .setDescription('Cancel a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to cancel')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('remind')
+      .setDescription('Send a reminder for a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to remind about')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('message')
+          .setDescription('Optional custom message to include in the reminder')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('refresh')
+      .setDescription('Refresh a raid roster')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to refresh')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('edit')
+      .setDescription('Edit a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to edit')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('date')
+          .setDescription('New raid date (YYYY-MM-DD)')
+      )
+      .addStringOption((option) =>
+        option
+          .setName('time')
+          .setDescription('New raid time (HH:MM in 24h format)')
+      )
+      .addStringOption((option) =>
+        option
+          .setName('title')
+          .setDescription('New raid title/name')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('clone')
+      .setDescription('Clone a raid with new date/time')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to clone')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('date')
+          .setDescription('New raid date (YYYY-MM-DD)')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('time')
+          .setDescription('New raid time (HH:MM in 24h format)')
+      )
+      .addStringOption((option) =>
+        option
+          .setName('title')
+          .setDescription('Override raid title/name')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('stats')
+      .setDescription('View raid attendance statistics')
+      .addStringOption((option) =>
+        option
+          .setName('period')
+          .setDescription('Time period for statistics')
+          .addChoices(
+            { name: 'Week', value: 'week' },
+            { name: 'Month', value: 'month' },
+            { name: 'Quarter', value: 'quarter' },
+            { name: 'Year', value: 'year' },
+            { name: 'All time', value: 'all' }
+          )
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('status')
+      .setDescription('View upcoming raid status dashboard')
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('attendance')
+      .setDescription('View player attendance history')
+      .addUserOption((option) =>
+        option
+          .setName('player')
+          .setDescription('The player to view attendance for')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('period')
+          .setDescription('Time period for attendance history')
+          .addChoices(
+            { name: '30 days', value: '30' },
+            { name: '90 days', value: '90' },
+            { name: 'All time', value: 'all' }
+          )
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('suggest')
+      .setDescription('Get composition suggestions for a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to analyze')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('notes')
+      .setDescription('View raid notes and opt-out reasons')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to view notes for')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('pin')
+      .setDescription('Archive a raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to archive')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('unpin')
+      .setDescription('Restore an archived raid')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to restore')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('search')
+      .setDescription('Search archived raids')
+      .addStringOption((option) =>
+        option
+          .setName('query')
+          .setDescription('Search query (raid name or player name)')
+      )
+      .addStringOption((option) =>
+        option
+          .setName('period')
+          .setDescription('Time period to search')
+          .addChoices(
+            { name: 'Last 30 days', value: '30' },
+            { name: 'Last 90 days', value: '90' },
+            { name: 'Last year', value: '365' },
+            { name: 'All time', value: 'all' }
+          )
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('badges')
+      .setDescription('View player badges')
+      .addUserOption((option) =>
+        option
+          .setName('player')
+          .setDescription('The player to view badges for')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('award-badge')
+      .setDescription('Award a badge to a player')
+      .addUserOption((option) =>
+        option
+          .setName('player')
+          .setDescription('The player to award the badge to')
+          .setRequired(true)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('badge')
+          .setDescription('The badge type to award')
+          .setRequired(true)
+          .addChoices(
+            { name: 'Perfect Attendance', value: 'PERFECT_ATTENDANCE' },
+            { name: 'Tank Main', value: 'TANK_MAIN' },
+            { name: 'Healer Hero', value: 'HEALER_HERO' },
+            { name: 'Damage Dealer', value: 'DAMAGE_DEALER' },
+            { name: 'Sharpshooter', value: 'SHARPSHOOTER' },
+            { name: 'Always on Time', value: 'ALWAYS_ON_TIME' },
+            { name: 'Early Bird', value: 'EARLY_BIRD' },
+            { name: 'Team Player', value: 'TEAM_PLAYER' },
+            { name: 'Reliable Member', value: 'RELIABLE_MEMBER' },
+            { name: 'Rising Star', value: 'RISING_STAR' },
+            { name: 'Veteran Raider', value: 'VETERAN_RAIDER' },
+            { name: 'Leaders Choice', value: 'LEADERS_CHOICE' }
+          )
+      )
+      .addStringOption((option) =>
+        option
+          .setName('reason')
+          .setDescription('Reason for awarding the badge')
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('feedback')
+      .setDescription('Analyze raid feedback')
+      .addStringOption((option) =>
+        option
+          .setName('raid_id')
+          .setDescription('The ID of the raid to analyze feedback for')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName('morale')
+      .setDescription('View guild morale trends')
+      .addStringOption((option) =>
+        option
+          .setName('period')
+          .setDescription('Time period for morale analysis')
+          .addChoices(
+            { name: '7 days', value: '7' },
+            { name: '30 days', value: '30' },
+            { name: '90 days', value: '90' }
+          )
+      )
+  )
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder;
 
-  async execute(interaction: CommandInteraction) {
+const command: Command = {
+  data,
+  execute: async (interaction: CommandInteraction) => {
     if (!interaction.isChatInputCommand()) return;
 
     const subcommand = interaction.options.getSubcommand();
@@ -404,37 +416,41 @@ const command: Command = {
       await handleCloseRaid(interaction);
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
-     } else if (subcommand === 'remind') {
-       await handleRemindRaid(interaction);
-     } else if (subcommand === 'refresh') {
-       await handleRefreshRaid(interaction);
-     } else if (subcommand === 'edit') {
-       await handleEditRaid(interaction);
-     } else if (subcommand === 'clone') {
-       await handleCloneRaid(interaction);
-     } else if (subcommand === 'stats') {
-       await handleStatsCommand(interaction);
-     } else if (subcommand === 'status') {
-       await handleStatusCommand(interaction);
-      } else if (subcommand === 'attendance') {
-         await handleAttendanceCommand(interaction);
-       } else if (subcommand === 'suggest') {
-         await handleSuggestCommand(interaction);
-        } else if (subcommand === 'notes') {
-          await handleNotesCommand(interaction);
-        } else if (subcommand === 'pin') {
-          await handlePinCommand(interaction);
-        } else if (subcommand === 'unpin') {
-          await handleUnpinCommand(interaction);
-          } else if (subcommand === 'search') {
-            await handleSearchCommand(interaction);
-          } else if (subcommand === 'badges') {
-            await handleBadgesCommand(interaction);
-          } else if (subcommand === 'award-badge') {
-            await handleAwardBadgeCommand(interaction);
-          }
-       },
-   };
+    } else if (subcommand === 'remind') {
+      await handleRemindRaid(interaction);
+    } else if (subcommand === 'refresh') {
+      await handleRefreshRaid(interaction);
+    } else if (subcommand === 'edit') {
+      await handleEditRaid(interaction);
+    } else if (subcommand === 'clone') {
+      await handleCloneRaid(interaction);
+    } else if (subcommand === 'stats') {
+      await handleStatsCommand(interaction);
+    } else if (subcommand === 'status') {
+      await handleStatusCommand(interaction);
+    } else if (subcommand === 'attendance') {
+      await handleAttendanceCommand(interaction);
+    } else if (subcommand === 'suggest') {
+      await handleSuggestCommand(interaction);
+    } else if (subcommand === 'notes') {
+      await handleNotesCommand(interaction);
+    } else if (subcommand === 'pin') {
+      await handlePinCommand(interaction);
+    } else if (subcommand === 'unpin') {
+      await handleUnpinCommand(interaction);
+    } else if (subcommand === 'search') {
+      await handleSearchCommand(interaction);
+    } else if (subcommand === 'badges') {
+      await handleBadgesCommand(interaction);
+    } else if (subcommand === 'award-badge') {
+      await handleAwardBadgeCommand(interaction);
+    } else if (subcommand === 'feedback') {
+      await handleFeedbackCommand(interaction);
+    } else if (subcommand === 'morale') {
+      await handleMoraleCommand(interaction);
+    }
+  },
+};
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
@@ -573,6 +589,57 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   });
 
   const prefsMap = new Map<string, typeof userPrefs[0]>(userPrefs.map((p: typeof userPrefs[0]) => [p.userId, p]));
+
+  // Check for duplicate raids within 1 hour window
+  const existingRaid = await prisma.raid.findFirst({
+    where: {
+      guildId: interaction.guild.id,
+      raidDate: {
+        gte: new Date(raidDate.getTime() - 60 * 60 * 1000),
+        lte: new Date(raidDate.getTime() + 60 * 60 * 1000)
+      },
+      status: { not: 'cancelled' }
+    }
+  });
+
+  if (existingRaid) {
+    // Generate confirmation ID
+    const confirmationId = require('crypto').randomUUID();
+
+    // Store pending data
+    pendingRaidCreations.set(confirmationId, {
+      userId: interaction.user.id,
+      guildId: interaction.guild.id,
+      raidDate,
+      title,
+      roles: effectiveRolesInput,
+      eligibleMembers,
+      guildData,
+      channel: interaction.channel
+    });
+
+    const confirmEmbed = new EmbedBuilder()
+      .setTitle('⚠️ Raid Conflict Detected')
+      .setDescription(`A raid already exists: "${existingRaid.description}" at ${existingRaid.raidDate.toLocaleString()}`)
+      .setColor(0xffa500);
+
+    const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`create_confirm_${confirmationId}`)
+        .setLabel('Create Anyway')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`create_cancel_${confirmationId}`)
+        .setLabel('Cancel')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.editReply({
+      embeds: [confirmEmbed],
+      components: [buttons],
+    });
+    return;
+  }
 
   // Create raid in database
   const raid = await prisma.raid.create({
@@ -3122,6 +3189,85 @@ async function handleAwardBadgeCommand(interaction: ChatInputCommandInteraction)
   await interaction.editReply({
     content: `✅ Badge awarded successfully!`,
   });
+}
+
+async function handleFeedbackCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const raidId = interaction.options.getString('raid_id', true);
+
+  // Validate raid exists and belongs to this guild
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  // Analyze feedback
+  const analysis = await analyzeRaidFeedback(raidId);
+  const language = raid.guild.language || 'en';
+
+  // Format embed
+  const embed = await formatRaidFeedbackEmbed(raid.description || 'Raid', raid.raidDate, analysis, language);
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleMoraleCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const period = interaction.options.getString('period') || '30';
+  const days = parseInt(period, 10);
+
+  // Get guild data
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild configuration not found.',
+    });
+    return;
+  }
+
+  // Analyze morale
+  const morale = await getGuildMorale(interaction.guild.id, days);
+  const language = guildData.language || 'en';
+
+  // Format embed
+  const embed = await formatGuildMoraleEmbed(guildData.name, morale, days, language);
+
+  await interaction.editReply({ embeds: [embed] });
 }
 
 export default command;

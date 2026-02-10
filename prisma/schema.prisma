@@ -76,6 +76,46 @@ model Raid {
   @@index([guildId, archivedAt])
 }
 
+// Badge system (Phase 3.1)
+enum BadgeType {
+  PERFECT_ATTENDANCE // 10 consecutive raids attending
+  TANK_MAIN          // 5 raids as tank
+  HEALER_HERO        // 5 raids as healer
+  DAMAGE_DEALER      // 5 raids as DPS
+  SHARPSHOOTER       // 5 raids as ranged DPS
+  ALWAYS_ON_TIME     // 5 raids without being late
+  EARLY_BIRD         // First to respond to raid
+  TEAM_PLAYER        // Flex to 3 different roles
+  RELIABLE_MEMBER    // 95%+ attendance (30 days)
+  RISING_STAR        // 30% improvement in attendance
+  VETERAN_RAIDER     // 25 total raids attended
+  LEADERS_CHOICE     // Awarded manually by raid leader
+}
+
+model Badge {
+  id        String    @id @default(cuid())
+  userId    String
+  guildId   String
+  badgeType BadgeType
+  earnedAt  DateTime  @default(now())
+  awardedBy String? // User ID for LEADERS_CHOICE
+  reason    String? // Custom reason for badge
+
+  @@unique([userId, guildId, badgeType])
+  @@index([userId, guildId])
+  @@index([guildId, badgeType])
+}
+
+model PlayerBadgeView {
+  // Denormalized for quick rendering in embeds
+  userId    String
+  guildId   String
+  badges    String   @default("[]") // JSON array of BadgeType
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, guildId])
+}
+
 model RaidAttendance {
   id          String    @id @default(cuid())
   raidId      String

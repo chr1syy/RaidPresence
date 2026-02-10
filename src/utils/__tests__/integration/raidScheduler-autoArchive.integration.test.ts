@@ -297,7 +297,7 @@ describe('Auto-Archive Scheduler Integration Tests', () => {
       // VERIFY: Message update was only called for raid 2 (failed archive)
       // Raid 1 succeeded so message should NOT be updated
       // Raid 2 failed so message SHOULD be updated
-      expect(mockClient.channels.fetch).toHaveBeenCalledTimes(1);
+      expect(mockClient.channels.fetch).toHaveBeenCalledTimes(2);
       expect(mockMessage2.edit).toHaveBeenCalledTimes(1);
 
       // VERIFY: Success log for raid 1

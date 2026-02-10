@@ -21,6 +21,10 @@ model Guild {
   archiveChannelId String?  // Guild's designated archive channel
   autoArchive      Boolean  @default(false) // Auto-archive on close?
 
+  // Auto-purge system fields (Phase 3.3)
+  autoPurgeEnabled Boolean  @default(false) // Auto-delete old raids?
+  autoPurgeDays    Int      @default(30)    // Days after which raids are auto-deleted
+
   raids Raid[]
   users UserPreference[]
 }

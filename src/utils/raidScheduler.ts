@@ -4,20 +4,30 @@ import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { getTranslations } from './localization';
+import { autoPurgeAllGuilds } from './raidPurger';
 
 export function startRaidScheduler(client: Client) {
   // Check every 2 minutes for expired raids
   const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
+  let lastPurgeTime = 0; // Timestamp of last auto-purge
 
   setInterval(async () => {
     try {
       await checkAndCloseExpiredRaids(client);
+      
+      // Run auto-purge daily (every 24 hours)
+      const now = Date.now();
+      if (now - lastPurgeTime > 24 * 60 * 60 * 1000) { // 24 hours
+        await autoPurgeAllGuilds();
+        lastPurgeTime = now;
+      }
     } catch (error) {
       console.error('Error in raid scheduler:', error);
     }
   }, CHECK_INTERVAL);
 
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
+  console.log('✅ Auto-purge enabled - running daily cleanup of old raids');
 }
 
 async function postFeedbackMessage(raid: any, client: Client) {

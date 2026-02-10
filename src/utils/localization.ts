@@ -109,6 +109,7 @@ interface Translations {
   statusFull: string;
   statusGood: string;
   statusLow: string;
+  statusCritical: string;
   statusTimeUntil: string;
 
   // Stats command
@@ -371,6 +372,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     statusFull: 'FULL',
     statusGood: 'GOOD',
     statusLow: 'LOW',
+    statusCritical: 'CRITICAL',
     statusTimeUntil: 'Time Until',
 
     // Stats command
@@ -632,6 +634,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     statusFull: 'VOLL',
     statusGood: 'GUT',
     statusLow: 'NIEDRIG',
+    statusCritical: 'KRITISCH',
     statusTimeUntil: 'Zeit bis',
 
     // Stats command

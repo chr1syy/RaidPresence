@@ -120,16 +120,16 @@ describe('UX: Slash Command Registration', () => {
     expect(commandJson.description.length).toBeGreaterThan(5);
   });
 
-  it('all 17 subcommands are registered', () => {
+  it('all 21 subcommands are registered', () => {
     const subcommands = (commandJson.options || []).filter(
       (opt: any) => opt.type === 1 // SUB_COMMAND type
     );
-    expect(subcommands.length).toBe(17);
+    expect(subcommands.length).toBe(21);
 
     const names = subcommands.map((s: any) => s.name).sort();
     expect(names).toEqual([
-      'attendance', 'cancel', 'clone', 'close', 'create', 'delete',
-      'edit', 'list', 'notes', 'pin', 'refresh', 'remind', 'search', 'stats', 'status', 'suggest', 'unpin',
+      'attendance', 'award-badge', 'badges', 'cancel', 'clone', 'close', 'close-all', 'create', 'delete',
+      'edit', 'feedback', 'list', 'notes', 'pin', 'refresh', 'remind', 'search', 'stats', 'status', 'suggest', 'unpin',
     ]);
   });
 
@@ -191,10 +191,12 @@ describe('UX: Slash Command Registration', () => {
     expect(statsSub).toBeDefined();
     const periodOpt = statsSub.options.find((o: any) => o.name === 'period');
     expect(periodOpt).toBeDefined();
-    expect(periodOpt.choices).toHaveLength(3);
+    expect(periodOpt.choices).toHaveLength(5);
     const choiceValues = periodOpt.choices.map((c: any) => c.value);
     expect(choiceValues).toContain('week');
     expect(choiceValues).toContain('month');
+    expect(choiceValues).toContain('quarter');
+    expect(choiceValues).toContain('year');
     expect(choiceValues).toContain('all');
   });
 

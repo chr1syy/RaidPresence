@@ -17,7 +17,7 @@ import { t, getTranslations } from '../utils/localization';
 import { calculateRaidStats, calculateGuildStats } from '../utils/statsCalculator';
 import type { AttendanceRecord } from '../utils/statsCalculator';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsFormatter';
-import { formatStatusEmbed } from '../utils/statusFormatter';
+import { formatStatusEmbed, getRosterStatus } from '../utils/statusFormatter';
 import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory } from '../utils/attendanceAnalytics';
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
@@ -99,11 +99,22 @@ const data = new SlashCommandBuilder()
           .setDescription('Whether to ping the raid roles when creating')
       )
   )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName('list')
-      .setDescription('List upcoming raids')
-  )
+   .addSubcommand((subcommand) =>
+     subcommand
+       .setName('list')
+       .setDescription('List upcoming raids')
+       .addStringOption((option) =>
+         option
+           .setName('role')
+           .setDescription('Filter by role')
+           .addChoices(
+             { name: 'Tank', value: 'tank' },
+             { name: 'Healer', value: 'healer' },
+             { name: 'DPS', value: 'dps' }
+           )
+           .setRequired(false)
+       )
+   )
   .addSubcommand((subcommand) =>
     subcommand
       .setName('delete')
@@ -900,8 +911,10 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
+  const role = interaction.options.get('role', false)?.value as string | undefined;
+
   const now = new Date();
-  const raids = await prisma.raid.findMany({
+  let raids = await prisma.raid.findMany({
     where: {
       guildId: interaction.guild.id,
       raidDate: {
@@ -923,15 +936,56 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Helper function to get optimal role count
+  function getOptimalRoleCount(role: string, totalMembers: number): number {
+    const is20man = totalMembers > 15;
+    if (role === 'tank') return 2;
+    if (role === 'healer') return is20man ? 5 : 3;
+    if (role === 'dps') return is20man ? 13 : 5;
+    return 0;
+  }
+
+  // If role specified, sort by role shortage (most needed first)
+  if (role) {
+    raids.sort((a, b) => {
+      const aCurrent = a.attendance.filter(att => att.status === 'attending' && getSpecRole(att.wowClass, att.wowSpec) === role).length;
+      const bCurrent = b.attendance.filter(att => att.status === 'attending' && getSpecRole(att.wowClass, att.wowSpec) === role).length;
+      const aOptimal = getOptimalRoleCount(role, a.attendance.length);
+      const bOptimal = getOptimalRoleCount(role, b.attendance.length);
+      const aShortage = Math.max(0, aOptimal - aCurrent);
+      const bShortage = Math.max(0, bOptimal - bCurrent);
+      if (aShortage !== bShortage) return bShortage - aShortage; // desc
+      return a.raidDate.getTime() - b.raidDate.getTime(); // asc
+    });
+  }
+
   const embed = new EmbedBuilder()
-    .setTitle('Upcoming Raids')
+    .setTitle(role ? `Upcoming Raids (${role.charAt(0).toUpperCase() + role.slice(1)} Focus)` : 'Upcoming Raids')
     .setColor(0x00ae86)
     .setDescription(
       raids
         .map((raid: typeof raids[0]) => {
           const attending = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'attending').length;
           const total = raid.attendance.length;
-          return `**${raid.description}**\nDate: <t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>\nAttending: ${attending}/${total}\nID: \`${raid.id}\``;
+          let details = `Attending: ${attending}/${total}`;
+          if (!role) {
+            const rosterStatus = getRosterStatus(attending, total);
+            const statusIndicator = rosterStatus === 'full'
+              ? ' ✅'
+              : rosterStatus === 'good'
+                ? ' 🟢'
+                : rosterStatus === 'low'
+                  ? ' ⚠️'
+                  : ' 🔴';
+            details += statusIndicator;
+          }
+          if (role) {
+            const current = raid.attendance.filter(a => a.status === 'attending' && getSpecRole(a.wowClass, a.wowSpec) === role).length;
+            const optimal = getOptimalRoleCount(role, total);
+            const status = current >= optimal ? ' ✅' : ' ⚠️';
+            details += ` | ${role.charAt(0).toUpperCase() + role.slice(1)}: ${current}/${optimal}${status}`;
+          }
+          return `**${raid.description}**\nDate: <t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>\n${details}\nID: \`${raid.id}\``;
         })
         .join('\n\n')
     )

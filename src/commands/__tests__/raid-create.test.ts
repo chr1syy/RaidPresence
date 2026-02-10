@@ -151,6 +151,8 @@ describe('handleCreateRaid()', () => {
       createdBy: 'user-123',
     });
 
+    (prisma.raid.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate raids by default
+
     (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 2 });
     (prisma.raid.update as jest.Mock).mockResolvedValue({});
 

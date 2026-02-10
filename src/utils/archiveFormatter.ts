@@ -64,12 +64,16 @@ export function formatArchiveSearchEmbed(
      embed.setFooter({ 
        text: t(language, 'archiveShowingResults', { total: results.length.toString() })
      });
-   } else {
-     // For this case, we need a localized message about found raids
-     embed.setFooter({ 
-       text: t(language, 'archiveFoundCount', { count: results.length.toString() })
-     });
-   }
+    } else {
+      // For this case, we need a localized message about found raids
+      // Handle pluralization: 1 result uses singular form, multiple uses plural form
+      const count = results.length;
+      embed.setFooter({ 
+        text: count === 1 
+          ? t(language, 'archiveFoundCountSingular')
+          : t(language, 'archiveFoundCount', { count: count.toString() })
+      });
+    }
 
   return embed;
 }

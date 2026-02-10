@@ -198,6 +198,7 @@ interface Translations {
     archiveRaidId: string;
     archiveShowingResults: string;
     archiveFoundCount: string;
+    archiveFoundCountSingular: string;
     raidArchived: string;
     archiveMovedNotification: string;
     raidRestored: string;
@@ -404,8 +405,9 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveParticipants: 'Participants',
         archiveRaidId: 'Raid ID',
         archiveShowingResults: 'Showing 10 of {total} results. Use more specific filters to narrow down.',
-        archiveFoundCount: '{count} archived raid(s) found',
-        raidArchived: 'Raid Archived',
+         archiveFoundCount: '{count} archived raids found',
+         archiveFoundCountSingular: '1 archived raid found',
+         raidArchived: 'Raid Archived',
         archiveMovedNotification: 'has been moved to {channel}',
         raidRestored: 'Raid Restored',
         archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
@@ -609,9 +611,10 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveAttendance: 'Teilnahme',
         archiveParticipants: 'Teilnehmer',
         archiveRaidId: 'Raid ID',
-         archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
-         archiveFoundCount: '{count} archivierter Raid gefunden',
-         raidArchived: 'Raid archiviert',
+          archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
+          archiveFoundCount: '{count} archivierte Raids gefunden',
+          archiveFoundCountSingular: '1 archivierter Raid gefunden',
+          raidArchived: 'Raid archiviert',
          archiveMovedNotification: 'wurde zu {channel} verschoben',
          raidRestored: 'Raid wiederhergestellt',
         archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',

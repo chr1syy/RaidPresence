@@ -16,7 +16,7 @@
 - `src/commands/config.ts` - Server configuration (6 subcommands)
 - `src/utils/localization.ts` - All user-facing strings (EN/DE)
 - `src/utils/permissions.ts` - Permission checks
-- `prisma/schema.prisma` - Database schema (4 models)
+- `prisma/schema.prisma` - Database schema (6 models + BadgeType enum)
 
 ## Rules
 

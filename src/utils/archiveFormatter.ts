@@ -42,31 +42,35 @@ export function formatArchiveSearchEmbed(
     return embed;
   }
 
-  // Add up to 10 results per embed (Discord field limit)
-  const displayResults = results.slice(0, 10);
-  for (const raid of displayResults) {
-    const raiderNames = raid.participantNames.join(', ');
-    const fieldValue = 
-      `**Date:** <t:${Math.floor(raid.raidDate.getTime() / 1000)}:d>\n` +
-      `**Attendance:** ${raid.attendedCount}/${raid.totalInvited} (${raid.attendancePercent}%)\n` +
-      `**Participants:** ${raiderNames || 'N/A'}\n` +
-      `**Raid ID:** \`${raid.raidId}\``;
+   // Add up to 10 results per embed (Discord field limit)
+   const displayResults = results.slice(0, 10);
+   for (const raid of displayResults) {
+     const raiderNames = raid.participantNames.join(', ');
+     const fieldValue = 
+       `**${t(language, 'archiveDate')}:** <t:${Math.floor(raid.raidDate.getTime() / 1000)}:d>\n` +
+       `**${t(language, 'archiveAttendance')}:** ${raid.attendedCount}/${raid.totalInvited} (${raid.attendancePercent}%)\n` +
+       `**${t(language, 'archiveParticipants')}:** ${raiderNames || 'N/A'}\n` +
+       `**${t(language, 'archiveRaidId')}:** \`${raid.raidId}\``;
 
-    embed.addFields({
-      name: raid.description || 'Unnamed Raid',
-      value: fieldValue,
-      inline: false,
-    });
-  }
+     embed.addFields({
+       name: raid.description || 'Unnamed Raid',
+       value: fieldValue,
+       inline: false,
+     });
+   }
 
-  // Add info about result count
-  if (results.length > 10) {
-    embed.setFooter({ 
-      text: `Showing 10 of ${results.length} results. Use more specific filters to narrow down.` 
-    });
-  } else {
-    embed.setFooter({ text: `${results.length} archived raid(s) found` });
-  }
+   // Add info about result count
+   if (results.length > 10) {
+     embed.setFooter({ 
+       text: t(language, 'archiveShowingResults', { total: results.length.toString() })
+     });
+   } else {
+     // For this case, we need a localized message about found raids
+     const foundMessage = language === 'de' 
+       ? `${results.length} archivierter Raid gefunden`
+       : `${results.length} archived raid(s) found`;
+     embed.setFooter({ text: foundMessage });
+   }
 
   return embed;
 }

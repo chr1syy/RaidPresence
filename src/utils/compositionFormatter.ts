@@ -15,36 +15,37 @@ export function formatCompositionEmbed(
   language: string = 'en'
 ): EmbedBuilder {
   const embed = new EmbedBuilder();
+  const trans = getTranslations(language);
 
   // Color based on composition status
   const color = getCompositionColor(analysis.statusFlags);
   embed.setColor(color);
 
-   // Title
-   embed.setTitle(t(language, 'compositionAnalysis', { raid: raidName }));
+  // Title
+  embed.setTitle(t(language, 'compositionAnalysis', { raid: raidName }));
 
   // Active players count
-  embed.setDescription(`**Active Players:** ${analysis.activePlayers}`);
+  embed.setDescription(`**${trans.compositionActivePlayers}:** ${analysis.activePlayers}`);
 
-   // Current composition field
-   // Handle division by zero: if no optimal melee+ranged, show "-" instead of NaN
-   const optimalDpsTotal = analysis.optimal.melee + analysis.optimal.ranged;
-   const optimalMelee = optimalDpsTotal > 0 
-     ? Math.round(analysis.optimal.melee * (analysis.optimal.totalDps / optimalDpsTotal))
-     : 0;
-   const optimalRanged = optimalDpsTotal > 0 
-     ? Math.round(analysis.optimal.ranged * (analysis.optimal.totalDps / optimalDpsTotal))
-     : 0;
+  // Current composition field
+  // Handle division by zero: if no optimal melee+ranged, show "-" instead of NaN
+  const optimalDpsTotal = analysis.optimal.melee + analysis.optimal.ranged;
+  const optimalMelee = optimalDpsTotal > 0 
+    ? Math.round(analysis.optimal.melee * (analysis.optimal.totalDps / optimalDpsTotal))
+    : 0;
+  const optimalRanged = optimalDpsTotal > 0 
+    ? Math.round(analysis.optimal.ranged * (analysis.optimal.totalDps / optimalDpsTotal))
+    : 0;
 
-   const currentCompositionText = `
-${ROLE_EMOJIS.TANK} Tanks: ${analysis.current.tanks}/${analysis.optimal.tanks}
-${ROLE_EMOJIS.HEALER} Healers: ${analysis.current.healers}/${analysis.optimal.healers}
-⚔️ Melee DPS: ${analysis.current.melee}/${optimalMelee}
-🏹 Ranged DPS: ${analysis.current.ranged}/${optimalRanged}
+  const currentCompositionText = `
+${ROLE_EMOJIS.TANK} ${trans.compositionTanks}: ${analysis.current.tanks}/${analysis.optimal.tanks}
+${ROLE_EMOJIS.HEALER} ${trans.compositionHealers}: ${analysis.current.healers}/${analysis.optimal.healers}
+⚔️ ${trans.compositionMeleeDps}: ${analysis.current.melee}/${optimalMelee}
+🏹 ${trans.compositionRangedDps}: ${analysis.current.ranged}/${optimalRanged}
 `.trim();
 
   embed.addFields({
-    name: 'Current Composition',
+    name: trans.compositionCurrentComposition,
     value: currentCompositionText,
     inline: true,
   });
@@ -52,7 +53,7 @@ ${ROLE_EMOJIS.HEALER} Healers: ${analysis.current.healers}/${analysis.optimal.he
   // Status field
   const statusText = getCompositionStatusText(analysis.statusFlags, language);
   embed.addFields({
-    name: 'Status',
+    name: trans.compositionStatus,
     value: statusText,
     inline: true,
   });
@@ -62,16 +63,16 @@ ${ROLE_EMOJIS.HEALER} Healers: ${analysis.current.healers}/${analysis.optimal.he
     const gapsText = gaps.gaps
       .map((gap) => {
         if (gap.difference < 0) {
-          return `❌ Need ${Math.abs(gap.difference)} more ${gap.role}(s)`;
+          return `❌ ${t(language, 'compositionNeedMore', { count: Math.abs(gap.difference).toString(), role: gap.role })}`;
         } else if (gap.difference > 0) {
-          return `⚠️ ${Math.abs(gap.difference)} extra ${gap.role}(s)`;
+          return `⚠️ ${t(language, 'compositionExtraPlayers', { count: Math.abs(gap.difference).toString(), role: gap.role })}`;
         }
-        return `✅ ${gap.role} count is fine`;
+        return `✅ ${t(language, 'compositionCountFine', { role: gap.role })}`;
       })
       .join('\n');
 
     embed.addFields({
-      name: 'Role Analysis',
+      name: trans.compositionRoleAnalysis,
       value: gapsText,
       inline: false,
     });
@@ -89,26 +90,26 @@ ${ROLE_EMOJIS.HEALER} Healers: ${analysis.current.healers}/${analysis.optimal.he
       .join('\n');
 
     embed.addFields({
-      name: 'Player Suggestions',
-      value: suggestionsText || 'No suggestions available',
+      name: trans.compositionPlayerSuggestions,
+      value: suggestionsText || trans.compositionNoSuggestions,
       inline: false,
     });
   }
 
   // Success likelihood
   const successText = `${likelihood.percentage}% - ${likelihood.label}
-Factors:
+${trans.compositionFactors}:
 ${likelihood.factors.map((f) => `• ${f}`).join('\n')}`;
 
   embed.addFields({
-    name: 'Success Likelihood',
+    name: trans.compositionSuccessLikelihood,
     value: successText,
     inline: false,
   });
 
   // Footer
   embed.setFooter({
-    text: `Analyzed at ${new Date().toLocaleString()}`,
+    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()}`,
   });
 
   return embed;

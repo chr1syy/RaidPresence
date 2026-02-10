@@ -131,6 +131,22 @@ interface Translations {
 
    // Composition command
    compositionAnalysis: string;
+   compositionActivePlayers: string;
+   compositionCurrentComposition: string;
+   compositionStatus: string;
+   compositionRoleAnalysis: string;
+   compositionPlayerSuggestions: string;
+   compositionSuccessLikelihood: string;
+   compositionFactors: string;
+   compositionNeedMore: string;
+   compositionExtraPlayers: string;
+   compositionCountFine: string;
+   compositionNoSuggestions: string;
+   compositionAnalyzedAt: string;
+   compositionTanks: string;
+   compositionHealers: string;
+   compositionMeleeDps: string;
+   compositionRangedDps: string;
 
    // Attendance command
    attendanceRecord: string;
@@ -310,8 +326,24 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodAll: 'All time',
      statsNoRaidsFound: 'No raids found for this period.',
 
-     // Composition command
-     compositionAnalysis: 'Composition Analysis: {raid}',
+      // Composition command
+      compositionAnalysis: 'Composition Analysis: {raid}',
+      compositionActivePlayers: 'Active Players',
+      compositionCurrentComposition: 'Current Composition',
+      compositionStatus: 'Status',
+      compositionRoleAnalysis: 'Role Analysis',
+      compositionPlayerSuggestions: 'Player Suggestions',
+      compositionSuccessLikelihood: 'Success Likelihood',
+      compositionFactors: 'Factors',
+      compositionNeedMore: 'Need {count} more {role}(s)',
+      compositionExtraPlayers: '{count} extra {role}(s)',
+      compositionCountFine: '{role} count is fine',
+      compositionNoSuggestions: 'No suggestions available',
+      compositionAnalyzedAt: 'Analyzed at',
+      compositionTanks: 'Tanks',
+      compositionHealers: 'Healers',
+      compositionMeleeDps: 'Melee DPS',
+      compositionRangedDps: 'Ranged DPS',
 
      // Attendance command
      attendanceRecord: 'Attendance Record: {player}',
@@ -490,8 +522,24 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodAll: 'Gesamt',
      statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
 
-     // Composition command
-     compositionAnalysis: 'Zusammensetzungsanalyse: {raid}',
+      // Composition command
+      compositionAnalysis: 'Zusammensetzungsanalyse: {raid}',
+      compositionActivePlayers: 'Aktive Spieler',
+      compositionCurrentComposition: 'Aktuelle Zusammensetzung',
+      compositionStatus: 'Status',
+      compositionRoleAnalysis: 'Rollenanalyse',
+      compositionPlayerSuggestions: 'Spielervorschläge',
+      compositionSuccessLikelihood: 'Erfolgschance',
+      compositionFactors: 'Faktoren',
+      compositionNeedMore: 'Benötige {count} mehr {role}',
+      compositionExtraPlayers: '{count} extra {role}',
+      compositionCountFine: '{role} Anzahl ist in Ordnung',
+      compositionNoSuggestions: 'Keine Vorschläge verfügbar',
+      compositionAnalyzedAt: 'Analysiert um',
+      compositionTanks: 'Tanks',
+      compositionHealers: 'Heiler',
+      compositionMeleeDps: 'Nahkampf DPS',
+      compositionRangedDps: 'Fernkampf DPS',
 
      // Attendance command
      attendanceRecord: 'Anwesenheit: {player}',

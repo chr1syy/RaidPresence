@@ -1,6 +1,6 @@
 /**
  * Regression test suite for config command
- * Tests: view, raid-roles, leader-roles, language, timezone subcommands
+ * Tests: view, raid-roles, leader-roles, language, timezone, archive-channel, auto-archive subcommands
  * with permission checks, validation, and database interactions.
  */
 
@@ -365,6 +365,130 @@ describe('config command', () => {
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('Invalid timezone') })
       );
+     });
+    });
+
+  describe('archive-channel subcommand', () => {
+    beforeEach(() => {
+      mockInteraction.options.getSubcommand.mockReturnValue('archive-channel');
+      mockInteraction.options.getChannel = jest.fn().mockReturnValue({
+        id: 'channel-456',
+        name: 'archive',
+        type: 0, // GuildText
+      });
+    });
+
+    it('should reject when not in a guild', async () => {
+      mockInteraction.guild = null;
+      await command.execute(mockInteraction);
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ ephemeral: true })
+      );
+    });
+
+    it('should update archive channel in database', async () => {
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'guild-123' },
+          update: { archiveChannelId: 'channel-456' },
+        })
+      );
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Archive channel set') })
+      );
+    });
+
+    it('should reject non-text channels', async () => {
+      mockInteraction.options.getChannel = jest.fn().mockReturnValue({
+        id: 'channel-456',
+        name: 'voice-channel',
+        type: 2, // GuildVoice
+      });
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('text channel') })
+      );
+    });
+  });
+
+  describe('auto-archive subcommand', () => {
+    beforeEach(() => {
+      mockInteraction.options.getSubcommand.mockReturnValue('auto-archive');
+      mockInteraction.options.getBoolean = jest.fn().mockReturnValue(true);
+    });
+
+    it('should reject when not in a guild', async () => {
+      mockInteraction.guild = null;
+      await command.execute(mockInteraction);
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({ ephemeral: true })
+      );
+    });
+
+    it('should reject auto-archive when archive channel not configured', async () => {
+      mockInteraction.options.getBoolean.mockReturnValue(true);
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+        id: 'guild-123',
+        archiveChannelId: null,
+      });
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Archive channel must be configured') })
+      );
+    });
+
+    it('should enable auto-archive when archive channel is configured', async () => {
+      mockInteraction.options.getBoolean.mockReturnValue(true);
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+        id: 'guild-123',
+        archiveChannelId: 'channel-456',
+      });
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'guild-123' },
+          update: { autoArchive: true },
+        })
+      );
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('enabled') })
+      );
+    });
+
+    it('should disable auto-archive', async () => {
+      mockInteraction.options.getBoolean.mockReturnValue(false);
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+        id: 'guild-123',
+        archiveChannelId: 'channel-456',
+      });
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'guild-123' },
+          update: { autoArchive: false },
+        })
+      );
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('disabled') })
+      );
     });
   });
 });
+

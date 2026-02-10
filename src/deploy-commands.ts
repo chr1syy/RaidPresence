@@ -16,9 +16,18 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
 async function deployCommands() {
   try {
-    const guildId = process.argv[2];
+    const guildIdArg = process.argv[2];
     
-    if (guildId) {
+    if (guildIdArg) {
+      // Validate guild ID is a valid Discord snowflake (17-19 digit numeric string)
+      const snowflakeRegex = /^\d{17,19}$/;
+      if (!snowflakeRegex.test(guildIdArg)) {
+        console.error('❌ Invalid guild ID provided. It must be a numeric string of 17-19 digits.');
+        process.exitCode = 1;
+        return;
+      }
+
+      const guildId = guildIdArg;
       // Deploy to specific guild (instant)
       console.log(`🔄 Started refreshing ${commands.length} application (/) commands to guild ${guildId}.`);
       

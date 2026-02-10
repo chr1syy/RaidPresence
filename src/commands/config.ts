@@ -432,9 +432,8 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
     },
   });
 
-  const status = enabled ? '✅ enabled' : '❌ disabled';
   await interaction.editReply({
-    content: `${status}\n\nAuto-archive is now ${enabled ? 'enabled' : 'disabled'}.\n\nRaids will ${enabled ? 'automatically be' : 'not be'} archived when they close.`,
+    content: `Auto-archive is now ${enabled ? 'enabled' : 'disabled'}. ${enabled ? 'Raids will automatically be archived when they close.' : ''}`,
   });
 }
 

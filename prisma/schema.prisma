@@ -77,6 +77,11 @@ model RaidAttendance {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Raid notes feature (Phase 2.3)
+  optoutReason  String? // Player's reason for opting out
+  playerNote    String? // Player's comment on their status
+  notedAt       DateTime? // When note was added
+
   raid           Raid            @relation(fields: [raidId], references: [id], onDelete: Cascade)
   userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])
   guildId        String

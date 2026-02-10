@@ -15,7 +15,7 @@ jest.mock('../../database/client', () => ({
   __esModule: true,
   default: {
     guild: { findUnique: jest.fn(), update: jest.fn() },
-    raid: { findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() }
+    raid: { findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn(), count: jest.fn() }
   }
 }));
 
@@ -363,33 +363,28 @@ describe('archiveManager', () => {
   describe('getArchiveStats', () => {
     it('should return archive statistics', async () => {
       const guildId = 'guild-123';
-      const now = new Date();
-      const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
-      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-      const mockRaids = [
-        { id: 'raid-1', archivedAt: now }, // Recent
-        { id: 'raid-2', archivedAt: fifteenDaysAgo }, // Recent (within 30 days)
-        { id: 'raid-3', archivedAt: sixtyDaysAgo } // Older
-      ];
-
-      (prisma.raid.findMany as any).mockResolvedValue(mockRaids);
+      (prisma.raid.count as any).mockResolvedValueOnce(3); // total archived
+      (prisma.raid.count as any).mockResolvedValueOnce(2); // recently archived
 
       const stats = await getArchiveStats(guildId);
 
       expect(stats.totalArchived).toBe(3);
       expect(stats.recentArchived).toBe(2); // Within last 30 days
+      expect(prisma.raid.count).toHaveBeenCalledTimes(2);
     });
 
     it('should return zero stats for guild with no archives', async () => {
       const guildId = 'guild-123';
 
-      (prisma.raid.findMany as any).mockResolvedValue([]);
+      (prisma.raid.count as any).mockResolvedValueOnce(0); // total archived
+      (prisma.raid.count as any).mockResolvedValueOnce(0); // recently archived
 
       const stats = await getArchiveStats(guildId);
 
       expect(stats.totalArchived).toBe(0);
       expect(stats.recentArchived).toBe(0);
+      expect(prisma.raid.count).toHaveBeenCalledTimes(2);
     });
   });
 });

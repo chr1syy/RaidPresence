@@ -154,6 +154,10 @@ interface Translations {
   optoutReasonLabel: string;
   optoutReasonSubmitted: string;
   playerNoteAdded: string;
+  raidNotes: string;
+  raidNotesPlayerComments: string;
+  raidNotesOptoutReasons: string;
+  raidNotesNone: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -306,12 +310,16 @@ const translations: Record<SupportedLanguage, Translations> = {
      attendanceAttended: 'Attended',
      attendanceMissed: 'Missed',
 
-     // Raid Notes Feature (Phase 2.3)
-     optoutReason: 'Opt Out Reason',
-     optoutReasonLabel: 'Why are you opting out? (optional)',
-     optoutReasonSubmitted: '✅ You have opted out of this raid.',
-     playerNoteAdded: 'Note added',
-   },
+      // Raid Notes Feature (Phase 2.3)
+      optoutReason: 'Opt Out Reason',
+      optoutReasonLabel: 'Why are you opting out? (optional)',
+      optoutReasonSubmitted: '✅ You have opted out of this raid.',
+      playerNoteAdded: 'Note added',
+      raidNotes: 'Raid Notes',
+      raidNotesPlayerComments: 'Player Comments',
+      raidNotesOptoutReasons: 'Opt-Out Reasons',
+      raidNotesNone: 'No notes or comments for this raid.',
+    },
 
   de: {
     // Raid embed
@@ -463,11 +471,15 @@ const translations: Record<SupportedLanguage, Translations> = {
      attendanceMissed: 'Verpasst',
 
      // Raid Notes Feature (Phase 2.3)
-     optoutReason: 'Abmeldungsgrund',
-     optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
-     optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
-     playerNoteAdded: 'Notiz hinzugefügt',
-   },
+      optoutReason: 'Abmeldungsgrund',
+      optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
+      optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
+      playerNoteAdded: 'Notiz hinzugefügt',
+      raidNotes: 'Raid-Notizen',
+      raidNotesPlayerComments: 'Spieler-Kommentare',
+      raidNotesOptoutReasons: 'Abmeldungsgründe',
+      raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
+    },
 };
 
 export function getTranslations(language: string): Translations {

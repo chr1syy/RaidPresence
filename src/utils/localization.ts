@@ -246,6 +246,19 @@ interface Translations {
     feedbackFrustrating: string;
     moodScore: string;
     guildMorale: string;
+    raidFeedbackSummary: string;
+    feedbackBreakdown: string;
+    commonWords: string;
+    overallSentiment: string;
+    trend: string;
+    bestRaids: string;
+    worstRaids: string;
+    roleMorale: string;
+    lastDays: string;
+    noFeedback: string;
+    trendImproving: string;
+    trendStable: string;
+    trendDeclining: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -487,14 +500,27 @@ const translations: Record<SupportedLanguage, Translations> = {
          badgesReason: 'Reason',
           badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
 
-          // Feedback system (Phase 3.2)
-          raidFeedback: 'Raid Feedback',
-          howDidRaidGo: 'How did the raid go?',
-          feedbackGreat: 'Great 😊',
-          feedbackOkay: 'Okay 😐',
-          feedbackFrustrating: 'Frustrating 😞',
-          moodScore: 'Mood Score',
-          guildMorale: 'Guild Morale',
+           // Feedback system (Phase 3.2)
+           raidFeedback: 'Raid Feedback',
+           howDidRaidGo: 'How did the raid go?',
+           feedbackGreat: 'Great 😊',
+           feedbackOkay: 'Okay 😐',
+           feedbackFrustrating: 'Frustrating 😞',
+           moodScore: 'Mood Score',
+           guildMorale: 'Guild Morale',
+           raidFeedbackSummary: 'Raid Feedback Summary: {raid}',
+           feedbackBreakdown: 'Feedback Breakdown',
+           commonWords: 'Common Words',
+           overallSentiment: 'Overall Sentiment',
+           trend: 'Trend',
+           bestRaids: 'Highest Rated Raids',
+           worstRaids: 'Lowest Rated Raids',
+           roleMorale: 'Morale by Role',
+           lastDays: 'Last {days} days',
+           noFeedback: 'No feedback submitted yet',
+           trendImproving: 'Improving',
+           trendStable: 'Stable',
+           trendDeclining: 'Declining',
     },
 
   de: {
@@ -735,14 +761,27 @@ const translations: Record<SupportedLanguage, Translations> = {
          badgesReason: 'Grund',
           badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
 
-          // Feedback system (Phase 3.2)
-          raidFeedback: 'Raid-Feedback',
-          howDidRaidGo: 'Wie lief der Raid?',
-          feedbackGreat: 'Großartig 😊',
-          feedbackOkay: 'Okay 😐',
-          feedbackFrustrating: 'Frustrierend 😞',
-          moodScore: 'Stimmungs-Score',
-          guildMorale: 'Gilden-Moral',
+           // Feedback system (Phase 3.2)
+           raidFeedback: 'Raid-Feedback',
+           howDidRaidGo: 'Wie lief der Raid?',
+           feedbackGreat: 'Großartig 😊',
+           feedbackOkay: 'Okay 😐',
+           feedbackFrustrating: 'Frustrierend 😞',
+           moodScore: 'Stimmungs-Score',
+           guildMorale: 'Gilden-Moral',
+           raidFeedbackSummary: 'Raid-Feedback-Zusammenfassung: {raid}',
+           feedbackBreakdown: 'Feedback-Aufschlüsselung',
+           commonWords: 'Häufige Wörter',
+           overallSentiment: 'Gesamtstimmung',
+           trend: 'Trend',
+           bestRaids: 'Am besten bewertete Raids',
+           worstRaids: 'Am schlechtesten bewertete Raids',
+           roleMorale: 'Moral nach Rolle',
+           lastDays: 'Letzte {days} Tage',
+           noFeedback: 'Noch kein Feedback abgegeben',
+           trendImproving: 'Verbessernd',
+           trendStable: 'Stabil',
+           trendDeclining: 'Sinkend',
     },
 };
 

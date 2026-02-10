@@ -25,6 +25,9 @@ import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
+import { getBadgeEmoji, formatPlayerBadgesDetailed, getBadgeName } from '../utils/badgeFormatter';
+import { awardManualBadge } from '../utils/badgeManager';
+import { BadgeType } from '@prisma/client';
 
 /**
  * Build role mentions from role IDs or names
@@ -336,7 +339,55 @@ const command: Command = {
             .setRequired(false)
         )
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('badges')
+        .setDescription('View badges for a player')
+        .addUserOption((option) =>
+          option
+            .setName('player')
+            .setDescription('The player to check badges for')
+            .setRequired(false)
+        )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('award-badge')
+         .setDescription('Award a badge to a player (admin only)')
+         .addUserOption((option) =>
+           option
+             .setName('player')
+             .setDescription('The player to award to')
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('badge')
+             .setDescription('Which badge to award')
+             .addChoices(
+               { name: 'Perfect Attendance', value: 'PERFECT_ATTENDANCE' },
+               { name: 'Tank Main', value: 'TANK_MAIN' },
+               { name: 'Healer Hero', value: 'HEALER_HERO' },
+               { name: 'Damage Dealer', value: 'DAMAGE_DEALER' },
+               { name: 'Sharpshooter', value: 'SHARPSHOOTER' },
+               { name: 'Always On Time', value: 'ALWAYS_ON_TIME' },
+               { name: 'Early Bird', value: 'EARLY_BIRD' },
+               { name: 'Team Player', value: 'TEAM_PLAYER' },
+               { name: 'Reliable Member', value: 'RELIABLE_MEMBER' },
+               { name: 'Rising Star', value: 'RISING_STAR' },
+               { name: 'Veteran Raider', value: 'VETERAN_RAIDER' },
+               { name: 'Leader\'s Choice', value: 'LEADERS_CHOICE' },
+             )
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('reason')
+             .setDescription('Why award this badge? (optional)')
+             .setRequired(false)
+         )
+     )
+     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
@@ -375,10 +426,14 @@ const command: Command = {
           await handlePinCommand(interaction);
         } else if (subcommand === 'unpin') {
           await handleUnpinCommand(interaction);
-        } else if (subcommand === 'search') {
-          await handleSearchCommand(interaction);
-        }
-      },
+          } else if (subcommand === 'search') {
+            await handleSearchCommand(interaction);
+          } else if (subcommand === 'badges') {
+            await handleBadgesCommand(interaction);
+          } else if (subcommand === 'award-badge') {
+            await handleAwardBadgeCommand(interaction);
+          }
+       },
    };
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
@@ -2953,4 +3008,120 @@ async function handleSearchCommand(interaction: ChatInputCommandInteraction) {
   }
 }
 
-   export default command;
+async function handleBadgesCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const playerOption = interaction.options.get('player', false);
+  const targetUser = playerOption ? playerOption.user : interaction.user;
+  if (!targetUser) {
+    await interaction.reply({
+      content: '❌ Unable to determine target user.',
+      ephemeral: true,
+    });
+    return;
+  }
+  const targetUserId = targetUser.id;
+
+  // Check if target user is in the guild
+  const member = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+  if (!member) {
+    await interaction.reply({
+      content: '❌ The specified user is not in this server.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // Get guild language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+  const language = guildData?.language || 'en';
+
+  // Get the embed
+  const embed = await formatPlayerBadgesDetailed(targetUserId, interaction.guild.id, language, member.displayName);
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+}
+
+async function handleAwardBadgeCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: false });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to award badges.',
+    });
+    return;
+  }
+
+  const player = interaction.options.getUser('player', true);
+  const badgeType = interaction.options.getString('badge', true) as BadgeType;
+  const reason = interaction.options.getString('reason');
+
+  // Check if player is in guild
+  const guildMember = interaction.guild.members.cache.get(player.id);
+  if (!guildMember) {
+    await interaction.editReply({
+      content: '❌ Player not found in this server.',
+    });
+    return;
+  }
+
+  // Award badge
+  const awarded = await awardManualBadge(player.id, interaction.guild.id, badgeType, interaction.user.id, reason || undefined);
+
+  if (!awarded) {
+    await interaction.editReply({
+      content: '❌ Badge could not be awarded (player may already have it).',
+    });
+    return;
+  }
+
+  // Get guild language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+  const language = guildData?.language || 'en';
+  const trans = getTranslations(language);
+
+  // Get badge name and emoji
+  const badgeName = getBadgeName(badgeType, language);
+  const emoji = getBadgeEmoji(badgeType);
+
+  // Build celebration message
+  let message = trans.badgeEarned
+    ? trans.badgeEarned.replace('{playerName}', guildMember.displayName).replace('{badgeName}', `${emoji} ${badgeName}`)
+    : `${emoji} ${guildMember.displayName} earned ${badgeName} badge!`;
+
+  if (reason) {
+    message += ` Reason: ${reason}`;
+  }
+
+  // Send celebration to channel
+  if (interaction.channel && 'send' in interaction.channel) {
+    await interaction.channel.send(message);
+  }
+
+  // Reply with success
+  await interaction.editReply({
+    content: `✅ Badge awarded successfully!`,
+  });
+}
+
+export default command;

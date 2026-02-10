@@ -158,6 +158,14 @@ interface Translations {
   raidNotesPlayerComments: string;
   raidNotesOptoutReasons: string;
   raidNotesNone: string;
+
+  // Raid Archive Feature (Phase 2.4)
+  archiveSearchResults: string;
+  raidArchived: string;
+  raidRestored: string;
+  archiveNotConfigured: string;
+  raidAlreadyArchived: string;
+  raidNotArchived: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -319,6 +327,14 @@ const translations: Record<SupportedLanguage, Translations> = {
       raidNotesPlayerComments: 'Player Comments',
       raidNotesOptoutReasons: 'Opt-Out Reasons',
       raidNotesNone: 'No notes or comments for this raid.',
+
+      // Raid Archive Feature (Phase 2.4)
+      archiveSearchResults: 'Archive Search Results',
+      raidArchived: 'Raid Archived',
+      raidRestored: 'Raid Restored',
+      archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
+      raidAlreadyArchived: 'This raid is already archived.',
+      raidNotArchived: 'This raid is not archived.',
     },
 
   de: {
@@ -470,15 +486,23 @@ const translations: Record<SupportedLanguage, Translations> = {
      attendanceAttended: 'Teilgenommen',
      attendanceMissed: 'Verpasst',
 
-     // Raid Notes Feature (Phase 2.3)
-      optoutReason: 'Abmeldungsgrund',
-      optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
-      optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
-      playerNoteAdded: 'Notiz hinzugefügt',
-      raidNotes: 'Raid-Notizen',
-      raidNotesPlayerComments: 'Spieler-Kommentare',
-      raidNotesOptoutReasons: 'Abmeldungsgründe',
-      raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
+      // Raid Notes Feature (Phase 2.3)
+       optoutReason: 'Abmeldungsgrund',
+       optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
+       optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
+       playerNoteAdded: 'Notiz hinzugefügt',
+       raidNotes: 'Raid-Notizen',
+       raidNotesPlayerComments: 'Spieler-Kommentare',
+       raidNotesOptoutReasons: 'Abmeldungsgründe',
+       raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
+
+       // Raid Archive Feature (Phase 2.4)
+       archiveSearchResults: 'Archiv-Suchergebnisse',
+       raidArchived: 'Raid archiviert',
+       raidRestored: 'Raid wiederhergestellt',
+       archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
+       raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
+       raidNotArchived: 'Dieser Raid ist nicht archiviert.',
     },
 };
 

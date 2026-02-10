@@ -69,6 +69,7 @@ model Raid {
 
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
+  feedback   RaidFeedback[]
 
   @@index([guildId, status])
   @@index([raidDate])
@@ -140,4 +141,25 @@ model RaidAttendance {
   @@unique([raidId, userId])
   @@index([raidId, status])
   @@index([userId, guildId, status])
+}
+
+// Feedback system (Phase 3.2)
+enum RaidMood {
+  GREAT
+  OKAY
+  FRUSTRATING
+}
+
+model RaidFeedback {
+  id        String    @id @default(cuid())
+  raidId    String
+  userId    String
+  mood      RaidMood
+  comment   String?   @db.Text
+  createdAt DateTime  @default(now())
+  
+  raid      Raid      @relation(fields: [raidId], references: [id], onDelete: Cascade)
+  
+  @@unique([raidId, userId])
+  @@index([raidId, mood])
 }

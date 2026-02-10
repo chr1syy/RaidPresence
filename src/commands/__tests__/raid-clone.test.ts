@@ -566,6 +566,134 @@ describe('handleCloneRaid()', () => {
       );
     });
 
+    it('should reject clone when computed raid date is in the past', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      // Use a date in the past
+      const interaction = buildMockInteraction({ date: { value: '2020-01-01' } });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('future'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject clone when channel is not sendable', async () => {
+      setupPrismaMocks();
+
+      // Create a channel object that exists but lacks 'send' method
+      const nonSendableChannel = {
+        id: 'channel-123',
+        isTextBased: jest.fn().mockReturnValue(true),
+        // No send method
+      };
+      // Remove 'send' by deleting it if present
+      delete (nonSendableChannel as any).send;
+
+      const interaction = buildMockInteraction({}, { channel: nonSendableChannel });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('send'),
+        })
+      );
+    });
+
+    it('should reject clone when date has invalid month', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      const interaction = buildMockInteraction({ date: { value: '2026-13-01' } });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Invalid month'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject clone when date has invalid day', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      const interaction = buildMockInteraction({ date: { value: '2026-06-32' } });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Invalid day'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject clone when time format is invalid', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      const interaction = buildMockInteraction({
+        date: { value: futureDateStr() },
+        time: { value: '7pm' },
+      });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('HH:MM'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject clone when time has invalid hour', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      const interaction = buildMockInteraction({
+        date: { value: futureDateStr() },
+        time: { value: '25:00' },
+      });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Invalid hour'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
+    it('should reject clone when time has invalid minute', async () => {
+      const sourceRaid = makeSourceRaid();
+      (prisma.raid.findUnique as jest.Mock).mockReset();
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(sourceRaid);
+
+      const interaction = buildMockInteraction({
+        date: { value: futureDateStr() },
+        time: { value: '19:60' },
+      });
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('Invalid minute'),
+        })
+      );
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
     it('should upsert UserPreference for each eligible member', async () => {
       const interaction = buildMockInteraction();
       await command.execute(interaction);

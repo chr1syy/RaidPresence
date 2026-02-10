@@ -1,6 +1,7 @@
 import { Client } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
+import { archiveRaid } from './archiveManager';
 
 export function startRaidScheduler(client: Client) {
   // Check every 2 minutes for expired raids
@@ -17,7 +18,7 @@ export function startRaidScheduler(client: Client) {
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
 }
 
-async function checkAndCloseExpiredRaids(client: Client) {
+export async function checkAndCloseExpiredRaids(client: Client) {
   const now = new Date();
 
   // Find all open raids that have expired
@@ -37,38 +38,57 @@ async function checkAndCloseExpiredRaids(client: Client) {
 
   console.log(`🕐 Found ${expiredRaids.length} expired raid(s) to close`);
 
-  for (const raid of expiredRaids) {
-    try {
-      // Update raid status to closed
-      await prisma.raid.update({
-        where: { id: raid.id },
-        data: { status: 'closed' },
-      });
+   for (const raid of expiredRaids) {
+     try {
+       // Update raid status to closed
+       await prisma.raid.update({
+         where: { id: raid.id },
+         data: { status: 'closed' },
+       });
 
-      // Update the raid message if it exists
-      if (raid.messageId && raid.channelId) {
-        try {
-          const channel = await client.channels.fetch(raid.channelId);
-          if (channel?.isTextBased() && 'messages' in channel) {
-            const message = await channel.messages.fetch(raid.messageId);
-            const embed = await createRaidEmbed(raid.id, raid.guild.language);
+         // Check if auto-archive is enabled for this guild
+         const shouldAutoArchive = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);
+         let archivedSuccessfully = false;
 
-            // Remove buttons when closed
-            await message.edit({
-              embeds: [embed],
-              components: [],
-            });
-
-            console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
+        // If auto-archive is enabled, archive the raid
+        if (shouldAutoArchive) {
+          try {
+            await archiveRaid(raid.id, raid.guildId, client);
+            archivedSuccessfully = true;
+            console.log(`✅ Auto-archived raid: ${raid.description} (${raid.id})`);
+          } catch (archiveError) {
+            console.error(`⚠️ Failed to auto-archive raid ${raid.id}:`, archiveError);
+            // Continue with regular closure even if archiving fails
           }
-        } catch (error) {
-          console.error(`Error updating message for raid ${raid.id}:`, error);
         }
-      } else {
-        console.log(`✅ Auto-closed raid (no message): ${raid.description} (${raid.id})`);
-      }
-    } catch (error) {
-      console.error(`Error closing raid ${raid.id}:`, error);
-    }
-  }
+
+        // Update the raid message if it exists (for non-archived raids or if archiving failed)
+        if (!archivedSuccessfully && raid.messageId && raid.channelId) {
+         try {
+           const channel = await client.channels.fetch(raid.channelId);
+           if (channel?.isTextBased() && 'messages' in channel) {
+             const message = await channel.messages.fetch(raid.messageId);
+             const embed = await createRaidEmbed(raid.id, raid.guild.language);
+
+             // Remove buttons when closed
+             await message.edit({
+               embeds: [embed],
+               components: [],
+             });
+
+              console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
+            }
+          } catch (error) {
+            console.error(`Error updating message for raid ${raid.id}:`, error);
+          }
+        } else if (archivedSuccessfully) {
+          console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})`);
+        } else if (raid.messageId && raid.channelId) {
+          // This case handles when shouldAutoArchive was false but we didn't have message to update
+          console.log(`✅ Auto-closed raid (no message update needed): ${raid.description} (${raid.id})`);
+        }
+     } catch (error) {
+       console.error(`Error closing raid ${raid.id}:`, error);
+     }
+   }
 }

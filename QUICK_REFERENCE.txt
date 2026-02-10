@@ -1,0 +1,242 @@
+================================================================================
+PR REVIEW - QUICK REFERENCE CARD
+================================================================================
+
+Repository: chr1syy/RaidPresence | PR: #4 | Date: 2026-02-10
+Total Comments: 10 | Total Issues: 10
+
+================================================================================
+ISSUES AT A GLANCE
+================================================================================
+
+CRITICAL (MUST FIX) ████████████████████████████████████ 40%
+  ✗ #1  Type Mismatch - getArchiveChannel (archiveManager.ts:226)
+  ✗ #2  Incomplete Deletion - archiveRaid (archiveManager.ts:78)
+  ✗ #3  Broken Pagination - searchArchive (archiveManager.ts:300)
+  ✗ #8  Interaction Timeout - handleOptOut (buttonHandler.ts:21)
+
+IMPORTANT (SHOULD FIX) ████████████████████████ 40%
+  ⚠ #5  Dead Code - Embed Limits (notesFormatter.ts:26)
+  ⚠ #6  Misleading Message - Truncation (notesFormatter.ts:41)
+  ⚠ #7  Missing i18n - Archive Labels (archiveFormatter.ts:53)
+  ⚠ #9  Missing i18n - Composition (compositionFormatter.ts:57)
+
+CLEANUP (NICE TO HAVE) ████████ 20%
+  • #4  Unused Variable - lowerQuery (archiveManager.ts:295)
+  • #10 Unused Import - getTranslations (compositionFormatter.ts:3)
+
+================================================================================
+FILES AFFECTED
+================================================================================
+
+src/utils/archiveManager.ts        [4 ISSUES: ✗✗✗•]  44%
+src/utils/notesFormatter.ts        [2 ISSUES: ⚠⚠]    20%
+src/utils/archiveFormatter.ts      [1 ISSUE:  ⚠]     10%
+src/events/buttonHandler.ts        [1 ISSUE:  ✗]     10%
+src/utils/compositionFormatter.ts  [2 ISSUES: ⚠•]    20%
+
+TOTAL: 5 FILES | 10 ISSUES
+
+================================================================================
+IMPLEMENTATION PRIORITY
+================================================================================
+
+PHASE 1: CRITICAL (4-6 hours)
+  ✓ archiveManager.ts (Issues #1, #2, #3, #4)
+  ✓ buttonHandler.ts (Issue #8)
+  → Do This First - Blocking issues
+
+PHASE 2: IMPORTANT (3-4 hours)
+  ✓ notesFormatter.ts (Issues #5, #6)
+  ✓ archiveFormatter.ts (Issue #7)
+  ✓ compositionFormatter.ts (Issue #9)
+  → Do This Second - Quality improvements
+
+PHASE 3: CLEANUP (30 minutes)
+  ✓ compositionFormatter.ts (Issue #10)
+  → Do This Last - Polish
+
+TOTAL: 7-11 hours implementation + 2-3 hours testing = 10-16 hours
+
+================================================================================
+SEVERITY BREAKDOWN
+================================================================================
+
+CRITICAL (4 issues) - 40%
+├── Type Safety: Issues #1, #2
+├── Database Logic: Issue #3
+└── Discord API: Issue #8
+
+IMPORTANT (4 issues) - 40%
+├── Dead Code: Issue #5
+├── User Confusion: Issue #6
+└── Localization: Issues #7, #9
+
+CLEANUP (2 issues) - 20%
+├── Unused Code: Issues #4, #10
+
+================================================================================
+ISSUE DETAILS
+================================================================================
+
+#1 CRITICAL - getArchiveChannel Type Mismatch
+   File: archiveManager.ts | Line: 226
+   Problem: Only accepts TextChannel, but NewsChannel is allowed
+   Impact: Configured news channels rejected at runtime
+   Fix: Change return type to Promise<TextChannel | NewsChannel>
+
+#2 CRITICAL - archiveRaid Incomplete Deletion
+   File: archiveManager.ts | Line: 78
+   Problem: Original message not deleted from NewsChannel
+   Impact: Archive operation leaves orphaned messages
+   Fix: Allow NewsChannel in isinstance check
+
+#3 CRITICAL - searchArchive Pagination Bug
+   File: archiveManager.ts | Line: 300
+   Problem: Player-name search client-side after pagination
+   Impact: Can't search by player name, missing results
+   Fix: Move to Prisma WHERE clause
+
+#4 CLEANUP - Unused Variable
+   File: archiveManager.ts | Line: 295
+   Problem: Variable lowerQuery declared but never used
+   Impact: Dead code
+   Fix: Remove the line
+
+#5 IMPORTANT - Dead Code Constants
+   File: notesFormatter.ts | Line: 26
+   Problem: Embed limits declared but never enforced
+   Impact: Embeds can exceed Discord limits
+   Fix: Enforce limits in formatRaidNotesEmbed()
+
+#6 IMPORTANT - Misleading Message
+   File: notesFormatter.ts | Line: 41
+   Problem: Shows total count instead of omitted count
+   Impact: User confusion about truncation
+   Fix: Use accurate omitted count or generic message
+
+#7 IMPORTANT - Missing i18n (Archive)
+   File: archiveFormatter.ts | Line: 53
+   Problem: Field names hardcoded in English
+   Impact: German guilds see English labels
+   Fix: Use trans.key for all field names
+
+#8 CRITICAL - Interaction Timeout
+   File: buttonHandler.ts | Line: 21
+   Problem: DB queries before response (>3 seconds)
+   Impact: Discord shows "Interaction failed"
+   Fix: Show modal OR defer, then do queries
+
+#9 IMPORTANT - Missing i18n (Composition)
+   File: compositionFormatter.ts | Line: 57
+   Problem: Field names and status messages hardcoded English
+   Impact: German guilds see mostly English
+   Fix: Use getTranslations and apply consistently
+
+#10 CLEANUP - Unused Import
+   File: compositionFormatter.ts | Line: 3
+   Problem: getTranslations imported but not used
+   Impact: Dead code
+   Fix: Remove import (add back for i18n fix)
+
+================================================================================
+QUICK ACTION CHECKLIST
+================================================================================
+
+CRITICAL (DO FIRST)
+  [ ] Issue #1: Type signature
+  [ ] Issue #2: Message deletion
+  [ ] Issue #3: Pagination logic
+  [ ] Issue #8: Interaction timeout
+  [ ] Issue #4: Remove variable
+
+IMPORTANT (DO SECOND)
+  [ ] Issue #5: Enforce limits
+  [ ] Issue #6: Fix message
+  [ ] Issue #7: Archive i18n
+  [ ] Issue #9: Composition i18n
+
+CLEANUP (DO LAST)
+  [ ] Issue #10: Remove import
+
+TESTING
+  [ ] Unit tests pass
+  [ ] Database pagination verified
+  [ ] Button timing <3 seconds
+  [ ] German language output correct
+  [ ] Embed sizes within limits
+
+BEFORE MERGE
+  [ ] All CRITICAL fixed
+  [ ] All IMPORTANT fixed
+  [ ] CLEANUP done
+  [ ] No linting errors
+  [ ] Full test suite passes
+  [ ] Code reviewed
+
+================================================================================
+EFFORT ESTIMATE BY ISSUE
+================================================================================
+
+#1 Type Mismatch       ████ 30 minutes
+#2 Message Deletion    ████ 30 minutes
+#3 Pagination Bug      ███████ 1 hour
+#4 Remove Variable     █ 5 minutes
+#5 Embed Limits        ██████ 1 hour
+#6 Fix Message         ███ 30 minutes
+#7 Archive i18n        ████ 45 minutes
+#8 Interaction Timeout ███████ 1.5 hours
+#9 Composition i18n    ████ 45 minutes
+#10 Remove Import      █ 5 minutes
+
+TOTAL: 7-11 hours
+
+================================================================================
+DOCUMENT REFERENCE
+================================================================================
+
+Quick Overview (5 min):
+  → PR_REVIEW_SUMMARY.txt
+
+Detailed Analysis (30 min):
+  → PR_REVIEW_ANALYSIS.md
+
+Implementation Guide (Reference):
+  → PR_REVIEW_CODE_FIXES.md
+
+Action Items & Planning (15 min):
+  → PR_REVIEW_ACTION_ITEMS.md
+
+Full Documentation (Index):
+  → README_PR_REVIEW.md
+
+This Quick Reference:
+  → QUICK_REFERENCE.txt
+
+================================================================================
+KEY POINTS
+================================================================================
+
+1. 4 CRITICAL issues block merge
+2. 4 IMPORTANT issues need fixing
+3. 2 CLEANUP items for polish
+4. 5 files affected
+5. 10-16 hours total effort
+6. Phase 1 (Critical) first
+7. Test thoroughly especially:
+   - NewsChannel support
+   - Database pagination
+   - Interaction timeout (<3s)
+   - German language output
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+MUST DO (Before Merge)
+  → Fix all 4 CRITICAL issues
+  → Run full test suite
+  → Verify with both channel types
+  → Test button interaction timing
+
+S

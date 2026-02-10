@@ -54,6 +54,8 @@ interface Translations {
 
   // Clone-specific messages
   cloneRaidSuccess: string;
+  cloneNoRoles: string;
+  cloneDefaultTitle: string;
 
   // Edit-specific messages
   raidEditDateUpdated: string;
@@ -96,6 +98,18 @@ interface Translations {
   // Raid reminder
   reminderTitle: string;
   reminderMessage: string;
+  customMessage: string;
+  optedOutPlayers: string;
+  noOptedOutPlayers: string;
+
+  // Status dashboard command
+  statusTitle: string;
+  statusNoUpcomingRaids: string;
+  statusRoster: string;
+  statusFull: string;
+  statusGood: string;
+  statusLow: string;
+  statusTimeUntil: string;
 
   // Stats command
   statsRaidTitle: string;
@@ -114,6 +128,83 @@ interface Translations {
   statsPeriodMonth: string;
   statsPeriodAll: string;
   statsNoRaidsFound: string;
+
+   // Composition command
+   compositionAnalysis: string;
+   compositionActivePlayers: string;
+   compositionCurrentComposition: string;
+   compositionStatus: string;
+   compositionRoleAnalysis: string;
+   compositionPlayerSuggestions: string;
+   compositionSuccessLikelihood: string;
+   compositionFactors: string;
+   compositionNeedMore: string;
+   compositionExtraPlayers: string;
+   compositionCountFine: string;
+   compositionNoSuggestions: string;
+   compositionAnalyzedAt: string;
+    compositionTanks: string;
+    compositionHealers: string;
+    compositionMeleeDps: string;
+    compositionRangedDps: string;
+    compositionReady: string;
+    compositionNeedsTanks: string;
+    compositionNeedsHealers: string;
+    compositionNeedsDps: string;
+    compositionOverstockedTanks: string;
+    compositionOverstockedHealers: string;
+    compositionOverstockedDps: string;
+    compositionUnknown: string;
+
+    // Attendance command
+   attendanceRecord: string;
+   attendanceRaidsInvited: string;
+  attendanceRaidsAttended: string;
+  attendanceOptedOut: string;
+  attendanceRunningLate: string;
+  attendanceReliabilityScore: string;
+  attendanceTrend: string;
+  attendanceMainRole: string;
+  attendanceAltRoles: string;
+  attendanceAvgResponseTime: string;
+  attendanceRecentRaids: string;
+  attendancePlayerNotFound: string;
+  attendancePeriodMonth: string;
+  attendancePeriodQuarter: string;
+  attendancePeriodAll: string;
+  attendanceNoRaids: string;
+  attendanceAttended: string;
+  attendanceMissed: string;
+
+  // Raid Notes Feature (Phase 2.3)
+  optoutReason: string;
+  optoutReasonLabel: string;
+  optoutReasonSubmitted: string;
+  playerNoteAdded: string;
+  raidNotes: string;
+  raidNotesPlayerComments: string;
+  raidNotesOptoutReasons: string;
+  raidNotesNone: string;
+
+   // Raid Archive Feature (Phase 2.4)
+    archiveSearchResults: string;
+    archiveSearchQuery: string;
+    archiveSearchPeriod: string;
+    archiveSearchNoResults: string;
+    archiveSearchNone: string;
+    archiveDate: string;
+    archiveAttendance: string;
+    archiveParticipants: string;
+    archiveRaidId: string;
+    archiveShowingResults: string;
+    archiveFoundCount: string;
+    archiveFoundCountSingular: string;
+    raidArchived: string;
+    archiveMovedNotification: string;
+    raidRestored: string;
+    archiveNotConfigured: string;
+    raidAlreadyArchived: string;
+    raidNotArchived: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -171,6 +262,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
     // Clone-specific messages
     cloneRaidSuccess: 'Cloned "{title}" to {date} with {count} members!',
+    cloneNoRoles: 'Source raid has no roles configured. Cannot clone.',
+    cloneDefaultTitle: 'Cloned Raid',
 
     // Edit-specific messages
     raidEditDateUpdated: 'Date/time updated to ${date}',
@@ -213,6 +306,18 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid Reminder',
     reminderMessage: 'The raid **{title}** starts <t:{timestamp}:R>!\n\nPlease confirm your attendance if you haven\'t already.',
+    customMessage: 'Message from Raid Leader',
+    optedOutPlayers: 'Currently Opted Out',
+    noOptedOutPlayers: 'No one has opted out.',
+
+    // Status dashboard command
+    statusTitle: 'Upcoming Raids',
+    statusNoUpcomingRaids: 'No upcoming raids scheduled.',
+    statusRoster: 'Roster',
+    statusFull: 'FULL',
+    statusGood: 'GOOD',
+    statusLow: 'LOW',
+    statusTimeUntil: 'Time Until',
 
     // Stats command
     statsRaidTitle: 'Statistics: {title}',
@@ -230,8 +335,85 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodWeek: 'Last 7 days',
     statsPeriodMonth: 'Last 30 days',
     statsPeriodAll: 'All time',
-    statsNoRaidsFound: 'No raids found for this period.',
-  },
+     statsNoRaidsFound: 'No raids found for this period.',
+
+      // Composition command
+      compositionAnalysis: 'Composition Analysis: {raid}',
+      compositionActivePlayers: 'Active Players',
+      compositionCurrentComposition: 'Current Composition',
+      compositionStatus: 'Status',
+      compositionRoleAnalysis: 'Role Analysis',
+      compositionPlayerSuggestions: 'Player Suggestions',
+      compositionSuccessLikelihood: 'Success Likelihood',
+      compositionFactors: 'Factors',
+      compositionNeedMore: 'Need {count} more {role}(s)',
+      compositionExtraPlayers: '{count} extra {role}(s)',
+      compositionCountFine: '{role} count is fine',
+      compositionNoSuggestions: 'No suggestions available',
+      compositionAnalyzedAt: 'Analyzed at',
+       compositionTanks: 'Tanks',
+       compositionHealers: 'Healers',
+       compositionMeleeDps: 'Melee DPS',
+       compositionRangedDps: 'Ranged DPS',
+       compositionReady: '✅ Raid composition is ready!',
+       compositionNeedsTanks: '❌ Need more tanks',
+       compositionNeedsHealers: '❌ Need more healers',
+       compositionNeedsDps: '❌ Need more DPS',
+       compositionOverstockedTanks: '⚠️ Too many tanks',
+       compositionOverstockedHealers: '⚠️ Too many healers',
+       compositionOverstockedDps: '⚠️ Too many DPS',
+       compositionUnknown: 'Status unknown',
+
+      // Attendance command
+     attendanceRecord: 'Attendance Record: {player}',
+    attendanceRaidsInvited: 'Raids Invited',
+    attendanceRaidsAttended: 'Raids Attended',
+    attendanceOptedOut: 'Opted Out',
+    attendanceRunningLate: 'Running Late',
+    attendanceReliabilityScore: 'Reliability Score',
+    attendanceTrend: 'Trend',
+    attendanceMainRole: 'Main Role',
+    attendanceAltRoles: 'Alt Roles',
+    attendanceAvgResponseTime: 'Avg Response Time',
+    attendanceRecentRaids: 'Recent Raids',
+    attendancePlayerNotFound: 'Player {player} has no raid history in this server.',
+    attendancePeriodMonth: 'Last 30 days',
+    attendancePeriodQuarter: 'Last 90 days',
+    attendancePeriodAll: 'All time',
+     attendanceNoRaids: 'No raids found for this period.',
+     attendanceAttended: 'Attended',
+     attendanceMissed: 'Missed',
+
+      // Raid Notes Feature (Phase 2.3)
+      optoutReason: 'Opt Out Reason',
+      optoutReasonLabel: 'Why are you opting out? (optional)',
+      optoutReasonSubmitted: '✅ You have opted out of this raid.',
+      playerNoteAdded: 'Note added',
+      raidNotes: 'Raid Notes',
+      raidNotesPlayerComments: 'Player Comments',
+      raidNotesOptoutReasons: 'Opt-Out Reasons',
+      raidNotesNone: 'No notes or comments for this raid.',
+
+       // Raid Archive Feature (Phase 2.4)
+        archiveSearchResults: 'Archive Search Results',
+        archiveSearchQuery: 'Query',
+        archiveSearchPeriod: 'Period',
+        archiveSearchNoResults: 'No archived raids match your search.',
+        archiveSearchNone: 'No results',
+        archiveDate: 'Date',
+        archiveAttendance: 'Attendance',
+        archiveParticipants: 'Participants',
+        archiveRaidId: 'Raid ID',
+        archiveShowingResults: 'Showing 10 of {total} results. Use more specific filters to narrow down.',
+         archiveFoundCount: '{count} archived raids found',
+         archiveFoundCountSingular: '1 archived raid found',
+         raidArchived: 'Raid Archived',
+        archiveMovedNotification: 'has been moved to {channel}',
+        raidRestored: 'Raid Restored',
+        archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
+        raidAlreadyArchived: 'This raid is already archived.',
+        raidNotArchived: 'This raid is not archived.',
+    },
 
   de: {
     // Raid embed
@@ -287,6 +469,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
     // Clone-specific messages
     cloneRaidSuccess: '"{title}" geklont auf {date} mit {count} Mitgliedern!',
+    cloneNoRoles: 'Quell-Raid hat keine Rollen konfiguriert. Klonen nicht möglich.',
+    cloneDefaultTitle: 'Geklonter Raid',
 
     // Edit-specific messages
     raidEditDateUpdated: 'Datum/Uhrzeit aktualisiert auf ${date}',
@@ -329,6 +513,18 @@ const translations: Record<SupportedLanguage, Translations> = {
     // Raid reminder
     reminderTitle: '🔔 Raid-Erinnerung',
     reminderMessage: 'Der Raid **{title}** beginnt <t:{timestamp}:R>!\n\nBitte bestätige deine Teilnahme, falls du es noch nicht getan hast.',
+    customMessage: 'Nachricht vom Raidleiter',
+    optedOutPlayers: 'Derzeit abgemeldet',
+    noOptedOutPlayers: 'Niemand hat sich abgemeldet.',
+
+    // Status dashboard command
+    statusTitle: 'Anstehende Raids',
+    statusNoUpcomingRaids: 'Keine anstehenden Raids geplant.',
+    statusRoster: 'Aufstellung',
+    statusFull: 'VOLL',
+    statusGood: 'GUT',
+    statusLow: 'NIEDRIG',
+    statusTimeUntil: 'Zeit bis',
 
     // Stats command
     statsRaidTitle: 'Statistiken: {title}',
@@ -346,8 +542,85 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodWeek: 'Letzte 7 Tage',
     statsPeriodMonth: 'Letzte 30 Tage',
     statsPeriodAll: 'Gesamt',
-    statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
-  },
+     statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
+
+      // Composition command
+      compositionAnalysis: 'Zusammensetzungsanalyse: {raid}',
+      compositionActivePlayers: 'Aktive Spieler',
+      compositionCurrentComposition: 'Aktuelle Zusammensetzung',
+      compositionStatus: 'Status',
+      compositionRoleAnalysis: 'Rollenanalyse',
+      compositionPlayerSuggestions: 'Spielervorschläge',
+      compositionSuccessLikelihood: 'Erfolgschance',
+      compositionFactors: 'Faktoren',
+      compositionNeedMore: 'Benötige {count} mehr {role}',
+      compositionExtraPlayers: '{count} extra {role}',
+      compositionCountFine: '{role} Anzahl ist in Ordnung',
+      compositionNoSuggestions: 'Keine Vorschläge verfügbar',
+      compositionAnalyzedAt: 'Analysiert um',
+       compositionTanks: 'Tanks',
+       compositionHealers: 'Heiler',
+       compositionMeleeDps: 'Nahkampf DPS',
+       compositionRangedDps: 'Fernkampf DPS',
+       compositionReady: '✅ Raid-Zusammensetzung ist bereit!',
+       compositionNeedsTanks: '❌ Mehr Tanks erforderlich',
+       compositionNeedsHealers: '❌ Mehr Heiler erforderlich',
+       compositionNeedsDps: '❌ Mehr DPS erforderlich',
+       compositionOverstockedTanks: '⚠️ Zu viele Tanks',
+       compositionOverstockedHealers: '⚠️ Zu viele Heiler',
+       compositionOverstockedDps: '⚠️ Zu viel DPS',
+       compositionUnknown: 'Status unbekannt',
+
+      // Attendance command
+     attendanceRecord: 'Anwesenheit: {player}',
+    attendanceRaidsInvited: 'Raids eingeladen',
+    attendanceRaidsAttended: 'Raids teilgenommen',
+    attendanceOptedOut: 'Abgemeldet',
+    attendanceRunningLate: 'Verspätet',
+    attendanceReliabilityScore: 'Zuverlässigkeit',
+    attendanceTrend: 'Trend',
+    attendanceMainRole: 'Hauptrolle',
+    attendanceAltRoles: 'Nebenrollen',
+    attendanceAvgResponseTime: 'Durchschn. Antwortzeit',
+    attendanceRecentRaids: 'Letzte Raids',
+    attendancePlayerNotFound: 'Spieler {player} hat keine Raid-Historie auf diesem Server.',
+    attendancePeriodMonth: 'Letzte 30 Tage',
+    attendancePeriodQuarter: 'Letzte 90 Tage',
+    attendancePeriodAll: 'Gesamt',
+     attendanceNoRaids: 'Keine Raids für diesen Zeitraum gefunden.',
+     attendanceAttended: 'Teilgenommen',
+     attendanceMissed: 'Verpasst',
+
+      // Raid Notes Feature (Phase 2.3)
+       optoutReason: 'Abmeldungsgrund',
+       optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
+       optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
+       playerNoteAdded: 'Notiz hinzugefügt',
+       raidNotes: 'Raid-Notizen',
+       raidNotesPlayerComments: 'Spieler-Kommentare',
+       raidNotesOptoutReasons: 'Abmeldungsgründe',
+       raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
+
+        // Raid Archive Feature (Phase 2.4)
+        archiveSearchResults: 'Archiv-Suchergebnisse',
+        archiveSearchQuery: 'Abfrage',
+        archiveSearchPeriod: 'Zeitraum',
+        archiveSearchNoResults: 'Keine archivierten Raids entsprechen deiner Suche.',
+        archiveSearchNone: 'Keine Ergebnisse',
+        archiveDate: 'Datum',
+        archiveAttendance: 'Teilnahme',
+        archiveParticipants: 'Teilnehmer',
+        archiveRaidId: 'Raid ID',
+          archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
+          archiveFoundCount: '{count} archivierte Raids gefunden',
+          archiveFoundCountSingular: '1 archivierter Raid gefunden',
+          raidArchived: 'Raid archiviert',
+         archiveMovedNotification: 'wurde zu {channel} verschoben',
+         raidRestored: 'Raid wiederhergestellt',
+        archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
+        raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
+        raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+    },
 };
 
 export function getTranslations(language: string): Translations {

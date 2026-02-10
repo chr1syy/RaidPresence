@@ -225,6 +225,28 @@ describe('calculateGuildStats()', () => {
     expect(stats.topAttendees[0].raidsAttended).toBe(1);
   });
 
+  it('should handle raid with empty attendance array in guild stats', () => {
+    const raids = [
+      {
+        id: 'raid-1',
+        attendance: [], // empty raid
+      },
+      {
+        id: 'raid-2',
+        attendance: [
+          makeAttendance({ userId: 'u1', username: 'Player1', status: 'attending' }),
+        ],
+      },
+    ];
+
+    const stats = calculateGuildStats(raids);
+
+    expect(stats.totalRaids).toBe(2);
+    expect(stats.totalRaiders).toBe(1);
+    // Raid 1: 0/0 = 0%, Raid 2: 1/1 = 100% => avg 50%
+    expect(stats.averageAttendanceRate).toBe(50);
+  });
+
   it('should calculate guild class distribution from active players across raids', () => {
     const raids = [
       {

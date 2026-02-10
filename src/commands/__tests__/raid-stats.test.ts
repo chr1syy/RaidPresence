@@ -419,6 +419,69 @@ describe('/raid stats command', () => {
     });
   });
 
+  // ── Embed Formatting ────────────────────────────────────────
+
+  describe('embed formatting', () => {
+    it('should use green embed color for high attendance single raid', async () => {
+      // All attending = 100% => green
+      const allAttending = [
+        { id: 'a1', raidId: 'raid-1', userId: 'u1', guildId: 'guild-123', username: 'P1', status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' },
+        { id: 'a2', raidId: 'raid-1', userId: 'u2', guildId: 'guild-123', username: 'P2', status: 'attending', wowClass: 'Mage', wowSpec: 'Fire' },
+      ];
+      const raid = makeRaid({ attendance: allAttending });
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValue(raid);
+
+      const interaction = buildMockInteraction({ raid_id: { value: 'raid-1' } });
+      await command.execute(interaction);
+
+      const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+      expect(embed.data.color).toBe(0x00ae86); // green
+    });
+
+    it('should use red embed color for low attendance single raid', async () => {
+      // 1 attending out of 5 = 20% => red
+      const lowAttendance = [
+        { id: 'a1', raidId: 'raid-1', userId: 'u1', guildId: 'guild-123', username: 'P1', status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' },
+        { id: 'a2', raidId: 'raid-1', userId: 'u2', guildId: 'guild-123', username: 'P2', status: 'opted_out', wowClass: null, wowSpec: null },
+        { id: 'a3', raidId: 'raid-1', userId: 'u3', guildId: 'guild-123', username: 'P3', status: 'opted_out', wowClass: null, wowSpec: null },
+        { id: 'a4', raidId: 'raid-1', userId: 'u4', guildId: 'guild-123', username: 'P4', status: 'opted_out', wowClass: null, wowSpec: null },
+        { id: 'a5', raidId: 'raid-1', userId: 'u5', guildId: 'guild-123', username: 'P5', status: 'opted_out', wowClass: null, wowSpec: null },
+      ];
+      const raid = makeRaid({ attendance: lowAttendance });
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValue(raid);
+
+      const interaction = buildMockInteraction({ raid_id: { value: 'raid-1' } });
+      await command.execute(interaction);
+
+      const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+      expect(embed.data.color).toBe(0xff4500); // red
+    });
+
+    it('should include footer with raid ID in single raid stats', async () => {
+      const raid = makeRaid({ id: 'my-unique-raid-123' });
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValue(raid);
+
+      const interaction = buildMockInteraction({ raid_id: { value: 'my-unique-raid-123' } });
+      await command.execute(interaction);
+
+      const embed = interaction.editReply.mock.calls[0][0].embeds[0];
+      expect(embed.data.footer.text).toBe('Raid ID: my-unique-raid-123');
+    });
+
+    it('should filter guild stats by month period date range', async () => {
+      const raids = [makeRaid()];
+      (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+      const interaction = buildMockInteraction({ period: { value: 'month' } });
+      await command.execute(interaction);
+
+      const findManyArgs = (prisma.raid.findMany as jest.Mock).mock.calls[0][0];
+      const startDate = findManyArgs.where.raidDate.gte;
+      const daysDiff = (Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      expect(daysDiff).toBeCloseTo(30, 0);
+    });
+  });
+
   // ── Error Cases ─────────────────────────────────────────────
 
   describe('error cases', () => {

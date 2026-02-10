@@ -103,6 +103,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // Import button handler
     const buttonHandler = await import('./events/buttonHandler');
     await buttonHandler.handleButton(interaction);
+  } else if (interaction.isModalSubmit()) {
+    // Import modal handler
+    const buttonHandler = await import('./events/buttonHandler');
+    await buttonHandler.handleModalSubmit(interaction);
   } else if (interaction.isStringSelectMenu()) {
     // Import select menu handler
     const selectHandler = await import('./events/selectHandler');

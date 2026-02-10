@@ -239,30 +239,14 @@ interface Translations {
    badgesReason: string;
     badgeEarned: string;
 
-    // Feedback system (Phase 3.2)
-    raidFeedback: string;
-    howDidRaidGo: string;
-    feedbackGreat: string;
-    feedbackOkay: string;
-    feedbackFrustrating: string;
-    moodScore: string;
-    guildMorale: string;
-    raidFeedbackSummary: string;
-    feedbackBreakdown: string;
-    commonWords: string;
-    overallSentiment: string;
-    trend: string;
-    bestRaids: string;
-    worstRaids: string;
-    roleMorale: string;
-    lastDays: string;
-    noFeedback: string;
-    trendImproving: string;
-    trendStable: string;
-    trendDeclining: string;
-}
+    // Admin Tools (Phase 3.3)
+    duplicateRaidDetected: string;
+    raidAlreadyExists: string;
+    closedRaidsCount: string;
+    raidSummary: string;
+    finalRoster: string;
 
-const translations: Record<SupportedLanguage, Translations> = {
+const translations = {
   en: {
     // Raid embed
     raidEvent: 'Raid Event',
@@ -500,29 +484,36 @@ const translations: Record<SupportedLanguage, Translations> = {
          badgesEarnedOn: 'Earned on',
          badgesAwardedBy: 'Awarded by',
          badgesReason: 'Reason',
-          badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
+           badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
 
-           // Feedback system (Phase 3.2)
-           raidFeedback: 'Raid Feedback',
-           howDidRaidGo: 'How did the raid go?',
-           feedbackGreat: 'Great 😊',
-           feedbackOkay: 'Okay 😐',
-           feedbackFrustrating: 'Frustrating 😞',
-           moodScore: 'Mood Score',
-           guildMorale: 'Guild Morale',
-           raidFeedbackSummary: 'Raid Feedback Summary: {raid}',
-           feedbackBreakdown: 'Feedback Breakdown',
-           commonWords: 'Common Words',
-           overallSentiment: 'Overall Sentiment',
-           trend: 'Trend',
-           bestRaids: 'Highest Rated Raids',
-           worstRaids: 'Lowest Rated Raids',
-           roleMorale: 'Morale by Role',
-           lastDays: 'Last {days} days',
-           noFeedback: 'No feedback submitted yet',
-           trendImproving: 'Improving',
-           trendStable: 'Stable',
-           trendDeclining: 'Declining',
+            // Feedback system (Phase 3.2)
+            raidFeedback: 'Raid Feedback',
+            howDidRaidGo: 'How did the raid go?',
+            feedbackGreat: 'Great 😊',
+            feedbackOkay: 'Okay 😐',
+            feedbackFrustrating: 'Frustrating 😞',
+            moodScore: 'Mood Score',
+            guildMorale: 'Guild Morale',
+            raidFeedbackSummary: 'Raid Feedback Summary: {raid}',
+            feedbackBreakdown: 'Feedback Breakdown',
+            commonWords: 'Common Words',
+            overallSentiment: 'Overall Sentiment',
+            trend: 'Trend',
+            bestRaids: 'Highest Rated Raids',
+            worstRaids: 'Lowest Rated Raids',
+            roleMorale: 'Morale by Role',
+            lastDays: 'Last {days} days',
+            noFeedback: 'No feedback submitted yet',
+            trendImproving: 'Improving',
+            trendStable: 'Stable',
+            trendDeclining: 'Declining',
+
+            // Admin Tools (Phase 3.3)
+            duplicateRaidDetected: 'Raid Conflict Detected',
+            raidAlreadyExists: 'A raid already exists at this time',
+            closedRaidsCount: 'Closed {count} raids',
+            raidSummary: 'Raid Summary',
+            finalRoster: 'Final Roster',
     },
 
   de: {
@@ -703,89 +694,96 @@ const translations: Record<SupportedLanguage, Translations> = {
      attendanceMissed: 'Verpasst',
 
       // Raid Notes Feature (Phase 2.3)
-       optoutReason: 'Abmeldungsgrund',
-       optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
-       optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
-       playerNoteAdded: 'Notiz hinzugefügt',
-       raidNotes: 'Raid-Notizen',
-       raidNotesPlayerComments: 'Spieler-Kommentare',
-       raidNotesOptoutReasons: 'Abmeldungsgründe',
-       raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
+      optoutReason: 'Abmeldungsgrund',
+      optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
+      optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
+      playerNoteAdded: 'Notiz hinzugefügt',
+      raidNotes: 'Raid-Notizen',
+      raidNotesPlayerComments: 'Spieler-Kommentare',
+      raidNotesOptoutReasons: 'Abmeldungsgründe',
+      raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
 
-        // Raid Archive Feature (Phase 2.4)
-        archiveSearchResults: 'Archiv-Suchergebnisse',
-        archiveSearchQuery: 'Abfrage',
-        archiveSearchPeriod: 'Zeitraum',
-        archiveSearchNoResults: 'Keine archivierten Raids entsprechen deiner Suche.',
-        archiveSearchNone: 'Keine Ergebnisse',
-        archiveDate: 'Datum',
-        archiveAttendance: 'Teilnahme',
-        archiveParticipants: 'Teilnehmer',
-        archiveRaidId: 'Raid ID',
-          archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
-          archiveFoundCount: '{count} archivierte Raids gefunden',
-          archiveFoundCountSingular: '1 archivierter Raid gefunden',
-          raidArchived: 'Raid archiviert',
-         archiveMovedNotification: 'wurde zu {channel} verschoben',
-         raidRestored: 'Raid wiederhergestellt',
-        archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
-        raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
-        raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+       // Raid Archive Feature (Phase 2.4)
+       archiveSearchResults: 'Archiv-Suchergebnisse',
+       archiveSearchQuery: 'Abfrage',
+       archiveSearchPeriod: 'Zeitraum',
+       archiveSearchNoResults: 'Keine archivierten Raids entsprechen deiner Suche.',
+       archiveSearchNone: 'Keine Ergebnisse',
+       archiveDate: 'Datum',
+       archiveAttendance: 'Teilnahme',
+       archiveParticipants: 'Teilnehmer',
+       archiveRaidId: 'Raid ID',
+       archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
+       archiveFoundCount: '{count} archivierte Raids gefunden',
+       archiveFoundCountSingular: '1 archivierter Raid gefunden',
+       raidArchived: 'Raid archiviert',
+      archiveMovedNotification: 'wurde zu {channel} verschoben',
+      raidRestored: 'Raid wiederhergestellt',
+      archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
+      raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
+      raidNotArchived: 'Dieser Raid ist nicht archiviert.',
 
-         // Badge system (Phase 3.1)
-         badgePerfectAttendance: 'Perfekte Teilnahme',
-         badgeTankMain: 'Tank-Hauptrolle',
-         badgeHealerHero: 'Heiler-Held',
-         badgeDamageDealer: 'Schadensausteiler',
-         badgeSharpshooter: 'Scharfschütze',
-         badgeAlwaysOnTime: 'Immer pünktlich',
-         badgeEarlyBird: 'Frühaufsteher',
-         badgeTeamPlayer: 'Teamspieler',
-         badgeReliableMember: 'Zuverlässiges Mitglied',
-         badgeRisingStar: 'Aufsteigender Stern',
-         badgeVeteranRaider: 'Veteran',
-         badgeLeadersChoice: 'Wahl des Anführers',
-         badgeDescPerfectAttendance: '10 Raids in Folge teilgenommen',
-         badgeDescTankMain: '5 Raids als Tank absolviert',
-         badgeDescHealerHero: '5 Raids als Heiler absolviert',
-         badgeDescDamageDealer: '5 Raids als Nahkampf-DPS absolviert',
-         badgeDescSharpshooter: '5 Raids als Fernkampf-DPS absolviert',
-         badgeDescAlwaysOnTime: '5 Raids in Folge pünktlich',
-         badgeDescEarlyBird: 'Erster Anmelder für einen Raid',
-         badgeDescTeamPlayer: '3 oder mehr verschiedene Rollen gespielt',
-         badgeDescReliableMember: '95%+ Teilnahme über 30 Tage',
-         badgeDescRisingStar: '30% Verbesserung der Teilnahme',
-         badgeDescVeteranRaider: '25 Raids insgesamt teilgenommen',
-         badgeDescLeadersChoice: 'Vom Raidleiter verliehen',
-         badgesTitle: 'Abzeichen: {player}',
-         badgesNoBadges: 'Noch keine Abzeichen verdient.',
-         badgesEarnedOn: 'Verdient am',
-         badgesAwardedBy: 'Verliehen von',
-         badgesReason: 'Grund',
-          badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
+       // Badge system (Phase 3.1)
+       badgePerfectAttendance: 'Perfekte Teilnahme',
+       badgeTankMain: 'Tank-Hauptrolle',
+       badgeHealerHero: 'Heiler-Held',
+       badgeDamageDealer: 'Schadensausteiler',
+       badgeSharpshooter: 'Scharfschütze',
+       badgeAlwaysOnTime: 'Immer pünktlich',
+       badgeEarlyBird: 'Frühaufsteher',
+       badgeTeamPlayer: 'Teamspieler',
+       badgeReliableMember: 'Zuverlässiges Mitglied',
+       badgeRisingStar: 'Aufsteigender Stern',
+       badgeVeteranRaider: 'Veteran',
+       badgeLeadersChoice: 'Wahl des Anführers',
+       badgeDescPerfectAttendance: '10 Raids in Folge teilgenommen',
+       badgeDescTankMain: '5 Raids als Tank absolviert',
+       badgeDescHealerHero: '5 Raids als Heiler absolviert',
+       badgeDescDamageDealer: '5 Raids als Nahkampf-DPS absolviert',
+       badgeDescSharpshooter: '5 Raids als Fernkampf-DPS absolviert',
+       badgeDescAlwaysOnTime: '5 Raids in Folge pünktlich',
+       badgeDescEarlyBird: 'Erster Anmelder für einen Raid',
+       badgeDescTeamPlayer: '3 oder mehr verschiedene Rollen gespielt',
+       badgeDescReliableMember: '95%+ Teilnahme über 30 Tage',
+       badgeDescRisingStar: '30% Verbesserung der Teilnahme',
+       badgeDescVeteranRaider: '25 Raids insgesamt teilgenommen',
+       badgeDescLeadersChoice: 'Vom Raidleiter verliehen',
+       badgesTitle: 'Abzeichen: {player}',
+       badgesNoBadges: 'Noch keine Abzeichen verdient.',
+       badgesEarnedOn: 'Verdient am',
+       badgesAwardedBy: 'Verliehen von',
+       badgesReason: 'Grund',
+       badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
 
-           // Feedback system (Phase 3.2)
-           raidFeedback: 'Raid-Feedback',
-           howDidRaidGo: 'Wie lief der Raid?',
-           feedbackGreat: 'Großartig 😊',
-           feedbackOkay: 'Okay 😐',
-           feedbackFrustrating: 'Frustrierend 😞',
-           moodScore: 'Stimmungs-Score',
-           guildMorale: 'Gilden-Moral',
-           raidFeedbackSummary: 'Raid-Feedback-Zusammenfassung: {raid}',
-           feedbackBreakdown: 'Feedback-Aufschlüsselung',
-           commonWords: 'Häufige Wörter',
-           overallSentiment: 'Gesamtstimmung',
-           trend: 'Trend',
-           bestRaids: 'Am besten bewertete Raids',
-           worstRaids: 'Am schlechtesten bewertete Raids',
-           roleMorale: 'Moral nach Rolle',
-           lastDays: 'Letzte {days} Tage',
-           noFeedback: 'Noch kein Feedback abgegeben',
-           trendImproving: 'Verbessernd',
-           trendStable: 'Stabil',
-           trendDeclining: 'Sinkend',
-    },
+       // Feedback system (Phase 3.2)
+       raidFeedback: 'Raid-Feedback',
+       howDidRaidGo: 'Wie lief der Raid?',
+       feedbackGreat: 'Großartig 😊',
+       feedbackOkay: 'Okay 😐',
+       feedbackFrustrating: 'Frustrierend 😞',
+       moodScore: 'Stimmungs-Score',
+       guildMorale: 'Gilden-Moral',
+       raidFeedbackSummary: 'Raid-Feedback-Zusammenfassung: {raid}',
+       feedbackBreakdown: 'Feedback-Aufschlüsselung',
+       commonWords: 'Häufige Wörter',
+       overallSentiment: 'Gesamtstimmung',
+       trend: 'Trend',
+       bestRaids: 'Am besten bewertete Raids',
+       worstRaids: 'Am schlechtesten bewertete Raids',
+       roleMorale: 'Moral nach Rolle',
+       lastDays: 'Letzte {days} Tage',
+       noFeedback: 'Noch kein Feedback abgegeben',
+       trendImproving: 'Verbessernd',
+       trendStable: 'Stabil',
+       trendDeclining: 'Sinkend',
+
+       // Admin Tools (Phase 3.3)
+       duplicateRaidDetected: 'Raid-Konflikt erkannt',
+       raidAlreadyExists: 'Ein Raid existiert bereits zu dieser Zeit',
+       closedRaidsCount: '{count} Raids geschlossen',
+       raidSummary: 'Raid-Zusammenfassung',
+       finalRoster: 'Endgültige Aufstellung',
+  },
 };
 
 export function getTranslations(language: string): Translations {

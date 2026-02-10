@@ -205,6 +205,38 @@ interface Translations {
     archiveNotConfigured: string;
     raidAlreadyArchived: string;
     raidNotArchived: string;
+
+   // Badge system (Phase 3.1)
+   badgePerfectAttendance: string;
+   badgeTankMain: string;
+   badgeHealerHero: string;
+   badgeDamageDealer: string;
+   badgeSharpshooter: string;
+   badgeAlwaysOnTime: string;
+   badgeEarlyBird: string;
+   badgeTeamPlayer: string;
+   badgeReliableMember: string;
+   badgeRisingStar: string;
+   badgeVeteranRaider: string;
+   badgeLeadersChoice: string;
+   badgeDescPerfectAttendance: string;
+   badgeDescTankMain: string;
+   badgeDescHealerHero: string;
+   badgeDescDamageDealer: string;
+   badgeDescSharpshooter: string;
+   badgeDescAlwaysOnTime: string;
+   badgeDescEarlyBird: string;
+   badgeDescTeamPlayer: string;
+   badgeDescReliableMember: string;
+   badgeDescRisingStar: string;
+   badgeDescVeteranRaider: string;
+   badgeDescLeadersChoice: string;
+   badgesTitle: string;
+   badgesNoBadges: string;
+   badgesEarnedOn: string;
+   badgesAwardedBy: string;
+   badgesReason: string;
+   badgeEarned: string;
 }
 
 /**
@@ -424,6 +456,38 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
         raidAlreadyArchived: 'This raid is already archived.',
         raidNotArchived: 'This raid is not archived.',
+
+         // Badge system (Phase 3.1)
+         badgePerfectAttendance: 'Perfect Attendance',
+         badgeTankMain: 'Tank Main',
+         badgeHealerHero: 'Healer Hero',
+         badgeDamageDealer: 'Damage Dealer',
+         badgeSharpshooter: 'Sharpshooter',
+         badgeAlwaysOnTime: 'Always On Time',
+         badgeEarlyBird: 'Early Bird',
+         badgeTeamPlayer: 'Team Player',
+         badgeReliableMember: 'Reliable Member',
+         badgeRisingStar: 'Rising Star',
+         badgeVeteranRaider: 'Veteran Raider',
+         badgeLeadersChoice: "Leader's Choice",
+         badgeDescPerfectAttendance: 'Attended 10 consecutive raids',
+         badgeDescTankMain: 'Completed 5 raids as Tank',
+         badgeDescHealerHero: 'Completed 5 raids as Healer',
+         badgeDescDamageDealer: 'Completed 5 raids as Melee DPS',
+         badgeDescSharpshooter: 'Completed 5 raids as Ranged DPS',
+         badgeDescAlwaysOnTime: 'On time for 5 raids in a row',
+         badgeDescEarlyBird: 'First to respond to a raid',
+         badgeDescTeamPlayer: 'Played 3 or more different roles',
+         badgeDescReliableMember: '95%+ attendance over 30 days',
+         badgeDescRisingStar: '30% attendance improvement',
+         badgeDescVeteranRaider: 'Attended 25 total raids',
+         badgeDescLeadersChoice: 'Awarded manually by a raid leader',
+         badgesTitle: 'Badges: {player}',
+         badgesNoBadges: 'No badges earned yet.',
+         badgesEarnedOn: 'Earned on',
+         badgesAwardedBy: 'Awarded by',
+         badgesReason: 'Reason',
+         badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
     },
 
   de: {
@@ -631,6 +695,38 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
         raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
         raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+
+         // Badge system (Phase 3.1)
+         badgePerfectAttendance: 'Perfekte Teilnahme',
+         badgeTankMain: 'Tank-Hauptrolle',
+         badgeHealerHero: 'Heiler-Held',
+         badgeDamageDealer: 'Schadensausteiler',
+         badgeSharpshooter: 'Scharfschütze',
+         badgeAlwaysOnTime: 'Immer pünktlich',
+         badgeEarlyBird: 'Frühaufsteher',
+         badgeTeamPlayer: 'Teamspieler',
+         badgeReliableMember: 'Zuverlässiges Mitglied',
+         badgeRisingStar: 'Aufsteigender Stern',
+         badgeVeteranRaider: 'Veteran',
+         badgeLeadersChoice: 'Wahl des Anführers',
+         badgeDescPerfectAttendance: '10 Raids in Folge teilgenommen',
+         badgeDescTankMain: '5 Raids als Tank absolviert',
+         badgeDescHealerHero: '5 Raids als Heiler absolviert',
+         badgeDescDamageDealer: '5 Raids als Nahkampf-DPS absolviert',
+         badgeDescSharpshooter: '5 Raids als Fernkampf-DPS absolviert',
+         badgeDescAlwaysOnTime: '5 Raids in Folge pünktlich',
+         badgeDescEarlyBird: 'Erster Anmelder für einen Raid',
+         badgeDescTeamPlayer: '3 oder mehr verschiedene Rollen gespielt',
+         badgeDescReliableMember: '95%+ Teilnahme über 30 Tage',
+         badgeDescRisingStar: '30% Verbesserung der Teilnahme',
+         badgeDescVeteranRaider: '25 Raids insgesamt teilgenommen',
+         badgeDescLeadersChoice: 'Vom Raidleiter verliehen',
+         badgesTitle: 'Abzeichen: {player}',
+         badgesNoBadges: 'Noch keine Abzeichen verdient.',
+         badgesEarnedOn: 'Verdient am',
+         badgesAwardedBy: 'Verliehen von',
+         badgesReason: 'Grund',
+         badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
     },
 };
 

@@ -17,6 +17,10 @@ model Guild {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  // Archive system fields (Phase 2.4)
+  archiveChannelId String?  // Guild's designated archive channel
+  autoArchive      Boolean  @default(false) // Auto-archive on close?
+
   raids Raid[]
   users UserPreference[]
 }
@@ -57,11 +61,19 @@ model Raid {
   templateVersion      Int       @default(1) // Version for future template iterations
   clonedAt             DateTime? // When this raid was cloned from a template
 
+  // Archive system fields (Phase 2.4)
+  archivedAt       DateTime? // When raid was archived
+  archiveChannelId String?   // Channel where archived message lives
+  archiveMessageId String?   // Message ID of archived embed
+  isPinned         Boolean   @default(false) // Is raid pinned/archived?
+
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
 
   @@index([guildId, status])
   @@index([raidDate])
+  @@index([guildId, raidDate])
+  @@index([guildId, archivedAt])
 }
 
 model RaidAttendance {
@@ -75,6 +87,11 @@ model RaidAttendance {
   respondedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  // Raid notes feature (Phase 2.3)
+  optoutReason  String? // Player's reason for opting out
+  playerNote    String? // Player's comment on their status
+  notedAt       DateTime? // When note was added
 
   raid           Raid            @relation(fields: [raidId], references: [id], onDelete: Cascade)
   userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])

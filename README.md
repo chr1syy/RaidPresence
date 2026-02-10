@@ -23,11 +23,17 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 - **Real-time Updates**: Raid roster updates automatically as players respond
 - **Multi-Language**: English and German localization with timezone support
 
-### Raid Tools
+### Raid Tools (Phase 1)
 - **Raid Clone** (`/raid clone`): Quickly create a new raid from an existing one — copies roles, rescans members, fresh attendance
 - **Attendance Stats** (`/raid stats`): Per-raid or guild-wide attendance analytics with reliability scoring and class distribution
 - **Custom Reminders** (`/raid remind`): Send reminders with optional custom messages and opted-out player visibility
 - **Status Dashboard** (`/raid status`): At-a-glance view of upcoming raids with roster fill and role breakdown
+
+### Depth Features (Phase 2)
+- **Player Attendance History** (`/raid attendance`): Track player reliability trends, response times, and role flexibility over 30/90 days or all-time
+- **Composition Analysis** (`/raid suggest`): Analyze raid composition, identify gaps, and get specific player recommendations to fill roles
+- **Raid Notes & Comments** (`/raid notes`): Collect opt-out reasons and player comments for better communication and planning
+- **Raid Archive System** (`/raid pin`, `/raid unpin`, `/raid search`): Archive completed raids with searchable history and auto-archive configuration
 
 ## 📚 Documentation
 
@@ -41,6 +47,7 @@ A Discord bot for World of Warcraft raid attendance management with **reverse si
 ### Additional Resources
 
 - **[🆕 Phase 1 Features](docs/features/phase1-features.md)** - Clone, Stats, Reminders, Status Dashboard
+- **[🚀 Phase 2 Features](docs/features/phase2-features.md)** - Attendance History, Composition Analysis, Raid Notes, Archive System
 - **[🐛 Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues and solutions
 - **[💪 Contributing Guide](CONTRIBUTING.md)** - How to contribute to the project
 - **[🗺️ Roadmap](ROADMAP.md)** - Future development plans

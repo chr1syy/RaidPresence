@@ -67,6 +67,28 @@ const command: Command = {
             .setMaxValue(14)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('archive-channel')
+        .setDescription('Set the archive channel for closed raids')
+        .addChannelOption((option) =>
+          option
+            .setName('channel')
+            .setDescription('The channel to use for raid archives')
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('auto-archive')
+        .setDescription('Automatically archive raids when they close')
+        .addBooleanOption((option) =>
+          option
+            .setName('enabled')
+            .setDescription('Enable auto-archive on raid close?')
+            .setRequired(true)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -84,6 +106,10 @@ const command: Command = {
       await handleSetLanguage(interaction);
     } else if (subcommand === 'timezone') {
       await handleSetTimezone(interaction);
+    } else if (subcommand === 'archive-channel') {
+      await handleSetArchiveChannel(interaction);
+    } else if (subcommand === 'auto-archive') {
+      await handleSetAutoArchive(interaction);
     }
   },
 };
@@ -115,6 +141,8 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
   const timezoneOffset = guildData.timezoneOffset;
   const timezoneDisplay = timezoneOffset >= 0 ? `GMT+${timezoneOffset}` : `GMT${timezoneOffset}`;
+  const archiveChannel = guildData.archiveChannelId ? `<#${guildData.archiveChannelId}>` : 'Not configured';
+  const autoArchiveStatus = guildData.autoArchive ? '✅ Enabled' : '❌ Disabled';
 
   const embed = new EmbedBuilder()
     .setTitle('Server Configuration')
@@ -138,6 +166,16 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
       {
         name: 'Timezone',
         value: `\`${timezoneDisplay}\`\n\nRaid times will be created in this timezone.`,
+        inline: false,
+      },
+      {
+        name: '📦 Archive Channel',
+        value: `${archiveChannel}\n\nClosed raids can be archived to this channel.`,
+        inline: false,
+      },
+      {
+        name: '📦 Auto-Archive',
+        value: `${autoArchiveStatus}\n\nRaids are ${guildData.autoArchive ? 'automatically' : 'manually'} archived when they close.`,
         inline: false,
       }
     )
@@ -308,9 +346,95 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
     },
   });
 
-  const timezoneDisplay = offset >= 0 ? `GMT+${offset}` : `GMT${offset}`;
+   const timezoneDisplay = offset >= 0 ? `GMT+${offset}` : `GMT${offset}`;
+   await interaction.editReply({
+     content: `✅ Timezone updated to: \`${timezoneDisplay}\`\n\nRaid times will now be created in this timezone.`,
+   });
+}
+
+async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const channel = interaction.options.getChannel('channel', true);
+
+  // Verify the channel is text-based
+  const { ChannelType } = await import('discord.js');
+  const isTextChannel = channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement;
+
+  if (!isTextChannel) {
+    await interaction.editReply({
+      content: '❌ Archive channel must be a text channel.',
+    });
+    return;
+  }
+
+  // Update in database
+  await prisma.guild.upsert({
+    where: { id: interaction.guild.id },
+    update: { archiveChannelId: channel.id },
+    create: {
+      id: interaction.guild.id,
+      name: interaction.guild.name,
+      raidRoles: '',
+      raidLeaderRoles: '',
+      archiveChannelId: channel.id,
+    },
+  });
+
   await interaction.editReply({
-    content: `✅ Timezone updated to: \`${timezoneDisplay}\`\n\nRaid times will now be created in this timezone.`,
+    content: `✅ Archive channel set to <#${channel.id}>.\n\nClosed raids can now be archived to this channel using \`/raid pin\`.`,
+  });
+}
+
+async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const enabled = interaction.options.getBoolean('enabled', true);
+
+  // First, check if an archive channel is configured (required for auto-archive)
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (enabled && !guildData?.archiveChannelId) {
+    await interaction.editReply({
+      content: '❌ Archive channel must be configured before enabling auto-archive.\n\nUse `/config archive-channel` to set it up first.',
+    });
+    return;
+  }
+
+  // Update in database
+  await prisma.guild.upsert({
+    where: { id: interaction.guild.id },
+    update: { autoArchive: enabled },
+    create: {
+      id: interaction.guild.id,
+      name: interaction.guild.name,
+      raidRoles: '',
+      raidLeaderRoles: '',
+      autoArchive: enabled,
+    },
+  });
+
+  const status = enabled ? '✅ enabled' : '❌ disabled';
+  await interaction.editReply({
+    content: `${status}\n\nAuto-archive is now ${enabled ? 'enabled' : 'disabled'}.\n\nRaids will ${enabled ? 'automatically be' : 'not be'} archived when they close.`,
   });
 }
 

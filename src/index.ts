@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, Events, ActivityType } from 'discord.js';
 import { config } from 'dotenv';
 import { BotClient, Command } from './types';
 import prisma from './database/client';
@@ -29,6 +29,17 @@ client.commands.set(setupCommand.data.name, setupCommand);
 client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot is ready! Logged in as ${c.user.tag}`);
   console.log(`📊 Serving ${c.guilds.cache.size} guild(s)`);
+
+  // Set bot presence
+  c.user?.setPresence({
+    activities: [
+      {
+        name: 'raidpresence.dev',
+        type: ActivityType.Watching,
+      }
+    ],
+    status: 'online',
+  });
 
   // Sync guild data
   for (const [guildId, guild] of c.guilds.cache) {

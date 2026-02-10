@@ -26,6 +26,14 @@ export const pendingRaidCreations = new Map<string, {
   channel: any;
 }>();
 
+// Map to store pending bulk close operations for confirmation
+export const pendingBulkCloses = new Map<string, {
+  userId: string;
+  guildId: string;
+  beforeDate: Date;
+  raidIds: string[];
+}>();
+
 export async function handleButton(interaction: ButtonInteraction) {
   const customId = interaction.customId;
 
@@ -52,6 +60,11 @@ export async function handleButton(interaction: ButtonInteraction) {
   } else if (customId.startsWith('create_cancel_')) {
     const confirmationId = customId.split('_')[2];
     await handleCreateCancel(interaction, confirmationId);
+  } else if (customId.startsWith('close_all_confirm_')) {
+    const confirmationId = customId.split('_')[2];
+    await handleCloseAllConfirm(interaction, confirmationId);
+  } else if (customId === 'close_all_cancel') {
+    await handleCloseAllCancel(interaction);
   }
 }
 
@@ -621,4 +634,90 @@ async function handleCreateCancel(interaction: ButtonInteraction, confirmationId
   pendingRaidCreations.delete(confirmationId);
 
   await interaction.editReply({ content: '❌ Raid creation cancelled.' });
+}
+
+async function handleCloseAllConfirm(interaction: ButtonInteraction, confirmationId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const data = pendingBulkCloses.get(confirmationId);
+  if (!data) {
+    await interaction.editReply({ content: '❌ Confirmation expired or invalid.' });
+    return;
+  }
+
+  if (data.userId !== interaction.user.id) {
+    await interaction.editReply({ content: '❌ This confirmation is not for you.' });
+    return;
+  }
+
+  const { guildId, raidIds } = data;
+
+  // Process each raid
+  let closedCount = 0;
+  let failedCount = 0;
+  const results: string[] = [];
+
+  for (const raidId of raidIds) {
+    try {
+      const raid = await prisma.raid.findUnique({
+        where: { id: raidId },
+        include: { guild: true },
+      });
+
+      if (!raid || raid.guildId !== guildId || raid.status !== 'open') {
+        failedCount++;
+        results.push(`❌ Failed to close raid "${raid?.description || raidId}"`);
+        continue;
+      }
+
+      // Update raid status to closed
+      await prisma.raid.update({
+        where: { id: raidId },
+        data: { status: 'closed' },
+      });
+
+      // Update the raid message
+      if (raid.messageId && raid.channelId) {
+        try {
+          const channel = await interaction.client.channels.fetch(raid.channelId);
+          if (channel?.isTextBased() && 'messages' in channel) {
+            const message = await channel.messages.fetch(raid.messageId);
+            const embed = await createRaidEmbed(raidId, raid.guild.language);
+
+            // Remove buttons when closed
+            await message.edit({
+              embeds: [embed],
+              components: [],
+            });
+          }
+        } catch (error) {
+          console.error('Error updating raid message:', error);
+        }
+      }
+
+      closedCount++;
+      results.push(`✅ Closed "${raid.description || 'Unnamed Raid'}"`);
+    } catch (error) {
+      console.error(`Error closing raid ${raidId}:`, error);
+      failedCount++;
+      results.push(`❌ Failed to close raid ${raidId}`);
+    }
+  }
+
+  // Clean up
+  pendingBulkCloses.delete(confirmationId);
+
+  const summary = `Bulk close completed:\n- Successfully closed: ${closedCount}\n- Failed: ${failedCount}`;
+  const detailedResults = results.length > 10 ? results.slice(0, 10).join('\n') + '\n...' : results.join('\n');
+
+  await interaction.editReply({
+    content: `${summary}\n\n${detailedResults}`,
+  });
+}
+
+async function handleCloseAllCancel(interaction: ButtonInteraction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  // No need to check user since anyone can cancel (no sensitive data)
+  await interaction.editReply({ content: '❌ Bulk close operation cancelled.' });
 }

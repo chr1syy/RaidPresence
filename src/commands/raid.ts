@@ -382,21 +382,17 @@ const data = new SlashCommandBuilder()
           .setRequired(true)
       )
   )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName('morale')
-      .setDescription('View guild morale trends')
-      .addStringOption((option) =>
-        option
-          .setName('period')
-          .setDescription('Time period for morale analysis')
-          .addChoices(
-            { name: '7 days', value: '7' },
-            { name: '30 days', value: '30' },
-            { name: '90 days', value: '90' }
-          )
-      )
-  )
+   .addSubcommand((subcommand) =>
+     subcommand
+       .setName('close-all')
+       .setDescription('Close all raids before a certain date')
+       .addStringOption((option) =>
+         option
+           .setName('before')
+           .setDescription('Close raids before this date (YYYY-MM-DD)')
+           .setRequired(true)
+       )
+   )
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder;
 
 const command: Command = {
@@ -448,6 +444,8 @@ const command: Command = {
       await handleFeedbackCommand(interaction);
     } else if (subcommand === 'morale') {
       await handleMoraleCommand(interaction);
+    } else if (subcommand === 'close-all') {
+      await handleCloseAllRaids(interaction);
     }
   },
 };
@@ -3267,7 +3265,101 @@ async function handleMoraleCommand(interaction: ChatInputCommandInteraction) {
   // Format embed
   const embed = await formatGuildMoraleEmbed(guildData.name, morale, days, language);
 
-  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleCloseAllRaids(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to close raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const beforeDateStr = interaction.options.get('before', true).value as string;
+
+  // Validate date format
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(beforeDateStr)) {
+    await interaction.editReply({
+      content: '❌ Date must be in YYYY-MM-DD format (e.g., 2025-12-25)',
+    });
+    return;
+  }
+
+  const beforeDate = new Date(`${beforeDateStr}T23:59:59`);
+  if (isNaN(beforeDate.getTime())) {
+    await interaction.editReply({
+      content: '❌ Invalid date format.',
+    });
+    return;
+  }
+
+  // Find all open raids before the specified date
+  const raidsToClose = await prisma.raid.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      status: 'open',
+      raidDate: {
+        lt: beforeDate,
+      },
+    },
+    orderBy: {
+      raidDate: 'asc',
+    },
+  });
+
+  if (raidsToClose.length === 0) {
+    await interaction.editReply({
+      content: '📅 No open raids found before the specified date.',
+    });
+    return;
+  }
+
+  // Show preview
+  const raidList = raidsToClose.map(r => `• ${r.description || 'Unnamed Raid'} (${r.raidDate.toLocaleDateString()})`).join('\n');
+
+  const confirmEmbed = new EmbedBuilder()
+    .setTitle('⚠️ Confirm Bulk Close')
+    .setDescription(`This will close **${raidsToClose.length}** raid(s) scheduled before ${beforeDateStr}:\n\n${raidList}`)
+    .setColor(0xffa500);
+
+  const confirmationId = require('crypto').randomUUID();
+  const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`close_all_confirm_${confirmationId}`)
+      .setLabel(`Close ${raidsToClose.length} Raids`)
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('close_all_cancel')
+      .setLabel('Cancel')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  // Store pending operation data
+  const { pendingBulkCloses } = await import('../events/buttonHandler');
+  pendingBulkCloses.set(confirmationId, {
+    userId: interaction.user.id,
+    guildId: interaction.guild.id,
+    beforeDate,
+    raidIds: raidsToClose.map(r => r.id),
+  });
+
+  await interaction.editReply({
+    embeds: [confirmEmbed],
+    components: [buttons],
+  });
 }
 
 export default command;

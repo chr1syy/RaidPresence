@@ -129,9 +129,12 @@ interface Translations {
   statsPeriodAll: string;
   statsNoRaidsFound: string;
 
-  // Attendance command
-  attendanceRecord: string;
-  attendanceRaidsInvited: string;
+   // Composition command
+   compositionAnalysis: string;
+
+   // Attendance command
+   attendanceRecord: string;
+   attendanceRaidsInvited: string;
   attendanceRaidsAttended: string;
   attendanceOptedOut: string;
   attendanceRunningLate: string;
@@ -159,13 +162,22 @@ interface Translations {
   raidNotesOptoutReasons: string;
   raidNotesNone: string;
 
-  // Raid Archive Feature (Phase 2.4)
-  archiveSearchResults: string;
-  raidArchived: string;
-  raidRestored: string;
-  archiveNotConfigured: string;
-  raidAlreadyArchived: string;
-  raidNotArchived: string;
+   // Raid Archive Feature (Phase 2.4)
+   archiveSearchResults: string;
+   archiveSearchQuery: string;
+   archiveSearchPeriod: string;
+   archiveSearchNoResults: string;
+   archiveSearchNone: string;
+   archiveDate: string;
+   archiveAttendance: string;
+   archiveParticipants: string;
+   archiveRaidId: string;
+   archiveShowingResults: string;
+   raidArchived: string;
+   raidRestored: string;
+   archiveNotConfigured: string;
+   raidAlreadyArchived: string;
+   raidNotArchived: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -296,10 +308,13 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodWeek: 'Last 7 days',
     statsPeriodMonth: 'Last 30 days',
     statsPeriodAll: 'All time',
-    statsNoRaidsFound: 'No raids found for this period.',
+     statsNoRaidsFound: 'No raids found for this period.',
 
-    // Attendance command
-    attendanceRecord: 'Attendance Record: {player}',
+     // Composition command
+     compositionAnalysis: 'Composition Analysis: {raid}',
+
+     // Attendance command
+     attendanceRecord: 'Attendance Record: {player}',
     attendanceRaidsInvited: 'Raids Invited',
     attendanceRaidsAttended: 'Raids Attended',
     attendanceOptedOut: 'Opted Out',
@@ -328,13 +343,22 @@ const translations: Record<SupportedLanguage, Translations> = {
       raidNotesOptoutReasons: 'Opt-Out Reasons',
       raidNotesNone: 'No notes or comments for this raid.',
 
-      // Raid Archive Feature (Phase 2.4)
-      archiveSearchResults: 'Archive Search Results',
-      raidArchived: 'Raid Archived',
-      raidRestored: 'Raid Restored',
-      archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
-      raidAlreadyArchived: 'This raid is already archived.',
-      raidNotArchived: 'This raid is not archived.',
+       // Raid Archive Feature (Phase 2.4)
+       archiveSearchResults: 'Archive Search Results',
+       archiveSearchQuery: 'Query',
+       archiveSearchPeriod: 'Period',
+       archiveSearchNoResults: 'No archived raids match your search.',
+       archiveSearchNone: 'No results',
+       archiveDate: 'Date',
+       archiveAttendance: 'Attendance',
+       archiveParticipants: 'Participants',
+       archiveRaidId: 'Raid ID',
+       archiveShowingResults: 'Showing 10 of {total} results. Use more specific filters to narrow down.',
+       raidArchived: 'Raid Archived',
+       raidRestored: 'Raid Restored',
+       archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
+       raidAlreadyArchived: 'This raid is already archived.',
+       raidNotArchived: 'This raid is not archived.',
     },
 
   de: {
@@ -464,10 +488,13 @@ const translations: Record<SupportedLanguage, Translations> = {
     statsPeriodWeek: 'Letzte 7 Tage',
     statsPeriodMonth: 'Letzte 30 Tage',
     statsPeriodAll: 'Gesamt',
-    statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
+     statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
 
-    // Attendance command
-    attendanceRecord: 'Anwesenheit: {player}',
+     // Composition command
+     compositionAnalysis: 'Zusammensetzungsanalyse: {raid}',
+
+     // Attendance command
+     attendanceRecord: 'Anwesenheit: {player}',
     attendanceRaidsInvited: 'Raids eingeladen',
     attendanceRaidsAttended: 'Raids teilgenommen',
     attendanceOptedOut: 'Abgemeldet',
@@ -496,13 +523,22 @@ const translations: Record<SupportedLanguage, Translations> = {
        raidNotesOptoutReasons: 'Abmeldungsgründe',
        raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
 
-       // Raid Archive Feature (Phase 2.4)
-       archiveSearchResults: 'Archiv-Suchergebnisse',
-       raidArchived: 'Raid archiviert',
-       raidRestored: 'Raid wiederhergestellt',
-       archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
-       raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
-       raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+        // Raid Archive Feature (Phase 2.4)
+        archiveSearchResults: 'Archiv-Suchergebnisse',
+        archiveSearchQuery: 'Abfrage',
+        archiveSearchPeriod: 'Zeitraum',
+        archiveSearchNoResults: 'Keine archivierten Raids entsprechen deiner Suche.',
+        archiveSearchNone: 'Keine Ergebnisse',
+        archiveDate: 'Datum',
+        archiveAttendance: 'Teilnahme',
+        archiveParticipants: 'Teilnehmer',
+        archiveRaidId: 'Raid ID',
+        archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
+        raidArchived: 'Raid archiviert',
+        raidRestored: 'Raid wiederhergestellt',
+        archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
+        raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
+        raidNotArchived: 'Dieser Raid ist nicht archiviert.',
     },
 };
 

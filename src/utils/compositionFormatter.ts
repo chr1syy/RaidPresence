@@ -1,6 +1,6 @@
 import { EmbedBuilder, ColorResolvable } from 'discord.js';
 import { CompositionAnalysis, GapAnalysis, SwapSuggestions, SuccessLikelihood } from './compositionAnalyzer';
-import { getTranslations } from './localization';
+import { getTranslations, t } from './localization';
 import { ROLE_EMOJIS } from './wowData';
 
 /**
@@ -21,8 +21,8 @@ export function formatCompositionEmbed(
   const color = getCompositionColor(analysis.statusFlags);
   embed.setColor(color);
 
-  // Title
-  embed.setTitle(`Composition Analysis: ${raidName}`);
+   // Title
+   embed.setTitle(t(language, 'compositionAnalysis', { raid: raidName }));
 
   // Active players count
   embed.setDescription(`**Active Players:** ${analysis.activePlayers}`);

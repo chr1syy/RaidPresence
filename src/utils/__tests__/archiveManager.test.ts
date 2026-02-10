@@ -336,12 +336,12 @@ describe('archiveManager', () => {
     it('should return archive statistics', async () => {
       const guildId = 'guild-123';
       const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
       const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
       const mockRaids = [
         { id: 'raid-1', archivedAt: now }, // Recent
-        { id: 'raid-2', archivedAt: thirtyDaysAgo }, // Recent (within 30 days)
+        { id: 'raid-2', archivedAt: fifteenDaysAgo }, // Recent (within 30 days)
         { id: 'raid-3', archivedAt: sixtyDaysAgo } // Older
       ];
 

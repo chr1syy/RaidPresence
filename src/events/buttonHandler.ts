@@ -39,72 +39,16 @@ export async function handleButton(interaction: ButtonInteraction) {
 }
 
 async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
-  // Check raid status
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { guild: true },
-  });
-
-  if (!raid) {
-    await interaction.reply({
-      content: '❌ Raid not found.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const trans = getTranslations(raid.guild.language || 'en');
-
-  if (raid.status === 'closed') {
-    await interaction.reply({
-      content: trans.raidIsClosed,
-      ephemeral: true,
-    });
-    return;
-  }
-
-  if (raid.status === 'cancelled') {
-    await interaction.reply({
-      content: trans.raidIsCancelled,
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const attendance = await prisma.raidAttendance.findUnique({
-    where: {
-      raidId_userId: {
-        raidId,
-        userId: interaction.user.id,
-      },
-    },
-  });
-
-  if (!attendance) {
-    await interaction.reply({
-      content: '❌ You are not on the attendance list for this raid.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  if (attendance.status === 'opted_out') {
-    await interaction.reply({
-      content: '❌ You have already opted out of this raid.',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  // Show modal for opt-out reason
+  // Show modal immediately for opt-out reason (<100ms response)
+  // All validations will be done in the modal submit handler
   const modal = new ModalBuilder()
     .setCustomId(`optout_reason_${raidId}_${interaction.user.id}`)
-    .setTitle(trans.optoutReason)
+    .setTitle('Opt-Out Reason')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId('reason')
-          .setLabel(trans.optoutReasonLabel)
+          .setLabel('Why are you opting out? (optional)')
           .setStyle(TextInputStyle.Short)
           .setMaxLength(100)
           .setRequired(false)

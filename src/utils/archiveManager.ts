@@ -73,7 +73,7 @@ export async function archiveRaid(
   }
 
   let originalMessage = null;
-  if (raid.messageId && originalChannel instanceof TextChannel) {
+  if (raid.messageId && (originalChannel instanceof TextChannel || originalChannel instanceof NewsChannel)) {
     originalMessage = await originalChannel.messages.fetch(raid.messageId).catch(() => null);
   }
 
@@ -202,16 +202,16 @@ export async function unarchiveRaid(
 }
 
 /**
- * Get a guild's archive channel (or throw error if not configured).
+ * Retrieve the configured archive channel for a guild.
  * 
  * @param guildId - The guild
  * @param client - Discord.js client
- * @returns Promise<TextChannel>
+ * @returns Promise<TextChannel | NewsChannel>
  */
 export async function getArchiveChannel(
   guildId: string,
   client: Client
-): Promise<TextChannel> {
+): Promise<TextChannel | NewsChannel> {
   const guild = await prisma.guild.findUnique({
     where: { id: guildId }
   });
@@ -221,7 +221,7 @@ export async function getArchiveChannel(
   }
 
   const channel = await client.channels.fetch(guild.archiveChannelId).catch(() => null);
-  if (!channel || !(channel instanceof TextChannel)) {
+  if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
     throw new Error('Archive channel is invalid or not accessible.');
   }
 
@@ -289,15 +289,23 @@ export async function searchArchive(
   }
 
   // Build text search filter if query provided
-  // Note: This filters by raid description at the database level
-  // Player name filtering requires joining attendance, handled below
+  // Note: This filters by raid description AND player name at the database level
   if (query && query.trim()) {
-    const lowerQuery = query.toLowerCase();
     where.OR = [
       {
         description: {
           contains: query,
           mode: 'insensitive',
+        },
+      },
+      {
+        attendance: {
+          some: {
+            username: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
         },
       },
     ];
@@ -320,19 +328,6 @@ export async function searchArchive(
     },
     take: pageSize,
   });
-
-  // Additional client-side filter for player name search
-  // This is necessary since Prisma's text search doesn't easily support nested attendance filtering
-  if (query && query.trim()) {
-    const lowerQuery = query.toLowerCase();
-    raids = raids.filter(raid => {
-      const matchesDescription = raid.description?.toLowerCase().includes(lowerQuery) ?? false;
-      const matchesPlayer = raid.attendance.some(a =>
-        a.username.toLowerCase().includes(lowerQuery)
-      );
-      return matchesDescription || matchesPlayer;
-    });
-  }
 
   // Transform to summaries
   return raids.map(raid => {

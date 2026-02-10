@@ -220,7 +220,21 @@ describe('archiveManager', () => {
         }
       ];
 
-      (prisma.raid.findMany as any).mockResolvedValue(mockRaids);
+      // Mock findMany to filter based on query in the WHERE clause
+      (prisma.raid.findMany as any).mockImplementation((args: any) => {
+        let filtered = mockRaids;
+        
+        // Apply description filter if query is in WHERE clause
+        if (args.where?.OR) {
+          filtered = mockRaids.filter(raid => {
+            const matchesDescription = raid.description?.toLowerCase().includes('mythic');
+            const matchesPlayer = raid.attendance?.some((a: any) => a.username?.toLowerCase().includes('mythic'));
+            return matchesDescription || matchesPlayer;
+          });
+        }
+        
+        return Promise.resolve(filtered);
+      });
 
       const filters: ArchiveSearchFilter = {
         guildId,
@@ -259,7 +273,21 @@ describe('archiveManager', () => {
         }
       ];
 
-      (prisma.raid.findMany as any).mockResolvedValue(mockRaids);
+      // Mock findMany to filter based on query in the WHERE clause
+      (prisma.raid.findMany as any).mockImplementation((args: any) => {
+        let filtered = mockRaids;
+        
+        // Apply player name filter if query is in WHERE clause
+        if (args.where?.OR) {
+          filtered = mockRaids.filter(raid => {
+            const matchesDescription = raid.description?.toLowerCase().includes('alice');
+            const matchesPlayer = raid.attendance?.some((a: any) => a.username?.toLowerCase().includes('alice'));
+            return matchesDescription || matchesPlayer;
+          });
+        }
+        
+        return Promise.resolve(filtered);
+      });
 
       const filters: ArchiveSearchFilter = {
         guildId,

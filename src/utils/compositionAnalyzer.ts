@@ -1,4 +1,4 @@
-import { getSpecRole, getSpecsForClass, WoWRole, RoleComposition } from './wowData';
+import { getSpecRole, WoWRole, RoleComposition } from './wowData';
 import { getRoleFlexibility } from './attendanceAnalytics';
 
 /**

@@ -1,5 +1,5 @@
 import prisma from '../database/client';
-import { getSpecRole, getSpecsForClass, WoWRole, WOW_SPECS } from './wowData';
+import { getSpecRole, getSpecsForClass, WoWRole } from './wowData';
 import { getReliabilityScore, ReliabilityTier } from './statsCalculator';
 
 /**

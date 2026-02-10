@@ -18,13 +18,13 @@ import { calculateRaidStats, calculateGuildStats } from '../utils/statsCalculato
 import type { AttendanceRecord } from '../utils/statsCalculator';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsFormatter';
 import { formatStatusEmbed } from '../utils/statusFormatter';
-import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory, getTrendEmoji, formatResponseTime } from '../utils/attendanceAnalytics';
+import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory } from '../utils/attendanceAnalytics';
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
-import { formatArchiveSearchEmbed, formatArchiveNotificationEmbed } from '../utils/archiveFormatter';
+import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 
 /**
  * Build role mentions from role IDs or names
@@ -958,7 +958,6 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
-  const trans = getTranslations(raid.guild.language || 'en');
   await interaction.editReply({
     content: t(raid.guild.language || 'en', 'raidClosedSuccess', { title: raid.description || 'Raid' }),
   });
@@ -2761,7 +2760,7 @@ async function handlePinCommand(interaction: ChatInputCommandInteraction) {
     }
 
     // Archive the raid
-    const archiveMessageId = await archiveRaid(raidId, interaction.guild.id, interaction.client);
+    await archiveRaid(raidId, interaction.guild.id, interaction.client);
 
     // Get updated raid data for notification
     const archivedRaid = await prisma.raid.findUnique({

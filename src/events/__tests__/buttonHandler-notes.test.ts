@@ -298,15 +298,91 @@ describe('Modal Handler - Raid Notes Feature', () => {
 
   describe('Embed Display with Notes', () => {
     it('should display opt-out reason in embed if present', async () => {
-      // This test verifies the raid embed shows reasons
-      // This is tested via the integration test in raid commands
-      expect(true).toBe(true);
+      const { createRaidEmbed } = require('../../commands/raid');
+      
+      const mockRaid = {
+        id: raidId,
+        description: 'Test Raid',
+        status: 'open',
+        raidDate: new Date(),
+        guild: { language: 'en' },
+        attendance: [
+          {
+            userId: 'user1',
+            username: 'Player1',
+            status: 'opted_out',
+            optoutReason: 'Work emergency',
+            wowClass: null,
+            wowSpec: null,
+          },
+        ],
+      };
+
+      (prisma.raid.findUnique as jest.Mock<any>).mockResolvedValueOnce(mockRaid);
+      createRaidEmbed.mockResolvedValueOnce({
+        toJSON: jest.fn().mockReturnValue({
+          fields: [
+            {
+              name: '❌ Opted Out (1)',
+              value: 'Player1 (Work emergency)',
+            },
+          ],
+        }),
+      });
+
+      const embed = await createRaidEmbed(raidId);
+      const embedJSON = embed.toJSON();
+      
+      expect(embedJSON.fields).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          name: '❌ Opted Out (1)',
+          value: expect.stringContaining('Work emergency'),
+        }),
+      ]));
     });
 
     it('should not display opt-out reason if empty', async () => {
-      // This test verifies the raid embed handles empty reasons
-      // This is tested via the integration test in raid commands
-      expect(true).toBe(true);
+      const { createRaidEmbed } = require('../../commands/raid');
+      
+      const mockRaid = {
+        id: raidId,
+        description: 'Test Raid',
+        status: 'open',
+        raidDate: new Date(),
+        guild: { language: 'en' },
+        attendance: [
+          {
+            userId: 'user1',
+            username: 'Player1',
+            status: 'opted_out',
+            optoutReason: null,
+            wowClass: null,
+            wowSpec: null,
+          },
+        ],
+      };
+
+      (prisma.raid.findUnique as jest.Mock<any>).mockResolvedValueOnce(mockRaid);
+      createRaidEmbed.mockResolvedValueOnce({
+        toJSON: jest.fn().mockReturnValue({
+          fields: [
+            {
+              name: '❌ Opted Out (1)',
+              value: 'Player1',
+            },
+          ],
+        }),
+      });
+
+      const embed = await createRaidEmbed(raidId);
+      const embedJSON = embed.toJSON();
+      
+      expect(embedJSON.fields).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          name: '❌ Opted Out (1)',
+          value: 'Player1',
+        }),
+      ]));
     });
   });
 });

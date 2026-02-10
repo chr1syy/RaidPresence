@@ -14,7 +14,6 @@ export function formatCompositionEmbed(
   likelihood: SuccessLikelihood,
   language: string = 'en'
 ): EmbedBuilder {
-  const trans = getTranslations(language);
   const embed = new EmbedBuilder();
 
   // Color based on composition status

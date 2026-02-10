@@ -102,8 +102,6 @@ export function formatArchiveNotificationEmbed(
  * Convert a period filter value to a human-readable label.
  */
 function formatPeriodLabel(period: string, language: string): string {
-  const trans = getTranslations(language);
-
   const periodMap: Record<string, string> = {
     '7': language === 'de' ? 'Letzte 7 Tage' : 'Last 7 days',
     '30': language === 'de' ? 'Letzte 30 Tage' : 'Last 30 days',

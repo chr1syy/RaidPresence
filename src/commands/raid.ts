@@ -20,6 +20,8 @@ import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsForma
 import { formatStatusEmbed } from '../utils/statusFormatter';
 import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory, getTrendEmoji, formatResponseTime } from '../utils/attendanceAnalytics';
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
+import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
+import { formatCompositionEmbed } from '../utils/compositionFormatter';
 
 /**
  * Build role mentions from role IDs or names
@@ -264,6 +266,17 @@ const command: Command = {
             .setRequired(false)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('suggest')
+        .setDescription('Get composition suggestions for a raid')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The raid to analyze')
+            .setRequired(true)
+        )
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -293,11 +306,13 @@ const command: Command = {
        await handleStatsCommand(interaction);
      } else if (subcommand === 'status') {
        await handleStatusCommand(interaction);
-     } else if (subcommand === 'attendance') {
-       await handleAttendanceCommand(interaction);
-     }
-   },
- };
+      } else if (subcommand === 'attendance') {
+        await handleAttendanceCommand(interaction);
+      } else if (subcommand === 'suggest') {
+        await handleSuggestCommand(interaction);
+      }
+    },
+  };
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
@@ -2189,6 +2204,85 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
     roleDistribution,
     history.slice(0, 5), // Last 5 raids
     period,
+    lang,
+  );
+
+   await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const raidId = interaction.options.getString('raid_id', true);
+
+  // Get guild data for language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database. Please try again.',
+    });
+    return;
+  }
+
+  const lang = guildData.language || 'en';
+  const trans = getTranslations(lang);
+
+  // Fetch raid with attendance
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: {
+      attendance: true,
+    },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: `❌ ${t(lang, 'raidNotFound')}`,
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to your guild.',
+    });
+    return;
+  }
+
+  // Convert attendance to composition format
+  const attendees: CompositionAttendee[] = raid.attendance.map((a) => ({
+    userId: a.userId,
+    username: a.username,
+    status: a.status,
+    wowClass: a.wowClass,
+    wowSpec: a.wowSpec,
+  }));
+
+  // Analyze composition
+  const analysis = analyzeRaidComposition(attendees);
+  const gaps = findCompositionGaps(attendees);
+  const suggestions = suggestPlayerSwaps(attendees, gaps);
+  const likelihood = calculateSuccessLikelihood(attendees);
+
+  // Build embed
+  const raidName = raid.description || `Raid on ${raid.raidDate.toLocaleDateString(lang)}`;
+  const embed = formatCompositionEmbed(
+    raidName,
+    analysis,
+    gaps,
+    suggestions,
+    likelihood,
     lang,
   );
 

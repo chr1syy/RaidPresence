@@ -18,7 +18,7 @@ export function startRaidScheduler(client: Client) {
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
 }
 
-async function checkAndCloseExpiredRaids(client: Client) {
+export async function checkAndCloseExpiredRaids(client: Client) {
   const now = new Date();
 
   // Find all open raids that have expired
@@ -46,22 +46,24 @@ async function checkAndCloseExpiredRaids(client: Client) {
          data: { status: 'closed' },
        });
 
-       // Check if auto-archive is enabled for this guild
-       const shouldAutoArchive = raid.guild.autoArchive && raid.guild.archiveChannelId;
+        // Check if auto-archive is enabled for this guild
+        const shouldAutoArchive = raid.guild.autoArchive && raid.guild.archiveChannelId;
+        let archivedSuccessfully = false;
 
-       // If auto-archive is enabled, archive the raid
-       if (shouldAutoArchive) {
-         try {
-           await archiveRaid(raid.id, raid.guildId, client);
-           console.log(`✅ Auto-archived raid: ${raid.description} (${raid.id})`);
-         } catch (archiveError) {
-           console.error(`⚠️ Failed to auto-archive raid ${raid.id}:`, archiveError);
-           // Continue with regular closure even if archiving fails
-         }
-       }
+        // If auto-archive is enabled, archive the raid
+        if (shouldAutoArchive) {
+          try {
+            await archiveRaid(raid.id, raid.guildId, client);
+            archivedSuccessfully = true;
+            console.log(`✅ Auto-archived raid: ${raid.description} (${raid.id})`);
+          } catch (archiveError) {
+            console.error(`⚠️ Failed to auto-archive raid ${raid.id}:`, archiveError);
+            // Continue with regular closure even if archiving fails
+          }
+        }
 
-       // Update the raid message if it exists (for non-archived raids)
-       if (!shouldAutoArchive && raid.messageId && raid.channelId) {
+        // Update the raid message if it exists (for non-archived raids or if archiving failed)
+        if (!archivedSuccessfully && raid.messageId && raid.channelId) {
          try {
            const channel = await client.channels.fetch(raid.channelId);
            if (channel?.isTextBased() && 'messages' in channel) {
@@ -74,16 +76,17 @@ async function checkAndCloseExpiredRaids(client: Client) {
                components: [],
              });
 
-             console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
-           }
-         } catch (error) {
-           console.error(`Error updating message for raid ${raid.id}:`, error);
-         }
-       } else if (shouldAutoArchive) {
-         console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})`);
-       } else {
-         console.log(`✅ Auto-closed raid (no message): ${raid.description} (${raid.id})`);
-       }
+              console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
+            }
+          } catch (error) {
+            console.error(`Error updating message for raid ${raid.id}:`, error);
+          }
+        } else if (archivedSuccessfully) {
+          console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})`);
+        } else if (raid.messageId && raid.channelId) {
+          // This case handles when shouldAutoArchive was false but we didn't have message to update
+          console.log(`✅ Auto-closed raid (no message update needed): ${raid.description} (${raid.id})`);
+        }
      } catch (error) {
        console.error(`Error closing raid ${raid.id}:`, error);
      }

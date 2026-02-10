@@ -46,9 +46,9 @@ export async function checkAndCloseExpiredRaids(client: Client) {
          data: { status: 'closed' },
        });
 
-        // Check if auto-archive is enabled for this guild
-        const shouldAutoArchive = raid.guild.autoArchive && raid.guild.archiveChannelId;
-        let archivedSuccessfully = false;
+         // Check if auto-archive is enabled for this guild
+         const shouldAutoArchive = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);
+         let archivedSuccessfully = false;
 
         // If auto-archive is enabled, archive the raid
         if (shouldAutoArchive) {

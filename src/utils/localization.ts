@@ -143,12 +143,20 @@ interface Translations {
    compositionCountFine: string;
    compositionNoSuggestions: string;
    compositionAnalyzedAt: string;
-   compositionTanks: string;
-   compositionHealers: string;
-   compositionMeleeDps: string;
-   compositionRangedDps: string;
+    compositionTanks: string;
+    compositionHealers: string;
+    compositionMeleeDps: string;
+    compositionRangedDps: string;
+    compositionReady: string;
+    compositionNeedsTanks: string;
+    compositionNeedsHealers: string;
+    compositionNeedsDps: string;
+    compositionOverstockedTanks: string;
+    compositionOverstockedHealers: string;
+    compositionOverstockedDps: string;
+    compositionUnknown: string;
 
-   // Attendance command
+    // Attendance command
    attendanceRecord: string;
    attendanceRaidsInvited: string;
   attendanceRaidsAttended: string;
@@ -179,21 +187,23 @@ interface Translations {
   raidNotesNone: string;
 
    // Raid Archive Feature (Phase 2.4)
-   archiveSearchResults: string;
-   archiveSearchQuery: string;
-   archiveSearchPeriod: string;
-   archiveSearchNoResults: string;
-   archiveSearchNone: string;
-   archiveDate: string;
-   archiveAttendance: string;
-   archiveParticipants: string;
-   archiveRaidId: string;
-   archiveShowingResults: string;
-   raidArchived: string;
-   raidRestored: string;
-   archiveNotConfigured: string;
-   raidAlreadyArchived: string;
-   raidNotArchived: string;
+    archiveSearchResults: string;
+    archiveSearchQuery: string;
+    archiveSearchPeriod: string;
+    archiveSearchNoResults: string;
+    archiveSearchNone: string;
+    archiveDate: string;
+    archiveAttendance: string;
+    archiveParticipants: string;
+    archiveRaidId: string;
+    archiveShowingResults: string;
+    archiveFoundCount: string;
+    raidArchived: string;
+    archiveMovedNotification: string;
+    raidRestored: string;
+    archiveNotConfigured: string;
+    raidAlreadyArchived: string;
+    raidNotArchived: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -340,12 +350,20 @@ const translations: Record<SupportedLanguage, Translations> = {
       compositionCountFine: '{role} count is fine',
       compositionNoSuggestions: 'No suggestions available',
       compositionAnalyzedAt: 'Analyzed at',
-      compositionTanks: 'Tanks',
-      compositionHealers: 'Healers',
-      compositionMeleeDps: 'Melee DPS',
-      compositionRangedDps: 'Ranged DPS',
+       compositionTanks: 'Tanks',
+       compositionHealers: 'Healers',
+       compositionMeleeDps: 'Melee DPS',
+       compositionRangedDps: 'Ranged DPS',
+       compositionReady: '✅ Raid composition is ready!',
+       compositionNeedsTanks: '❌ Need more tanks',
+       compositionNeedsHealers: '❌ Need more healers',
+       compositionNeedsDps: '❌ Need more DPS',
+       compositionOverstockedTanks: '⚠️ Too many tanks',
+       compositionOverstockedHealers: '⚠️ Too many healers',
+       compositionOverstockedDps: '⚠️ Too many DPS',
+       compositionUnknown: 'Status unknown',
 
-     // Attendance command
+      // Attendance command
      attendanceRecord: 'Attendance Record: {player}',
     attendanceRaidsInvited: 'Raids Invited',
     attendanceRaidsAttended: 'Raids Attended',
@@ -376,21 +394,23 @@ const translations: Record<SupportedLanguage, Translations> = {
       raidNotesNone: 'No notes or comments for this raid.',
 
        // Raid Archive Feature (Phase 2.4)
-       archiveSearchResults: 'Archive Search Results',
-       archiveSearchQuery: 'Query',
-       archiveSearchPeriod: 'Period',
-       archiveSearchNoResults: 'No archived raids match your search.',
-       archiveSearchNone: 'No results',
-       archiveDate: 'Date',
-       archiveAttendance: 'Attendance',
-       archiveParticipants: 'Participants',
-       archiveRaidId: 'Raid ID',
-       archiveShowingResults: 'Showing 10 of {total} results. Use more specific filters to narrow down.',
-       raidArchived: 'Raid Archived',
-       raidRestored: 'Raid Restored',
-       archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
-       raidAlreadyArchived: 'This raid is already archived.',
-       raidNotArchived: 'This raid is not archived.',
+        archiveSearchResults: 'Archive Search Results',
+        archiveSearchQuery: 'Query',
+        archiveSearchPeriod: 'Period',
+        archiveSearchNoResults: 'No archived raids match your search.',
+        archiveSearchNone: 'No results',
+        archiveDate: 'Date',
+        archiveAttendance: 'Attendance',
+        archiveParticipants: 'Participants',
+        archiveRaidId: 'Raid ID',
+        archiveShowingResults: 'Showing 10 of {total} results. Use more specific filters to narrow down.',
+        archiveFoundCount: '{count} archived raid(s) found',
+        raidArchived: 'Raid Archived',
+        archiveMovedNotification: 'has been moved to {channel}',
+        raidRestored: 'Raid Restored',
+        archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
+        raidAlreadyArchived: 'This raid is already archived.',
+        raidNotArchived: 'This raid is not archived.',
     },
 
   de: {
@@ -536,12 +556,20 @@ const translations: Record<SupportedLanguage, Translations> = {
       compositionCountFine: '{role} Anzahl ist in Ordnung',
       compositionNoSuggestions: 'Keine Vorschläge verfügbar',
       compositionAnalyzedAt: 'Analysiert um',
-      compositionTanks: 'Tanks',
-      compositionHealers: 'Heiler',
-      compositionMeleeDps: 'Nahkampf DPS',
-      compositionRangedDps: 'Fernkampf DPS',
+       compositionTanks: 'Tanks',
+       compositionHealers: 'Heiler',
+       compositionMeleeDps: 'Nahkampf DPS',
+       compositionRangedDps: 'Fernkampf DPS',
+       compositionReady: '✅ Raid-Zusammensetzung ist bereit!',
+       compositionNeedsTanks: '❌ Mehr Tanks erforderlich',
+       compositionNeedsHealers: '❌ Mehr Heiler erforderlich',
+       compositionNeedsDps: '❌ Mehr DPS erforderlich',
+       compositionOverstockedTanks: '⚠️ Zu viele Tanks',
+       compositionOverstockedHealers: '⚠️ Zu viele Heiler',
+       compositionOverstockedDps: '⚠️ Zu viel DPS',
+       compositionUnknown: 'Status unbekannt',
 
-     // Attendance command
+      // Attendance command
      attendanceRecord: 'Anwesenheit: {player}',
     attendanceRaidsInvited: 'Raids eingeladen',
     attendanceRaidsAttended: 'Raids teilgenommen',
@@ -581,9 +609,11 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveAttendance: 'Teilnahme',
         archiveParticipants: 'Teilnehmer',
         archiveRaidId: 'Raid ID',
-        archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
-        raidArchived: 'Raid archiviert',
-        raidRestored: 'Raid wiederhergestellt',
+         archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
+         archiveFoundCount: '{count} archivierter Raid gefunden',
+         raidArchived: 'Raid archiviert',
+         archiveMovedNotification: 'wurde zu {channel} verschoben',
+         raidRestored: 'Raid wiederhergestellt',
         archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
         raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
         raidNotArchived: 'Dieser Raid ist nicht archiviert.',

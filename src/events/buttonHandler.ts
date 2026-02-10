@@ -6,6 +6,8 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ModalSubmitInteraction,
+  TextChannel,
+  NewsChannel,
 } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
@@ -332,18 +334,25 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
     content: trans.optoutReasonSubmitted,
   });
 
-  // Update the raid message
-  try {
-    const message = await interaction.channel?.messages.fetch(raid.messageId || '');
-    if (message) {
-      const embed = await createRaidEmbed(raidId, raid.guild.language);
-      await message.edit({
-        embeds: [embed],
-      });
-    }
-  } catch (error) {
-    console.error('Error updating raid message:', error);
-  }
+   // Update the raid message
+   try {
+     if (!raid.messageId || !raid.channelId) return;
+     
+     const channel = await interaction.client.channels.fetch(raid.channelId);
+     if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
+       return;
+     }
+     
+     const message = await channel.messages.fetch(raid.messageId);
+     if (message) {
+       const embed = await createRaidEmbed(raidId, raid.guild.language);
+       await message.edit({
+         embeds: [embed],
+       });
+     }
+   } catch (error) {
+     console.error('Error updating raid message:', error);
+   }
 }
 
 async function updateRaidMessage(interaction: ButtonInteraction, raidId: string) {

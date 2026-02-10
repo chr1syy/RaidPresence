@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for commands/config.ts</title>
+    <title>Code coverage report for utils/archiveManager.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">commands</a> config.ts</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">utils</a> archiveManager.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">59.04% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>121/121</span>
+                <span class='fraction'>62/105</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">94.73% </span>
+                <span class="strong">44.94% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>72/76</span>
+                <span class='fraction'>40/89</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">63.63% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>24/24</span>
+                <span class='fraction'>14/22</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">62.5% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>120/120</span>
+                <span class='fraction'>60/96</span>
             </div>
         
             
@@ -443,179 +443,281 @@
 <a name='L378'></a><a href='#L378'>378</a>
 <a name='L379'></a><a href='#L379'>379</a>
 <a name='L380'></a><a href='#L380'>380</a>
-<a name='L381'></a><a href='#L381'>381</a>
-<a name='L382'></a><a href='#L382'>382</a>
-<a name='L383'></a><a href='#L383'>383</a>
-<a name='L384'></a><a href='#L384'>384</a>
-<a name='L385'></a><a href='#L385'>385</a>
-<a name='L386'></a><a href='#L386'>386</a>
-<a name='L387'></a><a href='#L387'>387</a>
-<a name='L388'></a><a href='#L388'>388</a>
-<a name='L389'></a><a href='#L389'>389</a>
-<a name='L390'></a><a href='#L390'>390</a>
-<a name='L391'></a><a href='#L391'>391</a>
-<a name='L392'></a><a href='#L392'>392</a>
-<a name='L393'></a><a href='#L393'>393</a>
-<a name='L394'></a><a href='#L394'>394</a>
-<a name='L395'></a><a href='#L395'>395</a>
-<a name='L396'></a><a href='#L396'>396</a>
-<a name='L397'></a><a href='#L397'>397</a>
-<a name='L398'></a><a href='#L398'>398</a>
-<a name='L399'></a><a href='#L399'>399</a>
-<a name='L400'></a><a href='#L400'>400</a>
-<a name='L401'></a><a href='#L401'>401</a>
-<a name='L402'></a><a href='#L402'>402</a>
-<a name='L403'></a><a href='#L403'>403</a>
-<a name='L404'></a><a href='#L404'>404</a>
-<a name='L405'></a><a href='#L405'>405</a>
-<a name='L406'></a><a href='#L406'>406</a>
-<a name='L407'></a><a href='#L407'>407</a>
-<a name='L408'></a><a href='#L408'>408</a>
-<a name='L409'></a><a href='#L409'>409</a>
-<a name='L410'></a><a href='#L410'>410</a>
-<a name='L411'></a><a href='#L411'>411</a>
-<a name='L412'></a><a href='#L412'>412</a>
-<a name='L413'></a><a href='#L413'>413</a>
-<a name='L414'></a><a href='#L414'>414</a>
-<a name='L415'></a><a href='#L415'>415</a>
-<a name='L416'></a><a href='#L416'>416</a>
-<a name='L417'></a><a href='#L417'>417</a>
-<a name='L418'></a><a href='#L418'>418</a>
-<a name='L419'></a><a href='#L419'>419</a>
-<a name='L420'></a><a href='#L420'>420</a>
-<a name='L421'></a><a href='#L421'>421</a>
-<a name='L422'></a><a href='#L422'>422</a>
-<a name='L423'></a><a href='#L423'>423</a>
-<a name='L424'></a><a href='#L424'>424</a>
-<a name='L425'></a><a href='#L425'>425</a>
-<a name='L426'></a><a href='#L426'>426</a>
-<a name='L427'></a><a href='#L427'>427</a>
-<a name='L428'></a><a href='#L428'>428</a>
-<a name='L429'></a><a href='#L429'>429</a>
-<a name='L430'></a><a href='#L430'>430</a>
-<a name='L431'></a><a href='#L431'>431</a>
-<a name='L432'></a><a href='#L432'>432</a>
-<a name='L433'></a><a href='#L433'>433</a>
-<a name='L434'></a><a href='#L434'>434</a>
-<a name='L435'></a><a href='#L435'>435</a>
-<a name='L436'></a><a href='#L436'>436</a>
-<a name='L437'></a><a href='#L437'>437</a>
-<a name='L438'></a><a href='#L438'>438</a>
-<a name='L439'></a><a href='#L439'>439</a>
-<a name='L440'></a><a href='#L440'>440</a>
-<a name='L441'></a><a href='#L441'>441</a>
-<a name='L442'></a><a href='#L442'>442</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">29x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">28x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">22x</span>
-<span class="cline-any cline-yes">3x</span>
+<a name='L381'></a><a href='#L381'>381</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">16x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">12x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -623,229 +725,87 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">17x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">19x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -854,538 +814,395 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
-  SlashCommandBuilder,
-  CommandInteraction,
-  ChatInputCommandInteraction,
-  EmbedBuilder,
-  PermissionFlagsBits,
-} from 'discord.js';
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { Client, TextChannel, NewsChannel, EmbedBuilder } from 'discord.js';
 import prisma from '../database/client';
-import { Command } from '../types';
 &nbsp;
-const command: Command = {
-  data: new SlashCommandBuilder()
-    .setName('config')
-    .setDescription('Configure bot settings for this server')
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('view')
-        .setDescription('View current server configuration')
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('raid-roles')
-        .setDescription('Set roles that are automatically added to raids')
-        .addStringOption((option) =&gt;
-          option
-            .setName('roles')
-            .setDescription('Role names or IDs (comma-separated, e.g., "Raider,Member")')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('leader-roles')
-        .setDescription('Set roles that can create and manage raids')
-        .addStringOption((option) =&gt;
-          option
-            .setName('roles')
-            .setDescription('Role names or IDs (comma-separated, e.g., "Officer,Raid Leader")')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('language')
-        .setDescription('Set the bot language for this server')
-        .addStringOption((option) =&gt;
-          option
-            .setName('lang')
-            .setDescription('Choose a language')
-            .setRequired(true)
-            .addChoices(
-              { name: 'English', value: 'en' },
-              { name: 'Deutsch (German)', value: 'de' }
-            )
-        )
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('timezone')
-        .setDescription('Set the timezone offset for raid times')
-        .addIntegerOption((option) =&gt;
-          option
-            .setName('offset')
-            .setDescription('Timezone offset in hours (e.g., 1 for GMT+1, -5 for GMT-5)')
-            .setRequired(true)
-            .setMinValue(-12)
-            .setMaxValue(14)
-        )
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('archive-channel')
-        .setDescription('Set the archive channel for closed raids')
-        .addChannelOption((option) =&gt;
-          option
-            .setName('channel')
-            .setDescription('The channel to use for raid archives')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =&gt;
-      subcommand
-        .setName('auto-archive')
-        .setDescription('Automatically archive raids when they close')
-        .addBooleanOption((option) =&gt;
-          option
-            .setName('enabled')
-            .setDescription('Enable auto-archive on raid close?')
-            .setRequired(true)
-        )
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
+/**
+ * Archive-related search filter options.
+ */
+export interface ArchiveSearchFilter {
+  query?: string; // Search by raid name or player participation
+  startDate?: Date;
+  endDate?: Date;
+  guildId: string;
+}
 &nbsp;
-  async execute(interaction: CommandInteraction) {
-    if (!interaction.isChatInputCommand()) return;
+/**
+ * Archive search result summary.
+ */
+export interface ArchiveRaidSummary {
+  raidId: string;
+  description: string | null;
+  raidDate: Date;
+  attendedCount: number;
+  totalInvited: number;
+  attendancePercent: number;
+  participantNames: string[];
+  archivedAt: Date;
+  archiveChannelId: string | null;
+}
 &nbsp;
-    const subcommand = interaction.options.getSubcommand();
-&nbsp;
-    if (subcommand === 'view') {
-      await handleViewConfig(interaction);
-    } else if (subcommand === 'raid-roles') {
-      await handleSetRaidRoles(interaction);
-    } else if (subcommand === 'leader-roles') {
-      await handleSetLeaderRoles(interaction);
-    } else if (subcommand === 'language') {
-      await handleSetLanguage(interaction);
-    } else if (subcommand === 'timezone') {
-      await handleSetTimezone(interaction);
-    } else if (subcommand === 'archive-channel') {
-      await handleSetArchiveChannel(interaction);
-    } else <span class="missing-if-branch" title="else path not taken" >E</span>if (subcommand === 'auto-archive') {
-      await handleSetAutoArchive(interaction);
-    }
-  },
-};
-&nbsp;
-async function handleViewConfig(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-&nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
+/**
+ * Archive a raid by moving it to an archive channel.
+ * 
+ * @param raidId - The raid to archive
+ * @param guildId - The guild context
+ * @param client - Discord.js client for message management
+ * @returns Promise&lt;string&gt; - Archive message ID
+ */
+export async function archiveRaid(
+  raidId: string,
+  guildId: string,
+  client: Client
+): Promise&lt;string&gt; {
+  // Fetch the guild to get archive channel
+  const guild = await prisma.guild.findUnique({
+    where: { id: guildId }
   });
 &nbsp;
-  if (!guildData) {
-    await interaction.editReply({
-      content: '❌ Server configuration not found. Please try again.',
-    });
-    return;
+  if (!guild || !guild.archiveChannelId) {
+    throw new Error('Archive channel not configured for this guild. Use `/config archive-channel` first.');
   }
 &nbsp;
-  const raidRoles = guildData.raidRoles || 'Not configured';
-  const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
-  const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
-  const timezoneOffset = guildData.timezoneOffset;
-  const timezoneDisplay = timezoneOffset &gt;= 0 ? `GMT+${timezoneOffset}` : `GMT${timezoneOffset}`;
-  const archiveChannel = guildData.archiveChannelId ? <span class="branch-0 cbranch-no" title="branch not covered" >`&lt;#${guildData.archiveChannelId}&gt;` </span>: 'Not configured';
-  const autoArchiveStatus = guildData.autoArchive ? <span class="branch-0 cbranch-no" title="branch not covered" >'✅ Enabled' </span>: '❌ Disabled';
+  // Fetch the raid with attendance
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: {
+      attendance: true
+    }
+  });
 &nbsp;
-  const embed = new EmbedBuilder()
-    .setTitle('Server Configuration')
-    .setColor(0x00ae86)
+  if (!raid) {
+    throw new Error(`Raid ${raidId} not found.`);
+  }
+&nbsp;
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (raid.guildId !== guildId) {
+    throw new Error('Guild isolation violation: Cannot archive raid from different guild.');
+  }
+&nbsp;
+  // Get original channel and message
+  const originalChannel = <span class="cstat-no" title="statement not covered" >await client.channels.fetch(raid.channelId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+  const archiveChannel = <span class="cstat-no" title="statement not covered" >await client.channels.fetch(guild.archiveChannelId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  if (!archiveChannel || !(archiveChannel instanceof TextChannel || archiveChannel instanceof NewsChannel)) {</span>
+<span class="cstat-no" title="statement not covered" >    throw new Error('Archive channel is invalid or not accessible.');</span>
+  }
+&nbsp;
+  let originalMessage = <span class="cstat-no" title="statement not covered" >null;</span>
+<span class="cstat-no" title="statement not covered" >  if (raid.messageId &amp;&amp; originalChannel instanceof TextChannel) {</span>
+<span class="cstat-no" title="statement not covered" >    originalMessage = await originalChannel.messages.fetch(raid.messageId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+  }
+&nbsp;
+  // Create archive embed (simple summary)
+  const archiveEmbed = <span class="cstat-no" title="statement not covered" >new EmbedBuilder()</span>
+    .setColor(0x95a5a6) // Gray for archived
+    .setTitle(`📦 Archived: ${raid.description || 'Raid'}`)
+    .setDescription(`Raid from &lt;t:${Math.floor(raid.raidDate.getTime() / 1000)}:F&gt;`)
     .addFields(
       {
-        name: 'Raid Attendance Roles',
-        value: `\`${raidRoles}\`\n\nMembers with these roles are automatically added to raid rosters.`,
-        inline: false,
+        name: 'Status',
+        value: `${raid.status}`,
+        inline: true
       },
-      {
-        name: 'Raid Leader Roles',
-        value: `\`${leaderRoles}\`\n\nMembers with these roles can create and delete raids.`,
-        inline: false,
-      },
-      {
-        name: 'Language',
-        value: `\`${language}\`\n\nBot messages will appear in this language.`,
-        inline: false,
-      },
-      {
-        name: 'Timezone',
-        value: `\`${timezoneDisplay}\`\n\nRaid times will be created in this timezone.`,
-        inline: false,
-      },
-      {
-        name: '📦 Archive Channel',
-        value: `${archiveChannel}\n\nClosed raids can be archived to this channel.`,
-        inline: false,
-      },
-      {
-        name: '📦 Auto-Archive',
-        value: `${autoArchiveStatus}\n\nRaids are ${guildData.autoArchive ? <span class="branch-0 cbranch-no" title="branch not covered" >'automatically' </span>: 'manually'} archived when they close.`,
-        inline: false,
-      }
+       {
+         name: 'Total Attendance',
+         value: `${raid.attendance.filter(<span class="fstat-no" title="function not covered" >a </span>=&gt; <span class="cstat-no" title="statement not covered" >a.status === 'attending' || a.status === 'late')</span>.length}/${raid.attendance.length}`,
+         inline: true
+       }
     )
-    .setFooter({ text: 'Use /config to update any setting' })
-    .setTimestamp();
+    .setFooter({ text: `Original Channel: ${raid.channelId}` })
+    .setTimestamp(new Date());
 &nbsp;
-  await interaction.editReply({ embeds: [embed] });
+  // Post to archive channel
+  const archiveMessage = <span class="cstat-no" title="statement not covered" >await archiveChannel.send({ embeds: [archiveEmbed] });</span>
+&nbsp;
+  // Update raid in database
+<span class="cstat-no" title="statement not covered" >  await prisma.raid.update({</span>
+    where: { id: raidId },
+    data: {
+      archivedAt: new Date(),
+      archiveChannelId: guild.archiveChannelId,
+      archiveMessageId: archiveMessage.id,
+      isPinned: true
+    }
+  });
+&nbsp;
+  // Delete from original channel if exists
+<span class="cstat-no" title="statement not covered" >  if (originalMessage) {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      await originalMessage.delete();</span>
+    } catch (err) {
+      // Log but don't throw - archive is more important
+<span class="cstat-no" title="statement not covered" >      console.error(`Failed to delete original message: ${err}`);</span>
+    }
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return archiveMessage.id;</span>
 }
 &nbsp;
-async function handleSetRaidRoles(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
+/**
+ * Restore (unarchive) a raid from archive channel back to original.
+ * 
+ * @param raidId - The raid to restore
+ * @param guildId - The guild context
+ * @param client - Discord.js client
+ */
+export async function unarchiveRaid(
+  raidId: string,
+  guildId: string,
+  client: Client
+): Promise&lt;void&gt; {
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: {
+      attendance: true
+    }
+  });
+&nbsp;
+  if (!raid) {
+    throw new Error(`Raid ${raidId} not found.`);
   }
 &nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const roles = interaction.options.get('roles', true).value as string;
-&nbsp;
-  // Validate and clean up the roles string
-  const cleanedRoles = roles
-    .split(',')
-    .map((r) =&gt; r.trim())
-    .filter(Boolean)
-    .join(',');
-&nbsp;
-  if (!cleanedRoles) {
-    await interaction.editReply({
-      content: '❌ Invalid roles format. Please provide role names or IDs separated by commas.',
-    });
-    return;
+  if (raid.guildId !== guildId) {
+    throw new Error('Guild isolation violation: Cannot unarchive raid from different guild.');
   }
 &nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { raidRoles: cleanedRoles },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: cleanedRoles,
-      raidLeaderRoles: '',
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!raid.isPinned) {
+    throw new Error(`Raid ${raidId} is not archived.`);
+  }
+&nbsp;
+  // Get archive message
+  let archiveMessage = <span class="cstat-no" title="statement not covered" >null;</span>
+<span class="cstat-no" title="statement not covered" >  if (raid.archiveChannelId &amp;&amp; raid.archiveMessageId) {</span>
+    const archiveChannel = <span class="cstat-no" title="statement not covered" >await client.channels.fetch(raid.archiveChannelId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+<span class="cstat-no" title="statement not covered" >     if (archiveChannel instanceof TextChannel || archiveChannel instanceof NewsChannel) {</span>
+<span class="cstat-no" title="statement not covered" >       archiveMessage = await archiveChannel.messages.fetch(raid.archiveMessageId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+     }
+  }
+&nbsp;
+  // Get original channel
+  const originalChannel = <span class="cstat-no" title="statement not covered" >await client.channels.fetch(raid.channelId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+<span class="cstat-no" title="statement not covered" >   if (!originalChannel || !(originalChannel instanceof TextChannel || originalChannel instanceof NewsChannel)) {</span>
+<span class="cstat-no" title="statement not covered" >     throw new Error('Original channel is invalid or not accessible.');</span>
+   }
+&nbsp;
+  // Create a basic notification that raid was restored
+  const restoreEmbed = <span class="cstat-no" title="statement not covered" >new EmbedBuilder()</span>
+    .setColor(0x3498db)
+    .setTitle(`✅ Raid Restored`)
+    .setDescription(`${raid.description || 'Raid'} from &lt;t:${Math.floor(raid.raidDate.getTime() / 1000)}:F&gt;`)
+    .setTimestamp(new Date());
+&nbsp;
+  const newMessage = <span class="cstat-no" title="statement not covered" >await originalChannel.send({ embeds: [restoreEmbed] });</span>
+&nbsp;
+  // Update raid in database
+<span class="cstat-no" title="statement not covered" >  await prisma.raid.update({</span>
+    where: { id: raidId },
+    data: {
+      archivedAt: null,
+      archiveChannelId: null,
+      archiveMessageId: null,
+      isPinned: false,
+      messageId: newMessage.id // Update to new message ID
+    }
+  });
+&nbsp;
+  // Delete from archive
+<span class="cstat-no" title="statement not covered" >  if (archiveMessage) {</span>
+<span class="cstat-no" title="statement not covered" >    try {</span>
+<span class="cstat-no" title="statement not covered" >      await archiveMessage.delete();</span>
+    } catch (err) {
+<span class="cstat-no" title="statement not covered" >      console.error(`Failed to delete archive message: ${err}`);</span>
+    }
+  }
+}
+&nbsp;
+/**
+ * Get a guild's archive channel (or throw error if not configured).
+ * 
+ * @param guildId - The guild
+ * @param client - Discord.js client
+ * @returns Promise&lt;TextChannel&gt;
+ */
+export async function getArchiveChannel(
+  guildId: string,
+  client: Client
+): Promise&lt;TextChannel&gt; {
+  const guild = await prisma.guild.findUnique({
+    where: { id: guildId }
+  });
+&nbsp;
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!guild || !guild.archiveChannelId) {
+    throw new Error('Archive channel not configured. Use `/config archive-channel` first.');
+  }
+&nbsp;
+  const channel = <span class="cstat-no" title="statement not covered" >await client.channels.fetch(guild.archiveChannelId).catch(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >null)</span>;</span>
+<span class="cstat-no" title="statement not covered" >  if (!channel || !(channel instanceof TextChannel)) {</span>
+<span class="cstat-no" title="statement not covered" >    throw new Error('Archive channel is invalid or not accessible.');</span>
+  }
+&nbsp;
+<span class="cstat-no" title="statement not covered" >  return channel;</span>
+}
+&nbsp;
+/**
+ * Configure the archive channel for a guild.
+ * 
+ * @param guildId - The guild
+ * @param channelId - The channel to set as archive
+ * @param client - Discord.js client to verify channel exists
+ */
+export async function setupArchiveChannel(
+  guildId: string,
+  channelId: string,
+  client: Client
+): Promise&lt;void&gt; {
+  // Verify channel exists and is accessible
+  const channel = await client.channels.fetch(channelId).catch(() =&gt; null);
+  <span class="missing-if-branch" title="else path not taken" >E</span>if (!channel || <span class="branch-1 cbranch-no" title="branch not covered" >!(channel instanceof TextChannel || channel instanceof NewsChannel))</span> {
+    throw new Error('Channel is invalid or not accessible.');
+  }
+&nbsp;
+  // Update guild config
+<span class="cstat-no" title="statement not covered" >  await prisma.guild.update({</span>
+    where: { id: guildId },
+    data: {
+      archiveChannelId: channelId
+    }
+  });
+}
+&nbsp;
+/**
+ * Search archived raids in a guild with efficient database-level filtering.
+ * Uses Prisma query layer to filter and paginate results, avoiding O(n) memory issues.
+ * 
+ * @param filters - Search filters including guildId, query, date range
+ * @param pageSize - Number of results per page (default 25)
+ * @returns Promise&lt;ArchiveRaidSummary[]&gt;
+ */
+export async function searchArchive(
+  filters: ArchiveSearchFilter,
+  pageSize: number = 25,
+): Promise&lt;ArchiveRaidSummary[]&gt; {
+  const { guildId, query, startDate, endDate } = filters;
+&nbsp;
+  // Build where clause dynamically based on search parameters
+  const where: any = {
+    guildId,
+    archivedAt: {
+      not: null,
     },
-  });
+  };
 &nbsp;
-  await interaction.editReply({
-    content: `✅ Raid attendance roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles will be automatically added to future raids.`,
-  });
-}
-&nbsp;
-async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
+  // Add date range filter if provided
+  if (startDate || endDate) {
+    where.raidDate = {};
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (startDate) {
+      where.raidDate.gte = startDate;
+    }
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (endDate) {
+      where.raidDate.lte = endDate;
+    }
   }
 &nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const roles = interaction.options.get('roles', true).value as string;
-&nbsp;
-  // Validate and clean up the roles string
-  const cleanedRoles = roles
-    .split(',')
-    .map((r) =&gt; r.trim())
-    .filter(Boolean)
-    .join(',');
-&nbsp;
-  if (!cleanedRoles) {
-    await interaction.editReply({
-      content: '❌ Invalid roles format. Please provide role names or IDs separated by commas.',
-    });
-    return;
+  // Build text search filter if query provided
+  // Note: This filters by raid description at the database level
+  // Player name filtering requires joining attendance, handled below
+  if (query &amp;&amp; query.trim()) {
+    const lowerQuery = query.toLowerCase();
+    where.OR = [
+      {
+        description: {
+          contains: query,
+          mode: 'insensitive',
+        },
+      },
+    ];
   }
 &nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { raidLeaderRoles: cleanedRoles },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: '',
-      raidLeaderRoles: cleanedRoles,
+  // Fetch archived raids with pagination
+  // Select only needed fields for performance
+  let raids = await prisma.raid.findMany({
+    where,
+    include: {
+      attendance: {
+        select: {
+          username: true,
+          status: true,
+        },
+      },
     },
-  });
-&nbsp;
-  await interaction.editReply({
-    content: `✅ Raid leader roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles can now create and manage raids.`,
-  });
-}
-&nbsp;
-async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-&nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const language = interaction.options.get('lang', true).value as string;
-&nbsp;
-  if (language !== 'en' &amp;&amp; language !== 'de') {
-    await interaction.editReply({
-      content: '❌ Invalid language. Please choose English or German.',
-    });
-    return;
-  }
-&nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { language },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: '',
-      raidLeaderRoles: '',
-      language,
+    orderBy: {
+      raidDate: 'desc',
     },
+    take: pageSize,
   });
 &nbsp;
-  const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
-  await interaction.editReply({
-    content: `✅ Language updated to: \`${languageName}\`\n\nBot messages will now appear in this language.`,
+  // Additional client-side filter for player name search
+  // This is necessary since Prisma's text search doesn't easily support nested attendance filtering
+  if (query &amp;&amp; query.trim()) {
+    const lowerQuery = query.toLowerCase();
+    raids = raids.filter(raid =&gt; {
+      const matchesDescription = raid.description?.toLowerCase().includes(lowerQuery) ?? <span class="branch-1 cbranch-no" title="branch not covered" >false;</span>
+      const matchesPlayer = raid.attendance.some(a =&gt;
+        a.username.toLowerCase().includes(lowerQuery)
+      );
+      return matchesDescription || matchesPlayer;
+    });
+  }
+&nbsp;
+  // Transform to summaries
+  return raids.map(raid =&gt; {
+    const attendedCount = raid.attendance.filter(a =&gt; a.status === 'attending' || a.status === 'late').length;
+    const totalInvited = raid.attendance.length;
+&nbsp;
+    return {
+      raidId: raid.id,
+      description: raid.description,
+      raidDate: raid.raidDate,
+      attendedCount,
+      totalInvited,
+      attendancePercent: totalInvited &gt; 0 ? Math.round((attendedCount / totalInvited) * 100) : <span class="branch-1 cbranch-no" title="branch not covered" >0,</span>
+      participantNames: raid.attendance
+        .filter(a =&gt; a.status === 'attending' || a.status === 'late')
+        .slice(0, 5)
+        .map(a =&gt; a.username),
+      archivedAt: raid.archivedAt!,
+      archiveChannelId: raid.archiveChannelId
+    };
   });
 }
 &nbsp;
-async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-&nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const offset = interaction.options.get('offset', true).value as number;
-&nbsp;
-  if (offset &lt; -12 || offset &gt; 14) {
-    await interaction.editReply({
-      content: '❌ Invalid timezone offset. Must be between -12 and +14.',
-    });
-    return;
-  }
-&nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { timezoneOffset: offset },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: '',
-      raidLeaderRoles: '',
-      language: 'en',
-      timezoneOffset: offset,
-    },
+/**
+ * Get archive stats for a guild (total archived, recent archives).
+ */
+export async function getArchiveStats(guildId: string) {
+  const archived = await prisma.raid.findMany({
+    where: {
+      guildId,
+      archivedAt: { not: null }
+    }
   });
 &nbsp;
-   const timezoneDisplay = offset &gt;= 0 ? `GMT+${offset}` : `GMT${offset}`;
-   await interaction.editReply({
-     content: `✅ Timezone updated to: \`${timezoneDisplay}\`\n\nRaid times will now be created in this timezone.`,
-   });
+  const totalArchived = archived.length;
+  const recentArchived = archived.filter(r =&gt; {
+    const daysAgo = (Date.now() - r.archivedAt!.getTime()) / (1000 * 60 * 60 * 24);
+    return daysAgo &lt;= 30;
+  }).length;
+&nbsp;
+  return {
+    totalArchived,
+    recentArchived
+  };
 }
-&nbsp;
-async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-&nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const channel = interaction.options.getChannel('channel', true);
-&nbsp;
-  // Verify the channel is text-based
-  const { ChannelType } = await import('discord.js');
-  const isTextChannel = channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement;
-&nbsp;
-  if (!isTextChannel) {
-    await interaction.editReply({
-      content: '❌ Archive channel must be a text channel.',
-    });
-    return;
-  }
-&nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { archiveChannelId: channel.id },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: '',
-      raidLeaderRoles: '',
-      archiveChannelId: channel.id,
-    },
-  });
-&nbsp;
-  await interaction.editReply({
-    content: `✅ Archive channel set to &lt;#${channel.id}&gt;.\n\nClosed raids can now be archived to this channel using \`/raid pin\`.`,
-  });
-}
-&nbsp;
-async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-&nbsp;
-  await interaction.deferReply({ ephemeral: true });
-&nbsp;
-  const enabled = interaction.options.getBoolean('enabled', true);
-&nbsp;
-  // First, check if an archive channel is configured (required for auto-archive)
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-&nbsp;
-  if (enabled &amp;&amp; !guildData?.archiveChannelId) {
-    await interaction.editReply({
-      content: '❌ Archive channel must be configured before enabling auto-archive.\n\nUse `/config archive-channel` to set it up first.',
-    });
-    return;
-  }
-&nbsp;
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { autoArchive: enabled },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: '',
-      raidLeaderRoles: '',
-      autoArchive: enabled,
-    },
-  });
-&nbsp;
-  const status = enabled ? '✅ enabled' : '❌ disabled';
-  await interaction.editReply({
-    content: `${status}\n\nAuto-archive is now ${enabled ? 'enabled' : 'disabled'}.\n\nRaids will ${enabled ? 'automatically be' : 'not be'} archived when they close.`,
-  });
-}
-&nbsp;
-export default command;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

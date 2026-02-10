@@ -353,23 +353,33 @@ export async function searchArchive(
 
 /**
  * Get archive stats for a guild (total archived, recent archives).
+ * Uses database-level aggregation to avoid loading all raids into memory.
  */
 export async function getArchiveStats(guildId: string) {
-  const archived = await prisma.raid.findMany({
-    where: {
-      guildId,
-      archivedAt: { not: null }
-    }
-  });
+   // Get total count of archived raids
+   const totalArchived = await prisma.raid.count({
+     where: {
+       guildId,
+       archivedAt: { not: null }
+     }
+   });
 
-  const totalArchived = archived.length;
-  const recentArchived = archived.filter(r => {
-    const daysAgo = (Date.now() - r.archivedAt!.getTime()) / (1000 * 60 * 60 * 24);
-    return daysAgo <= 30;
-  }).length;
+   // Get count of recently archived raids (last 30 days)
+   const thirtyDaysAgo = new Date();
+   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+   
+   const recentArchived = await prisma.raid.count({
+     where: {
+       guildId,
+       archivedAt: { 
+         not: null,
+         gte: thirtyDaysAgo
+       }
+     }
+   });
 
-  return {
-    totalArchived,
-    recentArchived
-  };
+   return {
+     totalArchived,
+     recentArchived
+   };
 }

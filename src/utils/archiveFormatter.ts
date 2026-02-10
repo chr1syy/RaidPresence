@@ -66,10 +66,9 @@ export function formatArchiveSearchEmbed(
      });
    } else {
      // For this case, we need a localized message about found raids
-     const foundMessage = language === 'de' 
-       ? `${results.length} archivierter Raid gefunden`
-       : `${results.length} archived raid(s) found`;
-     embed.setFooter({ text: foundMessage });
+     embed.setFooter({ 
+       text: t(language, 'archiveFoundCount', { count: results.length.toString() })
+     });
    }
 
   return embed;
@@ -85,21 +84,21 @@ export function formatArchiveSearchEmbed(
  * @returns EmbedBuilder for archive notification
  */
 export function formatArchiveNotificationEmbed(
-  raidName: string,
-  raidDate: Date,
-  archiveChannelId: string,
-  language: string
+   raidName: string,
+   raidDate: Date,
+   archiveChannelId: string,
+   language: string
 ): EmbedBuilder {
-  const trans = getTranslations(language);
+   const trans = getTranslations(language);
 
-  return new EmbedBuilder()
-    .setColor(0x95a5a6)
-    .setTitle(`📦 ${trans.raidArchived}`)
-    .setDescription(
-      `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
-      `has been moved to <#${archiveChannelId}>`
-    )
-    .setTimestamp(new Date());
+   return new EmbedBuilder()
+     .setColor(0x95a5a6)
+     .setTitle(`📦 ${trans.raidArchived}`)
+     .setDescription(
+       `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
+       `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
+     )
+     .setTimestamp(new Date());
 }
 
 /**

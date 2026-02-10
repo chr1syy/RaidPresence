@@ -129,27 +129,28 @@ function getCompositionColor(statusFlags: string[]): ColorResolvable {
  * Get human-readable status text
  */
 function getCompositionStatusText(statusFlags: string[], language: string): string {
-  const flagTexts: string[] = [];
+   const trans = getTranslations(language);
+   const flagTexts: string[] = [];
 
-  for (const flag of statusFlags) {
-    if (flag === 'READY') {
-      flagTexts.push('✅ Raid composition is ready!');
-    } else if (flag === 'NEEDS_TANKS') {
-      flagTexts.push('❌ Need more tanks');
-    } else if (flag === 'NEEDS_HEALERS') {
-      flagTexts.push('❌ Need more healers');
-    } else if (flag === 'NEEDS_DPS') {
-      flagTexts.push('❌ Need more DPS');
-    } else if (flag === 'OVERSTOCKED_TANKS') {
-      flagTexts.push('⚠️ Too many tanks');
-    } else if (flag === 'OVERSTOCKED_HEALERS') {
-      flagTexts.push('⚠️ Too many healers');
-    } else if (flag === 'OVERSTOCKED_DPS') {
-      flagTexts.push('⚠️ Too many DPS');
-    }
-  }
+   for (const flag of statusFlags) {
+     if (flag === 'READY') {
+       flagTexts.push(trans.compositionReady);
+     } else if (flag === 'NEEDS_TANKS') {
+       flagTexts.push(trans.compositionNeedsTanks);
+     } else if (flag === 'NEEDS_HEALERS') {
+       flagTexts.push(trans.compositionNeedsHealers);
+     } else if (flag === 'NEEDS_DPS') {
+       flagTexts.push(trans.compositionNeedsDps);
+     } else if (flag === 'OVERSTOCKED_TANKS') {
+       flagTexts.push(trans.compositionOverstockedTanks);
+     } else if (flag === 'OVERSTOCKED_HEALERS') {
+       flagTexts.push(trans.compositionOverstockedHealers);
+     } else if (flag === 'OVERSTOCKED_DPS') {
+       flagTexts.push(trans.compositionOverstockedDps);
+     }
+   }
 
-  return flagTexts.length > 0 ? flagTexts.join('\n') : 'Status unknown';
+   return flagTexts.length > 0 ? flagTexts.join('\n') : trans.compositionUnknown;
 }
 
 /**

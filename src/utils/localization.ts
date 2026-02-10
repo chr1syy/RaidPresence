@@ -236,7 +236,16 @@ interface Translations {
    badgesEarnedOn: string;
    badgesAwardedBy: string;
    badgesReason: string;
-   badgeEarned: string;
+    badgeEarned: string;
+
+    // Feedback system (Phase 3.2)
+    raidFeedback: string;
+    howDidRaidGo: string;
+    feedbackGreat: string;
+    feedbackOkay: string;
+    feedbackFrustrating: string;
+    moodScore: string;
+    guildMorale: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -476,7 +485,16 @@ const translations: Record<SupportedLanguage, Translations> = {
          badgesEarnedOn: 'Earned on',
          badgesAwardedBy: 'Awarded by',
          badgesReason: 'Reason',
-         badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
+          badgeEarned: '{playerName} earned {badgeName} badge! 🎉',
+
+          // Feedback system (Phase 3.2)
+          raidFeedback: 'Raid Feedback',
+          howDidRaidGo: 'How did the raid go?',
+          feedbackGreat: 'Great 😊',
+          feedbackOkay: 'Okay 😐',
+          feedbackFrustrating: 'Frustrating 😞',
+          moodScore: 'Mood Score',
+          guildMorale: 'Guild Morale',
     },
 
   de: {
@@ -715,7 +733,16 @@ const translations: Record<SupportedLanguage, Translations> = {
          badgesEarnedOn: 'Verdient am',
          badgesAwardedBy: 'Verliehen von',
          badgesReason: 'Grund',
-         badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
+          badgeEarned: '{playerName} hat das Abzeichen {badgeName} verdient! 🎉',
+
+          // Feedback system (Phase 3.2)
+          raidFeedback: 'Raid-Feedback',
+          howDidRaidGo: 'Wie lief der Raid?',
+          feedbackGreat: 'Großartig 😊',
+          feedbackOkay: 'Okay 😐',
+          feedbackFrustrating: 'Frustrierend 😞',
+          moodScore: 'Stimmungs-Score',
+          guildMorale: 'Gilden-Moral',
     },
 };
 

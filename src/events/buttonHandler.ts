@@ -15,30 +15,6 @@ import { getClassList } from '../utils/wowData';
 import { getTranslations } from '../utils/localization';
 
 export async function handleButton(interaction: ButtonInteraction) {
-  const [action, subAction, raidId] = interaction.customId.split('_');
-
-  if (action !== 'raid') return;
-
-  switch (subAction) {
-    case 'optout':
-      await handleOptOut(interaction, raidId);
-      break;
-    case 'optin':
-      await handleOptIn(interaction, raidId);
-      break;
-    case 'late':
-      await handleRunningLate(interaction, raidId);
-      break;
-    case 'class':
-      await handleClassSelection(interaction, raidId);
-      break;
-    default:
-      await interaction.reply({
-        content: '❌ Unknown action',
-        ephemeral: true,
-      });
-  }
-}
 
 async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
   // Show modal immediately for opt-out reason (<100ms response)

@@ -2,6 +2,8 @@ import { Client } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { getTranslations } from './localization';
 
 export function startRaidScheduler(client: Client) {
   // Check every 2 minutes for expired raids
@@ -16,6 +18,40 @@ export function startRaidScheduler(client: Client) {
   }, CHECK_INTERVAL);
 
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
+}
+
+async function postFeedbackMessage(raid: any, client: Client) {
+  if (!raid.channelId) return;
+
+  const channel = await client.channels.fetch(raid.channelId);
+  if (!channel?.isTextBased() || !('send' in channel)) return;
+
+  const trans = getTranslations(raid.guild.language || 'en');
+
+  const embed = new EmbedBuilder()
+    .setTitle(trans.raidFeedback)
+    .setDescription(trans.howDidRaidGo)
+    .setColor(0xffa500);
+
+  const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`feedback_great_${raid.id}`)
+      .setEmoji('😊')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`feedback_okay_${raid.id}`)
+      .setEmoji('😐')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`feedback_bad_${raid.id}`)
+      .setEmoji('😞')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await channel.send({
+    embeds: [embed],
+    components: [buttons],
+  });
 }
 
 export async function checkAndCloseExpiredRaids(client: Client) {
@@ -70,11 +106,13 @@ export async function checkAndCloseExpiredRaids(client: Client) {
              const message = await channel.messages.fetch(raid.messageId);
              const embed = await createRaidEmbed(raid.id, raid.guild.language);
 
-             // Remove buttons when closed
-             await message.edit({
-               embeds: [embed],
-               components: [],
-             });
+              // Remove buttons when closed
+              await message.edit({
+                embeds: [embed],
+                components: [],
+              });
+
+              await postFeedbackMessage(raid, client);
 
               console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
             }

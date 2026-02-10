@@ -27,12 +27,21 @@ export function formatCompositionEmbed(
   // Active players count
   embed.setDescription(`**Active Players:** ${analysis.activePlayers}`);
 
-  // Current composition field
-  const currentCompositionText = `
+   // Current composition field
+   // Handle division by zero: if no optimal melee+ranged, show "-" instead of NaN
+   const optimalDpsTotal = analysis.optimal.melee + analysis.optimal.ranged;
+   const optimalMelee = optimalDpsTotal > 0 
+     ? Math.round(analysis.optimal.melee * (analysis.optimal.totalDps / optimalDpsTotal))
+     : 0;
+   const optimalRanged = optimalDpsTotal > 0 
+     ? Math.round(analysis.optimal.ranged * (analysis.optimal.totalDps / optimalDpsTotal))
+     : 0;
+
+   const currentCompositionText = `
 ${ROLE_EMOJIS.TANK} Tanks: ${analysis.current.tanks}/${analysis.optimal.tanks}
 ${ROLE_EMOJIS.HEALER} Healers: ${analysis.current.healers}/${analysis.optimal.healers}
-⚔️ Melee DPS: ${analysis.current.melee}/${Math.round(analysis.optimal.melee * (analysis.optimal.totalDps / (analysis.optimal.melee + analysis.optimal.ranged)))}
-🏹 Ranged DPS: ${analysis.current.ranged}/${Math.round(analysis.optimal.ranged * (analysis.optimal.totalDps / (analysis.optimal.melee + analysis.optimal.ranged)))}
+⚔️ Melee DPS: ${analysis.current.melee}/${optimalMelee}
+🏹 Ranged DPS: ${analysis.current.ranged}/${optimalRanged}
 `.trim();
 
   embed.addFields({

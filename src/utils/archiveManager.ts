@@ -256,35 +256,73 @@ export async function setupArchiveChannel(
 }
 
 /**
- * Search archived raids in a guild.
+ * Search archived raids in a guild with efficient database-level filtering.
+ * Uses Prisma query layer to filter and paginate results, avoiding O(n) memory issues.
  * 
  * @param filters - Search filters including guildId, query, date range
+ * @param pageSize - Number of results per page (default 25)
  * @returns Promise<ArchiveRaidSummary[]>
  */
 export async function searchArchive(
-  filters: ArchiveSearchFilter
+  filters: ArchiveSearchFilter,
+  pageSize: number = 25,
 ): Promise<ArchiveRaidSummary[]> {
   const { guildId, query, startDate, endDate } = filters;
 
-  // Fetch archived raids for this guild
-  let raids = await prisma.raid.findMany({
-    where: {
-      guildId,
-      archivedAt: {
-        not: null,
-        ...(startDate && { gte: startDate }),
-        ...(endDate && { lte: endDate })
-      }
+  // Build where clause dynamically based on search parameters
+  const where: any = {
+    guildId,
+    archivedAt: {
+      not: null,
     },
+  };
+
+  // Add date range filter if provided
+  if (startDate || endDate) {
+    where.raidDate = {};
+    if (startDate) {
+      where.raidDate.gte = startDate;
+    }
+    if (endDate) {
+      where.raidDate.lte = endDate;
+    }
+  }
+
+  // Build text search filter if query provided
+  // Note: This filters by raid description at the database level
+  // Player name filtering requires joining attendance, handled below
+  if (query && query.trim()) {
+    const lowerQuery = query.toLowerCase();
+    where.OR = [
+      {
+        description: {
+          contains: query,
+          mode: 'insensitive',
+        },
+      },
+    ];
+  }
+
+  // Fetch archived raids with pagination
+  // Select only needed fields for performance
+  let raids = await prisma.raid.findMany({
+    where,
     include: {
-      attendance: true
+      attendance: {
+        select: {
+          username: true,
+          status: true,
+        },
+      },
     },
     orderBy: {
-      raidDate: 'desc'
-    }
+      raidDate: 'desc',
+    },
+    take: pageSize,
   });
 
-  // Filter by query if provided (search raid name or player)
+  // Additional client-side filter for player name search
+  // This is necessary since Prisma's text search doesn't easily support nested attendance filtering
   if (query && query.trim()) {
     const lowerQuery = query.toLowerCase();
     raids = raids.filter(raid => {

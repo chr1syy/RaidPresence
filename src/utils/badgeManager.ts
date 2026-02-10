@@ -1,6 +1,8 @@
 import prisma from '../database/client';
 import { BadgeType } from '@prisma/client';
+import { Client } from 'discord.js';
 import { getSpecRole, WoWRole } from './wowData';
+import { sendBadgeCelebration } from './badgeNotifier';
 
 /**
  * Result of a badge check: which badges were newly awarded.
@@ -29,6 +31,8 @@ export interface BadgeRecord {
 export async function checkAndAwardBadges(
   userId: string,
   guildId: string,
+  client?: Client,
+  raidId?: string,
 ): Promise<BadgeCheckResult> {
   const existing = await prisma.badge.findMany({
     where: { userId, guildId },
@@ -63,6 +67,13 @@ export async function checkAndAwardBadges(
 
   if (newBadges.length > 0) {
     await updateBadgeView(userId, guildId);
+
+    // Send celebration messages
+    if (client) {
+      for (const badgeType of newBadges) {
+        await sendBadgeCelebration(client, guildId, userId, badgeType, raidId);
+      }
+    }
   }
 
   return {

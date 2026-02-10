@@ -677,7 +677,12 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 
   // Add opted out section
   if (optedOut.length > 0) {
-    const optedOutText = optedOut.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
+    const optedOutText = optedOut.map((a: typeof raid.attendance[0]) => {
+      if (a.optoutReason) {
+        return `${a.username} (${a.optoutReason})`;
+      }
+      return a.username;
+    }).join('\n');
     baseFields.push({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: optedOutText, inline: false });
   }
 

@@ -148,6 +148,12 @@ interface Translations {
   attendanceNoRaids: string;
   attendanceAttended: string;
   attendanceMissed: string;
+
+  // Raid Notes Feature (Phase 2.3)
+  optoutReason: string;
+  optoutReasonLabel: string;
+  optoutReasonSubmitted: string;
+  playerNoteAdded: string;
 }
 
 const translations: Record<SupportedLanguage, Translations> = {
@@ -296,10 +302,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     attendancePeriodMonth: 'Last 30 days',
     attendancePeriodQuarter: 'Last 90 days',
     attendancePeriodAll: 'All time',
-    attendanceNoRaids: 'No raids found for this period.',
-    attendanceAttended: 'Attended',
-    attendanceMissed: 'Missed',
-  },
+     attendanceNoRaids: 'No raids found for this period.',
+     attendanceAttended: 'Attended',
+     attendanceMissed: 'Missed',
+
+     // Raid Notes Feature (Phase 2.3)
+     optoutReason: 'Opt Out Reason',
+     optoutReasonLabel: 'Why are you opting out? (optional)',
+     optoutReasonSubmitted: '✅ You have opted out of this raid.',
+     playerNoteAdded: 'Note added',
+   },
 
   de: {
     // Raid embed
@@ -446,10 +458,16 @@ const translations: Record<SupportedLanguage, Translations> = {
     attendancePeriodMonth: 'Letzte 30 Tage',
     attendancePeriodQuarter: 'Letzte 90 Tage',
     attendancePeriodAll: 'Gesamt',
-    attendanceNoRaids: 'Keine Raids für diesen Zeitraum gefunden.',
-    attendanceAttended: 'Teilgenommen',
-    attendanceMissed: 'Verpasst',
-  },
+     attendanceNoRaids: 'Keine Raids für diesen Zeitraum gefunden.',
+     attendanceAttended: 'Teilgenommen',
+     attendanceMissed: 'Verpasst',
+
+     // Raid Notes Feature (Phase 2.3)
+     optoutReason: 'Abmeldungsgrund',
+     optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
+     optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
+     playerNoteAdded: 'Notiz hinzugefügt',
+   },
 };
 
 export function getTranslations(language: string): Translations {

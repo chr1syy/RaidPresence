@@ -2,6 +2,10 @@ import {
   ButtonInteraction,
   ActionRowBuilder,
   StringSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ModalSubmitInteraction,
 } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
@@ -35,8 +39,6 @@ export async function handleButton(interaction: ButtonInteraction) {
 }
 
 async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
-  await interaction.deferReply({ ephemeral: true });
-
   // Check raid status
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
@@ -44,19 +46,28 @@ async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await interaction.reply({
+      content: '❌ Raid not found.',
+      ephemeral: true,
+    });
     return;
   }
 
   const trans = getTranslations(raid.guild.language || 'en');
 
   if (raid.status === 'closed') {
-    await interaction.editReply({ content: trans.raidIsClosed });
+    await interaction.reply({
+      content: trans.raidIsClosed,
+      ephemeral: true,
+    });
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({ content: trans.raidIsCancelled });
+    await interaction.reply({
+      content: trans.raidIsCancelled,
+      ephemeral: true,
+    });
     return;
   }
 
@@ -70,38 +81,37 @@ async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
   });
 
   if (!attendance) {
-    await interaction.editReply({
+    await interaction.reply({
       content: '❌ You are not on the attendance list for this raid.',
+      ephemeral: true,
     });
     return;
   }
 
   if (attendance.status === 'opted_out') {
-    await interaction.editReply({
+    await interaction.reply({
       content: '❌ You have already opted out of this raid.',
+      ephemeral: true,
     });
     return;
   }
 
-  await prisma.raidAttendance.update({
-    where: {
-      raidId_userId: {
-        raidId,
-        userId: interaction.user.id,
-      },
-    },
-    data: {
-      status: 'opted_out',
-      respondedAt: new Date(),
-    },
-  });
+  // Show modal for opt-out reason
+  const modal = new ModalBuilder()
+    .setCustomId(`optout_reason_${raidId}_${interaction.user.id}`)
+    .setTitle(trans.optoutReason)
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId('reason')
+          .setLabel(trans.optoutReasonLabel)
+          .setStyle(TextInputStyle.Short)
+          .setMaxLength(100)
+          .setRequired(false)
+      )
+    );
 
-  await interaction.editReply({
-    content: '✅ You have opted out of this raid.',
-  });
-
-  // Update the raid message
-  await updateRaidMessage(interaction, raidId);
+  await interaction.showModal(modal);
 }
 
 async function handleOptIn(interaction: ButtonInteraction, raidId: string) {
@@ -282,6 +292,114 @@ async function handleClassSelection(interaction: ButtonInteraction, raidId: stri
     components: [row],
     ephemeral: true,
   });
+}
+
+export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
+  const customId = interaction.customId;
+
+  // Handle opt-out reason modal
+  if (customId.startsWith('optout_reason_')) {
+    await handleOptOutReasonSubmit(interaction);
+  }
+}
+
+async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const customIdParts = interaction.customId.split('_');
+  const raidId = customIdParts[2];
+  const userId = customIdParts[3];
+
+  // Verify the user submitting is the one who started the modal
+  if (interaction.user.id !== userId) {
+    await interaction.editReply({
+      content: '❌ This modal response is not for you.',
+    });
+    return;
+  }
+
+  // Get the reason input
+  const reason = interaction.fields.getTextInputValue('reason').trim();
+
+  // Check raid status
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({ content: '❌ Raid not found.' });
+    return;
+  }
+
+  const trans = getTranslations(raid.guild.language || 'en');
+
+  if (raid.status === 'closed') {
+    await interaction.editReply({ content: trans.raidIsClosed });
+    return;
+  }
+
+  if (raid.status === 'cancelled') {
+    await interaction.editReply({ content: trans.raidIsCancelled });
+    return;
+  }
+
+  // Get the attendance record
+  const attendance = await prisma.raidAttendance.findUnique({
+    where: {
+      raidId_userId: {
+        raidId,
+        userId: interaction.user.id,
+      },
+    },
+  });
+
+  if (!attendance) {
+    await interaction.editReply({
+      content: '❌ You are not on the attendance list for this raid.',
+    });
+    return;
+  }
+
+  if (attendance.status === 'opted_out') {
+    await interaction.editReply({
+      content: '❌ You have already opted out of this raid.',
+    });
+    return;
+  }
+
+  // Update the attendance with opted_out status and reason
+  await prisma.raidAttendance.update({
+    where: {
+      raidId_userId: {
+        raidId,
+        userId: interaction.user.id,
+      },
+    },
+    data: {
+      status: 'opted_out',
+      respondedAt: new Date(),
+      optoutReason: reason || null,
+      notedAt: reason ? new Date() : null,
+    },
+  });
+
+  await interaction.editReply({
+    content: trans.optoutReasonSubmitted,
+  });
+
+  // Update the raid message
+  try {
+    const message = await interaction.channel?.messages.fetch(raid.messageId || '');
+    if (message) {
+      const embed = await createRaidEmbed(raidId, raid.guild.language);
+      await message.edit({
+        embeds: [embed],
+      });
+    }
+  } catch (error) {
+    console.error('Error updating raid message:', error);
+  }
 }
 
 async function updateRaidMessage(interaction: ButtonInteraction, raidId: string) {

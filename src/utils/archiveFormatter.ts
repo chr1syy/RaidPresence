@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { ArchiveRaidSummary } from './archiveManager';
-import { getTranslations } from './localization';
+import { getTranslations, t } from './localization';
 
 /**
  * Format archive search results into an embed.
@@ -26,8 +26,8 @@ export function formatArchiveSearchEmbed(
 
   // Add search filter info
   let filterInfo = '';
-  if (query) filterInfo += `**Query:** ${query}\n`;
-  if (period) filterInfo += `**Period:** ${formatPeriodLabel(period, language)}`;
+  if (query) filterInfo += `**${t(language, 'archiveSearchQuery')}:** ${query}\n`;
+  if (period) filterInfo += `**${t(language, 'archiveSearchPeriod')}:** ${formatPeriodLabel(period, language)}`;
   if (filterInfo) {
     embed.setDescription(filterInfo);
   }
@@ -35,8 +35,8 @@ export function formatArchiveSearchEmbed(
   // If no results
   if (results.length === 0) {
     embed.addFields({
-      name: trans.noUpcomingRaids || 'No results',
-      value: 'No archived raids match your search.',
+      name: t(language, 'archiveSearchNone'),
+      value: t(language, 'archiveSearchNoResults'),
       inline: false,
     });
     return embed;
@@ -76,14 +76,14 @@ export function formatArchiveSearchEmbed(
  * 
  * @param raidName - Name/description of the raid
  * @param raidDate - Date of the raid
- * @param archiveChannelName - Name of the archive channel
+ * @param archiveChannelId - ID of the archive channel
  * @param language - Language code (en/de)
  * @returns EmbedBuilder for archive notification
  */
 export function formatArchiveNotificationEmbed(
   raidName: string,
   raidDate: Date,
-  archiveChannelName: string,
+  archiveChannelId: string,
   language: string
 ): EmbedBuilder {
   const trans = getTranslations(language);
@@ -93,7 +93,7 @@ export function formatArchiveNotificationEmbed(
     .setTitle(`📦 ${trans.raidArchived}`)
     .setDescription(
       `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
-      `has been moved to <#${archiveChannelName}>`
+      `has been moved to <#${archiveChannelId}>`
     )
     .setTimestamp(new Date());
 }

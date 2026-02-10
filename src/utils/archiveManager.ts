@@ -1,4 +1,4 @@
-import { Client, TextChannel, EmbedBuilder } from 'discord.js';
+import { Client, TextChannel, NewsChannel, EmbedBuilder } from 'discord.js';
 import prisma from '../database/client';
 
 /**
@@ -45,7 +45,7 @@ export async function archiveRaid(
   });
 
   if (!guild || !guild.archiveChannelId) {
-    throw new Error('Archive channel not configured for this guild. Use `/raid config archive-channel` first.');
+    throw new Error('Archive channel not configured for this guild. Use `/config archive-channel` first.');
   }
 
   // Fetch the raid with attendance
@@ -68,7 +68,7 @@ export async function archiveRaid(
   const originalChannel = await client.channels.fetch(raid.channelId).catch(() => null);
   const archiveChannel = await client.channels.fetch(guild.archiveChannelId).catch(() => null);
 
-  if (!archiveChannel || !(archiveChannel instanceof TextChannel)) {
+  if (!archiveChannel || !(archiveChannel instanceof TextChannel || archiveChannel instanceof NewsChannel)) {
     throw new Error('Archive channel is invalid or not accessible.');
   }
 
@@ -88,11 +88,11 @@ export async function archiveRaid(
         value: `${raid.status}`,
         inline: true
       },
-      {
-        name: 'Total Attendance',
-        value: `${raid.attendance.filter(a => a.status === 'attending').length}/${raid.attendance.length}`,
-        inline: true
-      }
+       {
+         name: 'Total Attendance',
+         value: `${raid.attendance.filter(a => a.status === 'attending' || a.status === 'late').length}/${raid.attendance.length}`,
+         inline: true
+       }
     )
     .setFooter({ text: `Original Channel: ${raid.channelId}` })
     .setTimestamp(new Date());
@@ -159,16 +159,16 @@ export async function unarchiveRaid(
   let archiveMessage = null;
   if (raid.archiveChannelId && raid.archiveMessageId) {
     const archiveChannel = await client.channels.fetch(raid.archiveChannelId).catch(() => null);
-    if (archiveChannel instanceof TextChannel) {
-      archiveMessage = await archiveChannel.messages.fetch(raid.archiveMessageId).catch(() => null);
-    }
+     if (archiveChannel instanceof TextChannel || archiveChannel instanceof NewsChannel) {
+       archiveMessage = await archiveChannel.messages.fetch(raid.archiveMessageId).catch(() => null);
+     }
   }
 
   // Get original channel
   const originalChannel = await client.channels.fetch(raid.channelId).catch(() => null);
-  if (!originalChannel || !(originalChannel instanceof TextChannel)) {
-    throw new Error('Original channel is invalid or not accessible.');
-  }
+   if (!originalChannel || !(originalChannel instanceof TextChannel || originalChannel instanceof NewsChannel)) {
+     throw new Error('Original channel is invalid or not accessible.');
+   }
 
   // Create a basic notification that raid was restored
   const restoreEmbed = new EmbedBuilder()
@@ -217,7 +217,7 @@ export async function getArchiveChannel(
   });
 
   if (!guild || !guild.archiveChannelId) {
-    throw new Error('Archive channel not configured. Use `/raid config archive-channel` first.');
+    throw new Error('Archive channel not configured. Use `/config archive-channel` first.');
   }
 
   const channel = await client.channels.fetch(guild.archiveChannelId).catch(() => null);
@@ -242,7 +242,7 @@ export async function setupArchiveChannel(
 ): Promise<void> {
   // Verify channel exists and is accessible
   const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel || !(channel instanceof TextChannel)) {
+  if (!channel || !(channel instanceof TextChannel || channel instanceof NewsChannel)) {
     throw new Error('Channel is invalid or not accessible.');
   }
 
@@ -298,7 +298,7 @@ export async function searchArchive(
 
   // Transform to summaries
   return raids.map(raid => {
-    const attendedCount = raid.attendance.filter(a => a.status === 'attending').length;
+    const attendedCount = raid.attendance.filter(a => a.status === 'attending' || a.status === 'late').length;
     const totalInvited = raid.attendance.length;
 
     return {
@@ -309,7 +309,7 @@ export async function searchArchive(
       totalInvited,
       attendancePercent: totalInvited > 0 ? Math.round((attendedCount / totalInvited) * 100) : 0,
       participantNames: raid.attendance
-        .filter(a => a.status === 'attending')
+        .filter(a => a.status === 'attending' || a.status === 'late')
         .slice(0, 5)
         .map(a => a.username),
       archivedAt: raid.archivedAt!,

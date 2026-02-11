@@ -26,6 +26,7 @@ describe('handleListRaids()', () => {
       reply: jest.fn().mockResolvedValue(undefined),
       options: {
         getSubcommand: jest.fn().mockReturnValue('list'),
+        get: jest.fn().mockReturnValue(undefined),
       },
     };
   });

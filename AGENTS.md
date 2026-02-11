@@ -71,7 +71,7 @@ RaidPresence/
 
 ## Database Schema
 
-Six Prisma models + one enum in `prisma/schema.prisma`:
+Prisma models in `prisma/schema.prisma`:
 
 ### Guild
 Per-server configuration. Fields: `id`, `name`, `raidRoles`, `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
@@ -83,7 +83,19 @@ Player class/spec preferences per guild. Fields: `userId`, `guildId`, `username`
 Individual raid instances. Fields: `id`, `guildId`, `channelId`, `messageId`, `raidDate`, `description`, `roles`, `status` (open/closed/cancelled), `createdBy`. Template/clone fields: `templateName`, `isTemplate`, `createdFromTemplateId`, `clonedAt`. Archive fields: `archivedAt`, `archiveChannelId`, `archiveMessageId`, `isPinned`. Indexed on `[guildId, status]`, `[raidDate]`, `[guildId, raidDate]`, `[guildId, archivedAt]`.
 
 ### BadgeType (Enum)
-12 badge types: `PERFECT_ATTENDANCE`, `TANK_MAIN`, `HEALER_HERO`, `DAMAGE_DEALER`, `SHARPSHOOTER`, `ALWAYS_ON_TIME`, `EARLY_BIRD`, `TEAM_PLAYER`, `RELIABLE_MEMBER`, `RISING_STAR`, `VETERAN_RAIDER`, `LEADERS_CHOICE`.
+12 badge types:
+- `PERFECT_ATTENDANCE`
+- `TANK_MAIN`
+- `HEALER_HERO`
+- `DAMAGE_DEALER`
+- `SHARPSHOOTER`
+- `ALWAYS_ON_TIME`
+- `EARLY_BIRD`
+- `TEAM_PLAYER`
+- `RELIABLE_MEMBER`
+- `RISING_STAR`
+- `VETERAN_RAIDER`
+- `LEADERS_CHOICE`
 
 ### Badge
 Player badge awards. Fields: `id`, `userId`, `guildId`, `badgeType`, `earnedAt`, `awardedBy`, `reason`. Unique on `[userId, guildId, badgeType]`. Indexed on `[userId, guildId]`, `[guildId, badgeType]`.

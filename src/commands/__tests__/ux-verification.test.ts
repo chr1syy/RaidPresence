@@ -458,13 +458,18 @@ describe('UX: Embed Formatting', () => {
       expect(getRosterStatus(7, 10)).toBe('good');
     });
 
-    it('returns low for <50%', () => {
+    it('returns low for >=25% and <50%', () => {
       expect(getRosterStatus(4, 10)).toBe('low');
-      expect(getRosterStatus(0, 10)).toBe('low');
+      expect(getRosterStatus(3, 10)).toBe('low');
     });
 
-    it('returns low for zero total', () => {
-      expect(getRosterStatus(0, 0)).toBe('low');
+    it('returns critical for <25%', () => {
+      expect(getRosterStatus(2, 10)).toBe('critical');
+      expect(getRosterStatus(0, 10)).toBe('critical');
+    });
+
+    it('returns critical for zero total', () => {
+      expect(getRosterStatus(0, 0)).toBe('critical');
     });
   });
 });

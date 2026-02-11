@@ -7,7 +7,29 @@
 import { canManageRaids } from '../../utils/permissions';
 
 // Mock dependencies before imports that use them
-jest.mock('../../database/client');
+jest.mock('../../database/client', () => {
+  return {
+    __esModule: true,
+    default: {
+       raid: {
+         findFirst: jest.fn(),
+         create: jest.fn(),
+         update: jest.fn(),
+         findUnique: jest.fn(),
+       },
+      raidAttendance: {
+        createMany: jest.fn(),
+      },
+      guild: {
+        findUnique: jest.fn(),
+      },
+       userPreference: {
+         upsert: jest.fn(),
+         findMany: jest.fn(),
+       },
+    },
+  };
+});
 jest.mock('../../utils/permissions');
 
 import prisma from '../../database/client';

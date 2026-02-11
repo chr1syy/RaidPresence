@@ -196,8 +196,8 @@ describe('/raid status command', () => {
 
     const embed = interaction.editReply.mock.calls[0][0].embeds[0];
     expect(embed.data.description).toContain('✅ FULL');
-    expect(embed.data.description).toContain('⚠️ LOW');
-    // When any is LOW, embed color should be red
+    expect(embed.data.description).toContain('🔴 CRITICAL');
+    // When any is CRITICAL, embed color should be red
     expect(embed.data.color).toBe(0xff4500);
   });
 
@@ -294,7 +294,7 @@ describe('/raid status command', () => {
     await command.execute(interaction);
 
     const embed = interaction.editReply.mock.calls[0][0].embeds[0];
-    expect(embed.data.description).toContain('✅ GOOD');
+    expect(embed.data.description).toContain('🟢 GOOD');
     expect(embed.data.description).toContain('6/10');
     expect(embed.data.description).toContain('60%');
     // Yellow color for GOOD status
@@ -311,7 +311,7 @@ describe('/raid status command', () => {
     const embed = interaction.editReply.mock.calls[0][0].embeds[0];
     expect(embed.data.description).toContain('0/0');
     expect(embed.data.description).toContain('0%');
-    expect(embed.data.description).toContain('⚠️ LOW');
+    expect(embed.data.description).toContain('🔴 CRITICAL');
   });
 
   it('should use green color when all raids have full roster', async () => {

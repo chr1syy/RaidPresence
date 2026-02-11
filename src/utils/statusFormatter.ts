@@ -19,9 +19,9 @@ export interface StatusRaid {
 
 /**
  * Roster status indicator thresholds.
- * >=80% attending = FULL, >=50% = GOOD, <50% = LOW
+ * >=80% attending = FULL, >=50% = GOOD, >=25% = LOW, <25% = CRITICAL
  */
-export type RosterStatus = 'full' | 'good' | 'low';
+export type RosterStatus = 'full' | 'good' | 'low' | 'critical';
 
 const NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣'];
 
@@ -29,11 +29,12 @@ const NUMBER_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6
  * Determine roster status based on attendance percentage.
  */
 export function getRosterStatus(attendingCount: number, totalCount: number): RosterStatus {
-  if (totalCount === 0) return 'low';
+  if (totalCount === 0) return 'critical';
   const rate = (attendingCount / totalCount) * 100;
   if (rate >= 80) return 'full';
   if (rate >= 50) return 'good';
-  return 'low';
+  if (rate >= 25) return 'low';
+  return 'critical';
 }
 
 /**
@@ -80,14 +81,17 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
     }
 
     const rosterStatus = getRosterStatus(attending, total);
-    if (rosterStatus === 'low') worstStatus = 'low';
-    else if (rosterStatus === 'good' && worstStatus !== 'low') worstStatus = 'good';
+    if (rosterStatus === 'critical') worstStatus = 'critical';
+    else if (rosterStatus === 'low' && worstStatus !== 'critical') worstStatus = 'low';
+    else if (rosterStatus === 'good' && worstStatus !== 'low' && worstStatus !== 'critical') worstStatus = 'good';
 
     const statusIndicator = rosterStatus === 'full'
       ? `✅ ${trans.statusFull}`
       : rosterStatus === 'good'
-        ? `✅ ${trans.statusGood}`
-        : `⚠️ ${trans.statusLow}`;
+        ? `🟢 ${trans.statusGood}`
+        : rosterStatus === 'low'
+          ? `⚠️ ${trans.statusLow}`
+          : `🔴 ${trans.statusCritical}`;
 
     const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
     const title = raid.description || trans.raidEvent;
@@ -104,7 +108,9 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
     ? 0x00ae86  // green
     : worstStatus === 'good'
       ? 0xffd700  // yellow
-      : 0xff4500; // red
+      : worstStatus === 'low'
+        ? 0xffa500  // orange
+        : 0xff4500; // red
 
   const embed = new EmbedBuilder()
     .setTitle(trans.statusTitle)

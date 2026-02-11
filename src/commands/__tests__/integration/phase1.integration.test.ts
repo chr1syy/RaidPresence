@@ -796,8 +796,8 @@ describe('Phase 1 Integration Tests', () => {
 
       // 3d: Correct status indicators
       expect(desc).toContain('✅ FULL');  // Monday Raid (100%) and Monday Alt Raid (100%)
-      expect(desc).toContain('✅ GOOD');  // Wednesday Raid (70%) and Thursday Progression (50%)
-      expect(desc).toContain('⚠️ LOW');   // Friday Raid (10%)
+      expect(desc).toContain('🟢 GOOD');  // Wednesday Raid (70%) and Thursday Progression (50%)
+      expect(desc).toContain('🔴 CRITICAL');   // Friday Raid (10%)
 
       // 3e: Roster percentages present
       expect(desc).toContain('10/10');  // Monday Raid
@@ -807,7 +807,7 @@ describe('Phase 1 Integration Tests', () => {
       expect(desc).toContain('1/10');   // Friday Raid
       expect(desc).toContain('10%');    // Friday Raid
 
-      // 3f: Embed color is red because at least one raid is LOW
+      // 3f: Embed color is red because at least one raid is CRITICAL
       expect(embed.data.color).toBe(0xff4500);
 
       // 3g: Title is "Upcoming Raids"

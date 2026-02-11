@@ -7,7 +7,29 @@
 import { canManageRaids } from '../../utils/permissions';
 
 // Mock dependencies before imports that use them
-jest.mock('../../database/client');
+jest.mock('../../database/client', () => {
+  return {
+    __esModule: true,
+    default: {
+       raid: {
+         findFirst: jest.fn(),
+         create: jest.fn(),
+         update: jest.fn(),
+         findUnique: jest.fn(),
+       },
+      raidAttendance: {
+        createMany: jest.fn(),
+      },
+      guild: {
+        findUnique: jest.fn(),
+      },
+       userPreference: {
+         upsert: jest.fn(),
+         findMany: jest.fn(),
+       },
+    },
+  };
+});
 jest.mock('../../utils/permissions');
 
 import prisma from '../../database/client';
@@ -150,6 +172,8 @@ describe('handleCreateRaid()', () => {
       roles: 'Raider',
       createdBy: 'user-123',
     });
+
+    (prisma.raid.findFirst as jest.Mock).mockResolvedValue(null); // No duplicate raids by default
 
     (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 2 });
     (prisma.raid.update as jest.Mock).mockResolvedValue({});

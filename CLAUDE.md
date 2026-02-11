@@ -5,7 +5,7 @@
 ## Quick Reference
 
 - **Stack:** TypeScript, discord.js v14, Prisma, PostgreSQL
-- **Test:** `npm run test:jest` (632+ tests), `npm run test` (type check)
+- **Test:** `npm run test:jest` (hundreds of tests), `npm run test` (type check)
 - **Dev:** `npm run dev` (auto-restart), `npm run deploy` (slash commands)
 - **Build:** `npm run build`, `npm start` (production)
 - **DB:** `npm run db:migrate` (migrations), `npm run db:generate` (client)
@@ -15,8 +15,9 @@
 - `src/commands/raid.ts` - Main raid command (17 subcommands)
 - `src/commands/config.ts` - Server configuration (6 subcommands)
 - `src/utils/localization.ts` - All user-facing strings (EN/DE)
+- `src/utils/badgeManager.ts` - Badge system (award, check, query badges)
 - `src/utils/permissions.ts` - Permission checks
-- `prisma/schema.prisma` - Database schema (4 models)
+- `prisma/schema.prisma` - Database schema (includes BadgeType enum and badge-related models)
 
 ## Rules
 

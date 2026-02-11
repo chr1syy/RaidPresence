@@ -80,13 +80,21 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('auto-archive')
-        .setDescription('Automatically archive raids when they close')
+        .setName('auto-purge')
+        .setDescription('Automatically delete old raids after a certain number of days')
         .addBooleanOption((option) =>
           option
             .setName('enabled')
-            .setDescription('Enable auto-archive on raid close?')
+            .setDescription('Enable auto-purge?')
             .setRequired(true)
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName('days')
+            .setDescription('Number of days after which closed raids are deleted (default: 30)')
+            .setRequired(false)
+            .setMinValue(7)
+            .setMaxValue(365)
         )
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator) as SlashCommandBuilder,
@@ -110,6 +118,8 @@ const command: Command = {
       await handleSetArchiveChannel(interaction);
     } else if (subcommand === 'auto-archive') {
       await handleSetAutoArchive(interaction);
+    } else if (subcommand === 'auto-purge') {
+      await handleSetAutoPurge(interaction);
     }
   },
 };
@@ -144,6 +154,8 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   const archiveChannel = guildData.archiveChannelId ? `<#${guildData.archiveChannelId}>` : 'Not configured';
   const autoArchiveStatus = guildData.autoArchive ? '✅ Enabled' : '❌ Disabled';
 
+  const autoPurgeStatus = guildData.autoPurgeEnabled ? `✅ Enabled (${guildData.autoPurgeDays} days)` : '❌ Disabled';
+
   const embed = new EmbedBuilder()
     .setTitle('Server Configuration')
     .setColor(0x00ae86)
@@ -176,6 +188,11 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
       {
         name: '📦 Auto-Archive',
         value: `${autoArchiveStatus}\n\nRaids are ${guildData.autoArchive ? 'automatically' : 'manually'} archived when they close.`,
+        inline: false,
+      },
+      {
+        name: '🗑️ Auto-Purge',
+        value: `${autoPurgeStatus}\n\n${guildData.autoPurgeEnabled ? `Closed raids are automatically deleted after ${guildData.autoPurgeDays} days.` : 'No automatic deletion of old raids.'}`,
         inline: false,
       }
     )
@@ -434,6 +451,40 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
 
   await interaction.editReply({
     content: `Auto-archive is now ${enabled ? 'enabled' : 'disabled'}. ${enabled ? 'Raids will automatically be archived when they close.' : ''}`,
+  });
+}
+
+async function handleSetAutoPurge(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const enabled = interaction.options.getBoolean('enabled', true);
+  const days = interaction.options.getInteger('days') || 30;
+
+  // Update in database
+  await prisma.guild.upsert({
+    where: { id: interaction.guild.id },
+    update: { autoPurgeEnabled: enabled, autoPurgeDays: days },
+    create: {
+      id: interaction.guild.id,
+      name: interaction.guild.name,
+      raidRoles: '',
+      raidLeaderRoles: '',
+      autoPurgeEnabled: enabled,
+      autoPurgeDays: days,
+    },
+  });
+
+  const status = enabled ? '✅ enabled' : '❌ disabled';
+  await interaction.editReply({
+    content: `${status}\n\nAuto-purge is now ${enabled ? 'enabled' : 'disabled'}.\n\n${enabled ? `Closed raids will be automatically deleted after ${days} days.` : 'No automatic deletion will occur.'}`,
   });
 }
 

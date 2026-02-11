@@ -83,10 +83,10 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
       
       expect(choices).toBeDefined();
       expect(choices?.length).toBeGreaterThan(0);
-      expect(choices?.some((c: any) => c.value === '7')).toBe(true);
-      expect(choices?.some((c: any) => c.value === '30')).toBe(true);
-      expect(choices?.some((c: any) => c.value === '90')).toBe(true);
-      expect(choices?.some((c: any) => c.value === 'all')).toBe(true);
+       expect(choices?.some((c: any) => c.value === '30')).toBe(true);
+       expect(choices?.some((c: any) => c.value === '90')).toBe(true);
+       expect(choices?.some((c: any) => c.value === '365')).toBe(true);
+       expect(choices?.some((c: any) => c.value === 'all')).toBe(true);
     });
   });
 

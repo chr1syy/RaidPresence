@@ -33,13 +33,18 @@ describe('getRosterStatus', () => {
     expect(getRosterStatus(7, 10)).toBe('good');
   });
 
-  it('should return "low" when attendance < 50%', () => {
-    expect(getRosterStatus(2, 10)).toBe('low');
-    expect(getRosterStatus(0, 10)).toBe('low');
+  it('should return "low" when attendance >= 25% and < 50%', () => {
+    expect(getRosterStatus(4, 10)).toBe('low');
+    expect(getRosterStatus(3, 10)).toBe('low');
   });
 
-  it('should return "low" for zero total', () => {
-    expect(getRosterStatus(0, 0)).toBe('low');
+  it('should return "critical" when attendance < 25%', () => {
+    expect(getRosterStatus(2, 10)).toBe('critical');
+    expect(getRosterStatus(0, 10)).toBe('critical');
+  });
+
+  it('should return "critical" for zero total', () => {
+    expect(getRosterStatus(0, 0)).toBe('critical');
   });
 });
 
@@ -202,10 +207,10 @@ describe('formatStatusEmbed', () => {
 
     expect(desc).toContain('0/0');
     expect(desc).toContain('0%');
-    expect(desc).toContain('LOW');
+    expect(desc).toContain('CRITICAL');
   });
 
-  it('should show GOOD status indicator with checkmark', () => {
+  it('should show GOOD status indicator with green circle', () => {
     // 6/10 = 60% => GOOD
     const attendance = [
       ...Array.from({ length: 6 }, () => ({ status: 'attending', wowClass: null, wowSpec: null })),
@@ -214,10 +219,10 @@ describe('formatStatusEmbed', () => {
     const raids = [makeStatusRaid({ attendance })];
     const embed = formatStatusEmbed(raids, 'en');
 
-    expect(embed.data.description).toContain('✅ GOOD');
+    expect(embed.data.description).toContain('🟢 GOOD');
   });
 
-  it('should show LOW status indicator with warning', () => {
+  it('should show CRITICAL status indicator with red circle', () => {
     const attendance = [
       { status: 'attending', wowClass: null, wowSpec: null },
       ...Array.from({ length: 9 }, () => ({ status: 'opted_out', wowClass: null, wowSpec: null })),
@@ -225,6 +230,6 @@ describe('formatStatusEmbed', () => {
     const raids = [makeStatusRaid({ attendance })];
     const embed = formatStatusEmbed(raids, 'en');
 
-    expect(embed.data.description).toContain('⚠️ LOW');
+    expect(embed.data.description).toContain('🔴 CRITICAL');
   });
 });

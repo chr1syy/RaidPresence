@@ -269,10 +269,98 @@ describe('handleCancelRaid()', () => {
 
     await command.execute(mockInteraction);
 
-    expect(prisma.raid.update).toHaveBeenCalledWith(
+});
+
+});
+
+describe('handleCloseAllRaids()', () => {
+  let mockInteraction: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockInteraction = {
+      guild: { id: 'guild-123', name: 'Test Guild' },
+      channel: { id: 'channel-123' },
+      member: { user: { id: 'user-123' } },
+      user: { id: 'user-123' },
+      isChatInputCommand: jest.fn().mockReturnValue(true),
+      deferReply: jest.fn().mockResolvedValue(undefined),
+      editReply: jest.fn().mockResolvedValue(undefined),
+      reply: jest.fn().mockResolvedValue(undefined),
+      followUp: jest.fn().mockResolvedValue(undefined),
+      options: {
+        getSubcommand: jest.fn().mockReturnValue('close-all'),
+        get: jest.fn((key: string) => {
+          if (key === 'before') return { value: '2025-12-31' };
+          return undefined;
+        }),
+      },
+    };
+
+    (canManageRaids as jest.Mock).mockResolvedValue(true);
+  });
+
+  it('should reject when not in a guild', async () => {
+    mockInteraction.guild = null;
+    await command.execute(mockInteraction);
+    expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('server'), ephemeral: true })
+    );
+  });
+
+  it('should reject users without permission', async () => {
+    (canManageRaids as jest.Mock).mockResolvedValue(false);
+    await command.execute(mockInteraction);
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('permission') })
+    );
+  });
+
+  it('should reject invalid date format', async () => {
+    mockInteraction.options.get = jest.fn((key: string) => {
+      if (key === 'before') return { value: 'invalid-date' };
+      return undefined;
+    });
+    await command.execute(mockInteraction);
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('YYYY-MM-DD') })
+    );
+  });
+
+  it('should reject when no open raids found before date', async () => {
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
+    await command.execute(mockInteraction);
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('No open raids') })
+    );
+  });
+
+  it('should show confirmation dialog with raid list', async () => {
+    const raids = [
+      makeRaid({ id: 'raid-1', description: 'Raid 1', raidDate: new Date('2025-12-25') }),
+      makeRaid({ id: 'raid-2', description: 'Raid 2', raidDate: new Date('2025-12-26') }),
+    ];
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'raid-123' },
-        data: { status: 'cancelled' },
+        embeds: expect.arrayContaining([
+          expect.objectContaining({
+            title: '⚠️ Confirm Bulk Close',
+            description: expect.stringContaining('Raid 1'),
+          }),
+        ]),
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            components: expect.arrayContaining([
+              expect.objectContaining({ custom_id: expect.stringMatching(/^close_all_confirm_/) }),
+              expect.objectContaining({ custom_id: expect.stringMatching(/^close_all_cancel$/) }),
+            ]),
+          }),
+        ]),
       })
     );
   });

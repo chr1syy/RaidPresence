@@ -120,16 +120,16 @@ describe('UX: Slash Command Registration', () => {
     expect(commandJson.description.length).toBeGreaterThan(5);
   });
 
-  it('all 17 subcommands are registered', () => {
+  it('all 21 subcommands are registered', () => {
     const subcommands = (commandJson.options || []).filter(
       (opt: any) => opt.type === 1 // SUB_COMMAND type
     );
-    expect(subcommands.length).toBe(17);
+    expect(subcommands.length).toBe(21);
 
     const names = subcommands.map((s: any) => s.name).sort();
     expect(names).toEqual([
-      'attendance', 'cancel', 'clone', 'close', 'create', 'delete',
-      'edit', 'list', 'notes', 'pin', 'refresh', 'remind', 'search', 'stats', 'status', 'suggest', 'unpin',
+      'attendance', 'award-badge', 'badges', 'cancel', 'clone', 'close', 'close-all', 'create', 'delete',
+      'edit', 'feedback', 'list', 'notes', 'pin', 'refresh', 'remind', 'search', 'stats', 'status', 'suggest', 'unpin',
     ]);
   });
 
@@ -191,10 +191,12 @@ describe('UX: Slash Command Registration', () => {
     expect(statsSub).toBeDefined();
     const periodOpt = statsSub.options.find((o: any) => o.name === 'period');
     expect(periodOpt).toBeDefined();
-    expect(periodOpt.choices).toHaveLength(3);
+    expect(periodOpt.choices).toHaveLength(5);
     const choiceValues = periodOpt.choices.map((c: any) => c.value);
     expect(choiceValues).toContain('week');
     expect(choiceValues).toContain('month');
+    expect(choiceValues).toContain('quarter');
+    expect(choiceValues).toContain('year');
     expect(choiceValues).toContain('all');
   });
 
@@ -456,13 +458,18 @@ describe('UX: Embed Formatting', () => {
       expect(getRosterStatus(7, 10)).toBe('good');
     });
 
-    it('returns low for <50%', () => {
+    it('returns low for >=25% and <50%', () => {
       expect(getRosterStatus(4, 10)).toBe('low');
-      expect(getRosterStatus(0, 10)).toBe('low');
+      expect(getRosterStatus(3, 10)).toBe('low');
     });
 
-    it('returns low for zero total', () => {
-      expect(getRosterStatus(0, 0)).toBe('low');
+    it('returns critical for <25%', () => {
+      expect(getRosterStatus(2, 10)).toBe('critical');
+      expect(getRosterStatus(0, 10)).toBe('critical');
+    });
+
+    it('returns critical for zero total', () => {
+      expect(getRosterStatus(0, 0)).toBe('critical');
     });
   });
 });

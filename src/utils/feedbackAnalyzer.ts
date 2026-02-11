@@ -182,19 +182,19 @@ export async function getGuildMorale(guildId: string, days: number = 30): Promis
   }
 
   // Calculate overall average sentiment
-  const totalSentiment = feedbacks.reduce((sum, f) => sum + moodToSentiment(f.mood), 0);
+  const totalSentiment = feedbacks.reduce((sum: number, f) => sum + moodToSentiment(f.mood), 0);
   const averageSentiment = totalSentiment / feedbacks.length;
 
   // Calculate trend: compare first half vs second half
   const midPoint = new Date(cutoff.getTime() + (days / 2) * 24 * 60 * 60 * 1000);
-  const firstHalf = feedbacks.filter(f => f.raid.raidDate < midPoint);
-  const secondHalf = feedbacks.filter(f => f.raid.raidDate >= midPoint);
+  const firstHalf = feedbacks.filter((f) => f.raid.raidDate < midPoint);
+  const secondHalf = feedbacks.filter((f) => f.raid.raidDate >= midPoint);
 
   const firstHalfAvg = firstHalf.length > 0
-    ? firstHalf.reduce((sum, f) => sum + moodToSentiment(f.mood), 0) / firstHalf.length
+    ? firstHalf.reduce((sum: number, f) => sum + moodToSentiment(f.mood), 0) / firstHalf.length
     : 0;
   const secondHalfAvg = secondHalf.length > 0
-    ? secondHalf.reduce((sum, f) => sum + moodToSentiment(f.mood), 0) / secondHalf.length
+    ? secondHalf.reduce((sum: number, f) => sum + moodToSentiment(f.mood), 0) / secondHalf.length
     : 0;
 
   const trendDiff = secondHalfAvg - firstHalfAvg;

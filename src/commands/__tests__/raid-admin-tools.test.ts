@@ -194,6 +194,7 @@ describe('Admin Quality-of-Life Tools', () => {
         roles: [],
         status: 'open',
         createdBy: 'user-123',
+        attendance: [],
       });
 
       await command.execute(mockInteraction);
@@ -255,6 +256,7 @@ describe('Admin Quality-of-Life Tools', () => {
         roles: [],
         status: 'open',
         createdBy: 'user-123',
+        attendance: [],
       });
 
       await command.execute(mockInteraction);
@@ -284,6 +286,7 @@ describe('Admin Quality-of-Life Tools', () => {
         roles: [],
         status: 'open',
         createdBy: 'user-123',
+        attendance: [],
       });
 
       await command.execute(mockInteraction);

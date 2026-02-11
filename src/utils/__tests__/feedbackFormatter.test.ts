@@ -55,7 +55,7 @@ describe('feedbackFormatter', () => {
       expect(result).toBeInstanceOf(EmbedBuilder);
       expect(result.data.title).toBe('Feedback for Test Raid');
       expect(result.data.color).toBe(0x00ae86); // green
-      expect(result.data.description).toContain('Mood Score: 85/100');
+      expect(result.data.description).toContain('**Mood Score:** 85/100');
       expect(result.data.fields).toHaveLength(2); // breakdown and common words
       expect(result.data.footer!.text).toContain('Date: 2025-12-25');
     });
@@ -137,8 +137,8 @@ describe('feedbackFormatter', () => {
       expect(result).toBeInstanceOf(EmbedBuilder);
       expect(result.data.title).toBe('Morale for Test Guild');
       expect(result.data.color).toBe(0x00ae86); // green
-      expect(result.data.description).toContain('Overall Sentiment: 85.0%');
-      expect(result.data.description).toContain('Trend: 📈 Improving');
+      expect(result.data.description).toContain('**Overall Sentiment:** 85.0%');
+      expect(result.data.description).toContain('**Trend:** 📈 Improving');
       expect(result.data.fields).toHaveLength(3); // best, worst, role
       expect(result.data.footer!.text).toBe('Last 30 days');
     });

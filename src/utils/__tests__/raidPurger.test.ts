@@ -34,19 +34,19 @@ describe('raidPurger', () => {
       const result = await purgeOldRaids('guild-1', 30);
 
       expect(result).toBe(0);
-      expect(mockPrisma.raid.findMany).toHaveBeenCalledWith({
-        where: {
-          guildId: 'guild-1',
-          status: { in: ['closed', 'cancelled'] },
-          raidDate: expect.any(Date),
-          isPinned: false,
-        },
-        select: {
-          id: true,
-          description: true,
-          raidDate: true,
-        },
-      });
+       expect(mockPrisma.raid.findMany).toHaveBeenCalledWith({
+         where: {
+           guildId: 'guild-1',
+           status: { in: ['closed', 'cancelled'] },
+           raidDate: { lt: expect.any(Date) },
+           isPinned: false,
+         },
+         select: {
+           id: true,
+           description: true,
+           raidDate: true,
+         },
+       });
       expect(mockPrisma.raid.deleteMany).not.toHaveBeenCalled();
     });
 

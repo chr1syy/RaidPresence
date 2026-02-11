@@ -36,12 +36,15 @@ const createMockMember = (options: {
       }),
     },
     roles: {
-      cache: new Map(
-        (options.roles || []).map((roleId, index) => [
-          roleId,
-          { id: roleId, name: options.roleNames?.[index] || `Role ${index}` },
-        ])
-      ),
+      cache: {
+        some: jest.fn((fn) => {
+          const roles = (options.roles || []).map((roleId, index) => ({
+            id: roleId,
+            name: options.roleNames?.[index] || `Role ${index}`,
+          }));
+          return roles.some(fn);
+        }),
+      },
     },
     guild: { id: options.guildId || 'guild-1' },
   } as any;

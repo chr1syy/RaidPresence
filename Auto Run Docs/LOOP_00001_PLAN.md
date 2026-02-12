@@ -212,7 +212,7 @@ related:
   - [x] Example
 
 ### DOC-009: getSpecSymbol
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/wowData.ts`
 - **Gap ID:** GAP-013
 - **Type:** Function
@@ -223,10 +223,16 @@ related:
   export function getSpecSymbol(className: string | null, specName: string | null): string
   ```
 - **Documentation Plan:**
-  - [ ] Description: Returns Discord emoji for class/spec
-  - [ ] Parameters: className, specName
-  - [ ] Returns: Emoji string
-  - [ ] Examples: Getting symbol for null inputs
+  - [x] Description: Returns Discord emoji for class/spec
+  - [x] Parameters: className, specName
+  - [x] Returns: Emoji string
+  - [x] Examples: Getting symbol for null inputs
+- **Implemented In:** Loop 00004
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (2)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-010: startRaidScheduler
 - **Status:** `PENDING`

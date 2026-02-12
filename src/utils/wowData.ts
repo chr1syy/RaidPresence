@@ -234,6 +234,23 @@ export function getSpecRole(className: string | null, specName: string | null): 
   return SPEC_ROLES[key] || null;
 }
 
+/**
+ * Returns the Discord emoji symbol for a given World of Warcraft class and specialization combination.
+ *
+ * This function provides visual representations for player specs using custom Discord emojis.
+ * It returns an empty string for invalid inputs or unknown combinations.
+ *
+ * Parameters:
+ *   - className: string | null - The WoW class name (e.g., "Druid", "Warrior"). Null or empty returns empty string.
+ *   - specName: string | null - The specialization name (e.g., "Restoration", "Fury"). Null or empty returns empty string.
+ *
+ * Returns:
+ *   string - The Discord emoji string for the class/spec combination, or empty string if not found or invalid input.
+ *
+ * Example:
+ *   const symbol = getSpecSymbol("Druid", "Restoration"); // returns '<:druid_restoration:1458821367339290645>'
+ *   const invalid = getSpecSymbol(null, "Fury"); // returns ''
+ */
 export function getSpecSymbol(className: string | null, specName: string | null): string {
   if (!className || !specName) return '';
   const key = `${className}-${specName}`;

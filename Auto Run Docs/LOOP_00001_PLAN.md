@@ -143,7 +143,7 @@ related:
   - [x] Example
 
 ### DOC-006: WOW_SPECS
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/wowData.ts`
 - **Gap ID:** GAP-006
 - **Type:** Type
@@ -154,13 +154,19 @@ related:
   export const WOW_SPECS: Record<string, string[]>
   ```
 - **Documentation Plan:**
-  - [ ] Description: Maps WoW classes to their specializations
-  - [ ] Parameters: None
-  - [ ] Returns: Record of class to specs array
-  - [ ] Examples: Getting specs for Druid
+  - [x] Description: Maps WoW classes to their specializations
+  - [x] Parameters: None
+  - [x] Returns: Record of class to specs array
+  - [x] Examples: Getting specs for Druid
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (0)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-007: SPEC_SYMBOLS
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/wowData.ts`
 - **Gap ID:** GAP-009
 - **Type:** Type
@@ -171,10 +177,16 @@ related:
   export const SPEC_SYMBOLS: Record<string, string>
   ```
 - **Documentation Plan:**
-  - [ ] Description: Discord emoji symbols for each class/spec combination
-  - [ ] Parameters: None
-  - [ ] Returns: Record of spec key to emoji
-  - [ ] Examples: Getting symbol for Fury Warrior
+  - [x] Description: Discord emoji symbols for each class/spec combination
+  - [x] Parameters: None
+  - [x] Returns: Record of spec key to emoji
+  - [x] Examples: Getting symbol for Fury Warrior
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (0)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-008: getSpecRole
 - **Status:** `PENDING`

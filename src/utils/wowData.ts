@@ -14,6 +14,20 @@ export const WOW_CLASSES = {
   WARRIOR: 'Warrior',
 } as const;
 
+/**
+ * Maps World of Warcraft classes to their available specializations.
+ * 
+ * This record provides a complete mapping of all playable WoW classes to their respective specializations
+ * as of the Dragonflight expansion. It's used throughout the application for class/spec selection,
+ * role determination, and raid composition calculations.
+ * 
+ * Properties:
+ *   - [className]: string[] - Array of specialization names available for the given class
+ * 
+ * Example:
+ *   const druidSpecs = WOW_SPECS['Druid']; // ['Balance', 'Feral', 'Guardian', 'Restoration']
+ *   const warriorSpecs = WOW_SPECS['Warrior']; // ['Arms', 'Fury', 'Protection']
+ */
 export const WOW_SPECS: Record<string, string[]> = {
   [WOW_CLASSES.DEATH_KNIGHT]: ['Blood', 'Frost', 'Unholy'],
   [WOW_CLASSES.DEMON_HUNTER]: ['Havoc', 'Vengeance', 'Devourer'],
@@ -107,7 +121,20 @@ const SPEC_ROLES: Record<string, WoWRole> = {
   'Warrior-Protection': 'Tank',
 };
 
-// Spec icons/symbols (using Unicode and emojis)
+/**
+ * Discord emoji symbols for each class/spec combination.
+ *
+ * This record provides custom Discord emoji representations for every World of Warcraft class and specialization
+ * combination. These emojis are used to visually represent player specs in raid rosters, attendance lists,
+ * and other Discord displays. Each emoji is a custom Discord emoji from the bot's server.
+ *
+ * Properties:
+ *   - [className-specName]: string - Discord emoji string for the specific class/spec combination
+ *
+ * Example:
+ *   const furyWarriorSymbol = SPEC_SYMBOLS['Warrior-Fury']; // '<:warrior_fury:1458822360781029438>'
+ *   const restoDruidSymbol = SPEC_SYMBOLS['Druid-Restoration']; // '<:druid_restoration:1458821367339290645>'
+ */
 export const SPEC_SYMBOLS: Record<string, string> = {
   // Death Knight
   'Death Knight-Blood': '<:dk_blood:1458821143770431649>',

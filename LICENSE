@@ -1,0 +1,89 @@
+RaidPresence Custom Business Source License (CBSL) 1.1
+Based on BUSL-1.1 with Permanent Commercial Restriction
+
+Copyright (c) 2026 chr1syy
+
+1. GRANT OF RIGHTS
+
+Subject to the terms and conditions of this Agreement, chr1syy grants you a 
+worldwide, non-exclusive, royalty-free license to use, copy, modify, and 
+distribute this software and its documentation for non-commercial purposes, 
+including the right to create derivative works.
+
+2. COMMERCIAL USE RESTRICTION
+
+You may not offer this software, or any derivative works thereof, for sale, 
+as a commercial service, or any other form of commercial exploitation, whether 
+directly or indirectly. This restriction is PERMANENT and does not expire.
+
+This includes, but is not limited to:
+- Selling the software or derivative works
+- Providing the software as a service for payment
+- Using the software to provide commercial services to others
+- Incorporating the software into a commercial product for sale
+- Offering modified versions of the software for commercial purposes
+
+Commercial use requires explicit written permission from chr1syy.
+
+3. PERMITTED USES (NON-COMMERCIAL)
+
+The following uses are permitted without requiring additional permission:
+- Personal use
+- Educational use
+- Research use
+- Internal organizational use (non-commercial)
+- Open-source projects (non-commercial)
+- Community contributions and modifications (non-commercial)
+
+4. DISTRIBUTION
+
+You may distribute copies of the software or derivative works, provided that:
+- You include a copy of this License
+- You do not attempt to use or commercialize the software
+- You make clear any modifications to the original software
+- Derivative works are also subject to this License
+
+5. DERIVATIVE WORKS
+
+Any derivative works (modifications, extensions, ports, etc.) are also subject 
+to this License. You may not remove or alter any portion of this License in 
+derivative works.
+
+6. NO COMMERCIAL CHANGE OF TERMS
+
+Unlike BUSL-1.1, this License contains NO automatic change-of-terms clause. 
+The commercial use restriction is permanent and indefinite. Only chr1syy 
+has the authority to grant commercial licenses or modify these terms.
+
+7. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
+chr1syy BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN 
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION 
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL chr1syy BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, 
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, HOWEVER CAUSED AND UNDER ANY THEORY OF 
+LIABILITY, EVEN IF chr1syy HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+9. TERMINATION
+
+This License is effective until terminated. Your rights under this License 
+will terminate automatically without notice if you breach any term of this 
+License. Upon termination, you must cease all use of the software.
+
+10. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the laws 
+of the jurisdiction in which chr1syy resides, without regard to its conflict 
+of law principles.
+
+---
+
+License Conversion Date: February 4, 2026
+This software was converted from MIT License to this Custom Business Source License.
+Copyright Owner: chr1syy

@@ -97,7 +97,7 @@ related:
   - [x] Example
 
 ### DOC-004: getTranslations
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/localization.ts`
 - **Gap ID:** GAP-003
 - **Type:** Function
@@ -108,10 +108,16 @@ related:
   export function getTranslations(language: string): Translations
   ```
 - **Documentation Plan:**
-  - [ ] Description: Returns translation object for a given language
-  - [ ] Parameters: language string
-  - [ ] Returns: Translations object
-  - [ ] Examples: Getting English translations
+  - [x] Description: Returns translation object for a given language
+  - [x] Parameters: language string
+  - [x] Returns: Translations object
+  - [x] Examples: Getting English translations
+- **Implemented In:** Loop 00002
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (1)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-005: t
 - **Status:** `PENDING`

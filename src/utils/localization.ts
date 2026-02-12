@@ -634,6 +634,23 @@ const translations: Record<SupportedLanguage, Translations> = {
     },
 };
 
+/**
+ * Returns the translation object for the specified language, defaulting to English if the language is not supported.
+ * 
+ * This function provides access to all localized strings for the application, supporting both English ('en') and German ('de').
+ * If an unsupported language is provided, it will fall back to English translations.
+ * 
+ * Parameters:
+ *   - language: string - The language code to retrieve translations for ('en' or 'de')
+ * 
+ * Returns:
+ *   Translations - The complete translation object containing all UI strings and messages for the specified language
+ * 
+ * Example:
+ *   const english = getTranslations('en'); // Returns English translations
+ *   const german = getTranslations('de'); // Returns German translations
+ *   const fallback = getTranslations('fr'); // Returns English translations (fallback)
+ */
 export function getTranslations(language: string): Translations {
   const lang = (language === 'de' ? 'de' : 'en') as SupportedLanguage;
   return translations[lang];

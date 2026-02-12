@@ -29,4 +29,4 @@ This auto-run document applies the recommended documentation structure to existi
 - [x] Create docs/api/README.md with API documentation template
 - [x] Create docs/tutorials/README.md with tutorial index
 - [x] Update or create AGENTS.md in root to define AI assistant modes and skills if applicable
-- [ ] Run lint and typecheck commands on all new files to ensure correctness
+- [x] Run lint and typecheck commands on all new files to ensure correctness

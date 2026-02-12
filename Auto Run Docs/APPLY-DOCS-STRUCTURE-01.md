@@ -27,6 +27,6 @@ This auto-run document applies the recommended documentation structure to existi
 - [x] Create docs/ directory if not exists, with subdirectories: commands/, api/, tutorials/
 - [x] Populate docs/commands/ with markdown files for each project command (e.g., install.md, build.md) describing syntax, options, and examples
 - [x] Create docs/api/README.md with API documentation template
-- [ ] Create docs/tutorials/README.md with tutorial index
+- [x] Create docs/tutorials/README.md with tutorial index
 - [ ] Update or create AGENTS.md in root to define AI assistant modes and skills if applicable
 - [ ] Run lint and typecheck commands on all new files to ensure correctness

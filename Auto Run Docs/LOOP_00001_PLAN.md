@@ -281,7 +281,7 @@ related:
   - [x] Example
 
 ### DOC-012: Command
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/types/index.ts`
 - **Gap ID:** GAP-018
 - **Type:** Type
@@ -295,10 +295,16 @@ related:
   }
   ```
 - **Documentation Plan:**
-  - [ ] Description: Interface for Discord slash commands
-  - [ ] Parameters: None
-  - [ ] Returns: Interface structure
-  - [ ] Examples: Implementing a command
+  - [x] Description: Interface for Discord slash commands
+  - [x] Parameters: None
+  - [x] Returns: Interface structure
+  - [x] Examples: Implementing a command
+- **Implemented In:** Loop 00006
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (0)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-013: BotClient
 - **Status:** `PENDING`

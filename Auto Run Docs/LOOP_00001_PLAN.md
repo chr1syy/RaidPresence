@@ -50,7 +50,7 @@ related:
   - [x] Example
 
 ### DOC-002: command (raid)
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/commands/raid.ts`
 - **Gap ID:** GAP-021
 - **Type:** Function
@@ -61,11 +61,17 @@ related:
   export const command: Command
   ```
 - **Documentation Plan:**
-  - [ ] Description: Main raid command with multiple subcommands
-  - [ ] Parameters: Various subcommand options
-  - [ ] Returns: Command execution result
-  - [ ] Examples: Creating a raid
-  - [ ] Errors: Invalid parameters
+  - [x] Description: Main raid command with multiple subcommands
+  - [x] Parameters: Various subcommand options
+  - [x] Returns: Command execution result
+  - [x] Examples: Creating a raid
+  - [x] Errors: Invalid parameters
+- **Implemented In:** Loop 00001
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (3)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-003: prisma
 - **Status:** `PENDING`

@@ -57,6 +57,40 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
   return roleMentions;
 }
 
+/**
+ * Main raid command with multiple subcommands for managing Discord raid events.
+ * 
+ * Provides comprehensive raid management functionality including creating, listing,
+ * editing, closing, cancelling, and refreshing raids. Supports role-based permissions
+ * and multilingual responses.
+ * 
+ * Subcommands:
+ *   - create: Creates a new raid event with role-based member selection
+ *   - list: Shows all upcoming raids with attendance counts
+ *   - edit: Modifies raid date, time, or title (raid leaders only)
+ *   - delete: Permanently removes a raid and its message
+ *   - close: Closes a raid to prevent further changes
+ *   - cancel: Cancels a raid event
+ *   - remind: Sends a reminder message to raid participants
+ *   - refresh: Updates roster and embed with current member status
+ * 
+ * Parameters:
+ *   - Various subcommand options: Subcommands have their own parameter sets including raid_id, date, time, title, roles, etc.
+ * 
+ * Returns:
+ *   Command - Discord slash command object implementing the Command interface
+ * 
+ * Errors/Exceptions:
+ *   - PermissionError: When user lacks raid management permissions
+ *   - ValidationError: When required parameters are missing or invalid
+ *   - NotFoundError: When specified raid does not exist
+ *   - GuildError: When command used outside a server context
+ * 
+ * Example:
+ *   /raid create date:2025-12-25 time:19:30 title:"Naxxramas 25" roles:@Tank,@Healer ping_roles:true
+ *   /raid list
+ *   /raid edit raid_id:abc123 title:"Updated Title"
+ */
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName('raid')

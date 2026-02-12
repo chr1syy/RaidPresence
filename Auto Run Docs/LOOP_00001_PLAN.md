@@ -235,7 +235,7 @@ related:
   - [x] Example
 
 ### DOC-010: startRaidScheduler
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/raidScheduler.ts`
 - **Gap ID:** GAP-015
 - **Type:** Function
@@ -246,13 +246,19 @@ related:
   export function startRaidScheduler(client: Client)
   ```
 - **Documentation Plan:**
-  - [ ] Description: Starts background job to auto-close expired raids
-  - [ ] Parameters: Discord client
-  - [ ] Returns: None
-  - [ ] Examples: Starting scheduler on bot startup
+  - [x] Description: Starts background job to auto-close expired raids
+  - [x] Parameters: Discord client
+  - [x] Returns: None
+  - [x] Examples: Starting scheduler on bot startup
+- **Implemented In:** Loop 00004
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (1)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-011: getTimezoneFromLocale
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/timezoneHelper.ts`
 - **Gap ID:** GAP-016
 - **Type:** Function
@@ -263,10 +269,16 @@ related:
   export function getTimezoneFromLocale(locale: string | null): number | null
   ```
 - **Documentation Plan:**
-  - [ ] Description: Maps Discord locales to timezone offsets
-  - [ ] Parameters: locale string
-  - [ ] Returns: Timezone offset or null
-  - [ ] Examples: Getting timezone for 'en-US'
+  - [x] Description: Maps Discord locale strings to timezone offsets for scheduling purposes
+  - [x] Parameters: locale string or null
+  - [x] Returns: Timezone offset or null
+  - [x] Examples: Getting timezone for US English
+- **Implemented In:** Loop 00005
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (1)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-012: Command
 - **Status:** `PENDING`

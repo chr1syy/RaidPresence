@@ -56,8 +56,16 @@ const LOCALE_TO_TIMEZONE: Record<string, number> = {
 };
 
 /**
- * Gets a suggested timezone offset based on Discord server's preferred locale
- * Returns null if locale is not recognized or if it's ambiguous
+ * Maps Discord locale strings to timezone offsets for scheduling purposes.
+ *
+ * Parameters:
+ *   - locale: string | null - The Discord locale string (e.g., "en-US", "de")
+ *
+ * Returns:
+ *   number | null - Timezone offset in hours from UTC, or null if locale is not supported
+ *
+ * Example:
+ *   const offset = getTimezoneFromLocale('en-US'); // Returns -5 for Eastern Time
  */
 export function getTimezoneFromLocale(locale: string | null): number | null {
   if (!locale) return null;

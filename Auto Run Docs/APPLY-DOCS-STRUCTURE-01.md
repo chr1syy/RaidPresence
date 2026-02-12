@@ -25,7 +25,7 @@ This auto-run document applies the recommended documentation structure to existi
 - [x] Create CHANGELOG.md in root with template for version history
 - [x] Create SECURITY.md in root with vulnerability reporting instructions
 - [x] Create docs/ directory if not exists, with subdirectories: commands/, api/, tutorials/
-- [ ] Populate docs/commands/ with markdown files for each project command (e.g., install.md, build.md) describing syntax, options, and examples
+- [x] Populate docs/commands/ with markdown files for each project command (e.g., install.md, build.md) describing syntax, options, and examples
 - [ ] Create docs/api/README.md with API documentation template
 - [ ] Create docs/tutorials/README.md with tutorial index
 - [ ] Update or create AGENTS.md in root to define AI assistant modes and skills if applicable

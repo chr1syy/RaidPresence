@@ -27,7 +27,7 @@ related:
 ## PENDING - Ready for Auto-Documentation
 
 ### DOC-001: translations
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/localization.ts`
 - **Gap ID:** GAP-002
 - **Type:** Type
@@ -42,6 +42,12 @@ related:
   - [ ] Parameters: SupportedLanguage key
   - [ ] Returns: Translations object
   - [ ] Examples: Access German translations
+- **Implemented In:** Loop 00001
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (2)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-002: command (raid)
 - **Status:** `PENDING`

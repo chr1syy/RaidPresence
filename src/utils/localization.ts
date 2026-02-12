@@ -207,6 +207,17 @@ interface Translations {
     raidNotArchived: string;
 }
 
+/**
+ * Contains all translatable strings for the application, organized by supported languages.
+ * 
+ * This record provides direct access to all UI text and messages in both English and German.
+ * While this can be used directly for simple cases, it's recommended to use the t() function
+ * for better error handling and replacement support.
+ * 
+ * Properties:
+ *   - en: Translations - English translations for all application strings
+ *   - de: Translations - German translations for all application strings
+ */
 const translations: Record<SupportedLanguage, Translations> = {
   en: {
     // Raid embed

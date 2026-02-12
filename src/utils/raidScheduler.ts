@@ -3,8 +3,25 @@ import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 
+/**
+ * Starts a background scheduler that automatically closes expired raids.
+ * 
+ * This function sets up an interval that checks every 2 minutes for raids that have passed
+ * their scheduled date and are still marked as 'open'. When expired raids are found, they are
+ * automatically closed, their status updated in the database, and their Discord messages are
+ * updated to remove interactive buttons.
+ * 
+ * Parameters:
+ *   - client: Client - The Discord.js client instance used to update raid messages
+ * 
+ * Returns:
+ *   void - This function starts the scheduler but does not return a value
+ * 
+ * Example:
+ *   // Start the scheduler when the bot initializes
+ *   startRaidScheduler(client);
+ */
 export function startRaidScheduler(client: Client) {
-  // Check every 2 minutes for expired raids
   const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
 
   setInterval(async () => {

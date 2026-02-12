@@ -23,6 +23,15 @@ Discord bot for WoW raid attendance management with reverse sign-up.
    npm run build
    ```
 
+## Documentation
+
+For detailed usage instructions and command references:
+
+- **[Raid Commands](/docs/commands/RAID-COMMAND.md)** - Complete guide to `/raid` subcommands
+- **[Configuration Commands](/docs/commands/CONFIG-COMMAND.md)** - Server setup and configuration options
+- **[Setup Guide](/docs/guides/SETUP-GUIDE.md)** - Initial bot setup and configuration
+- **[Player Guide](/docs/guides/PLAYER-GUIDE.md)** - How to use RaidPresence as a player
+
 ## Usage
 
 ### Development

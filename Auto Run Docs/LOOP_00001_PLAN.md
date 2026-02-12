@@ -74,7 +74,7 @@ related:
   - [x] Example
 
 ### DOC-003: prisma
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/database/client.ts`
 - **Gap ID:** GAP-027
 - **Type:** Type
@@ -85,10 +85,16 @@ related:
   export default prisma
   ```
 - **Documentation Plan:**
-  - [ ] Description: Prisma database client instance
-  - [ ] Parameters: None
-  - [ ] Returns: PrismaClient instance
-  - [ ] Examples: Querying raids
+  - [x] Description: Prisma database client instance
+  - [x] Parameters: None
+  - [x] Returns: PrismaClient instance
+  - [x] Examples: Querying raids
+- **Implemented In:** Loop 00001
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (0)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-004: getTranslations
 - **Status:** `PENDING`

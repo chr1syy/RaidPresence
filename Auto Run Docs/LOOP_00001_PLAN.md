@@ -189,7 +189,7 @@ related:
   - [x] Example
 
 ### DOC-008: getSpecRole
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/wowData.ts`
 - **Gap ID:** GAP-012
 - **Type:** Function
@@ -200,10 +200,16 @@ related:
   export function getSpecRole(className: string | null, specName: string | null): WoWRole | null
   ```
 - **Documentation Plan:**
-  - [ ] Description: Determines raid role from class/spec combination
-  - [ ] Parameters: className, specName
-  - [ ] Returns: WoWRole or null
-  - [ ] Examples: Getting role for Restoration Druid
+  - [x] Description: Determines raid role from class/spec combination
+  - [x] Parameters: className, specName
+  - [x] Returns: WoWRole or null
+  - [x] Examples: Getting role for Restoration Druid
+- **Implemented In:** Loop 00003
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (2)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-009: getSpecSymbol
 - **Status:** `PENDING`

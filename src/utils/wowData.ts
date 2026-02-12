@@ -211,6 +211,23 @@ export function getSpecsForClass(className: string): string[] {
   return WOW_SPECS[className] || [];
 }
 
+/**
+ * Determines the raid role (Tank, Healer, Melee, Ranged) based on a World of Warcraft class and specialization combination.
+ *
+ * This function maps class/spec combinations to their appropriate raid roles for composition calculations,
+ * attendance tracking, and raid planning. It returns null for invalid inputs or unknown combinations.
+ *
+ * Parameters:
+ *   - className: string | null - The WoW class name (e.g., "Druid", "Warrior"). Null or empty returns null.
+ *   - specName: string | null - The specialization name (e.g., "Restoration", "Fury"). Null or empty returns null.
+ *
+ * Returns:
+ *   WoWRole | null - The raid role for the class/spec combination ("Tank", "Healer", "Melee", "Ranged"), or null if invalid input or combination not found.
+ *
+ * Example:
+ *   const role = getSpecRole("Druid", "Restoration"); // returns "Healer"
+ *   const invalid = getSpecRole(null, "Fury"); // returns null
+ */
 export function getSpecRole(className: string | null, specName: string | null): WoWRole | null {
   if (!className || !specName) return null;
   const key = `${className}-${specName}`;

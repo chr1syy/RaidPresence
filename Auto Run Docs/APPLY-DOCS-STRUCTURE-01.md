@@ -23,7 +23,7 @@ This auto-run document applies the recommended documentation structure to existi
 - [x] Create CODE_OF_CONDUCT.md in root using Contributor Covenant template
 - [x] Ensure LICENSE file exists in root; if not, create with identified licence by old files as default (user can change later)
 - [x] Create CHANGELOG.md in root with template for version history
-- [ ] Create SECURITY.md in root with vulnerability reporting instructions
+- [x] Create SECURITY.md in root with vulnerability reporting instructions
 - [ ] Create docs/ directory if not exists, with subdirectories: commands/, api/, tutorials/
 - [ ] Populate docs/commands/ with markdown files for each project command (e.g., install.md, build.md) describing syntax, options, and examples
 - [ ] Create docs/api/README.md with API documentation template

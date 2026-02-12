@@ -120,7 +120,7 @@ related:
   - [x] Example
 
 ### DOC-005: t
-- **Status:** `PENDING`
+- **Status:** `IMPLEMENTED`
 - **File:** `src/utils/localization.ts`
 - **Gap ID:** GAP-004
 - **Type:** Function
@@ -131,10 +131,16 @@ related:
   export function t(language: string, key: keyof Translations, replacements?: Record<string, string | number>): string
   ```
 - **Documentation Plan:**
-  - [ ] Description: Translation helper function with optional replacements
-  - [ ] Parameters: language, key, replacements
-  - [ ] Returns: Translated string
-  - [ ] Examples: Translating with placeholders
+  - [x] Description: Translation helper function with optional replacements
+  - [x] Parameters: language, key, replacements
+  - [x] Returns: Translated string
+  - [x] Examples: Translating with placeholders
+- **Implemented In:** Loop 00002
+- **Documentation Added:**
+  - [x] Description
+  - [x] Parameters (3)
+  - [x] Returns
+  - [x] Example
 
 ### DOC-006: WOW_SPECS
 - **Status:** `PENDING`

@@ -656,6 +656,28 @@ export function getTranslations(language: string): Translations {
   return translations[lang];
 }
 
+/**
+ * Translates a key to the specified language with optional placeholder replacements.
+ * 
+ * This function provides a convenient way to get localized text strings with support for
+ * dynamic content replacement. It automatically handles language fallback to English if
+ * an unsupported language is provided.
+ * 
+ * Parameters:
+ *   - language: string - The language code to use for translation ('en' or 'de')
+ *   - key: keyof Translations - The translation key to look up from the Translations interface
+ *   - replacements: Record<string, string | number> - Optional object containing placeholder replacements (optional)
+ * 
+ * Returns:
+ *   string - The translated string with any replacements applied
+ * 
+ * Example:
+ *   const message = t('en', 'raidCreatedSuccess', { title: 'Molten Core', count: 25 });
+ *   // Returns: 'Raid "Molten Core" created successfully with 25 members!'
+ *   
+ *   const germanMsg = t('de', 'raidCreatedSuccess', { title: 'Geschmolzener Kern', count: 40 });
+ *   // Returns: 'Raid "Geschmolzener Kern" erfolgreich erstellt mit 40 Mitgliedern!'
+ */
 export function t(language: string, key: keyof Translations, replacements?: Record<string, string | number>): string {
   const trans = getTranslations(language);
   let text = trans[key];

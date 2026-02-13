@@ -23,10 +23,10 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: curl -X POST -H 'Content-type: application/json' --data '{"content": "✅ RaidPresence CI completed successfully"}' ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: 'curl -X POST -H ''Content-type: application/json'' --data ''{"content": "✅ RaidPresence CI completed successfully"}'' ${{ secrets.DISCORD_WEBHOOK_URL }}'
         continue-on-error: true
 
       - name: Notify failure
         if: failure()
-        run: curl -X POST -H 'Content-type: application/json' --data '{"content": "❌ RaidPresence CI failed"}' ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: 'curl -X POST -H ''Content-type: application/json'' --data ''{"content": "❌ RaidPresence CI failed"}'' ${{ secrets.DISCORD_WEBHOOK_URL }}'
         continue-on-error: true

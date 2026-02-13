@@ -49,10 +49,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Step 4: Run TypeScript compilation checks
-      # Executes: npm test -> tsc --noEmit
-      # This validates TypeScript type safety without emitting output files
-      # Fails the workflow if any TypeScript compilation errors are detected
+       # Step 4: Run TypeScript compilation checks
+       # Executes: npm test -> tsc --noEmit
+       # This validates TypeScript type safety without emitting output files
+       # Fails the workflow if any TypeScript compilation errors are detected
        - name: Run tests (TypeScript type checks)
          run: npm test
 

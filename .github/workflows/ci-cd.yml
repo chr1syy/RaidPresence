@@ -60,19 +60,25 @@ jobs:
        # Sends a success notification to Discord webhook
        - name: Notify Discord on success
          if: success()
+         env:
+           REF: ${{ github.ref_name }}
+           REPO: ${{ github.repository }}
+           MSG: ${{ github.event.head_commit.message }}
+           AUTHOR: ${{ github.event.head_commit.author.name }}
+           URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
          run: |
            PAYLOAD='{
              "content": "✅ **RaidPresence CI/CD Pipeline Succeeded**",
              "embeds": [{
-               "title": "Build Passed on '"${{ github.ref_name }}"'",
+               "title": "Build Passed on '"$REF"'",
                "description": "Tests passed successfully during CI/CD pipeline execution",
                "color": 65280,
                "fields": [
-                 {"name": "Repository", "value": "'"${{ github.repository }}"'", "inline": true},
-                 {"name": "Branch", "value": "'"${{ github.ref_name }}"'", "inline": true},
-                 {"name": "Commit Message", "value": "'"${{ github.event.head_commit.message }}"'", "inline": false},
-                 {"name": "Author", "value": "'"${{ github.event.head_commit.author.name }}"'", "inline": true},
-                 {"name": "Workflow URL", "value": "['"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"' ](View Run)", "inline": false}
+                 {"name": "Repository", "value": "'"$REPO"'", "inline": true},
+                 {"name": "Branch", "value": "'"$REF"'", "inline": true},
+                 {"name": "Commit Message", "value": "'"$MSG"'", "inline": false},
+                 {"name": "Author", "value": "'"$AUTHOR"'", "inline": true},
+                 {"name": "Workflow URL", "value": "['"$URL"' ](View Run)", "inline": false}
                ]
              }]
            }'
@@ -83,19 +89,25 @@ jobs:
        # Sends a failure notification to Discord webhook
        - name: Notify Discord on failure
          if: failure()
+         env:
+           REF: ${{ github.ref_name }}
+           REPO: ${{ github.repository }}
+           MSG: ${{ github.event.head_commit.message }}
+           AUTHOR: ${{ github.event.head_commit.author.name }}
+           URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
          run: |
            PAYLOAD='{
              "content": "❌ **RaidPresence CI/CD Pipeline Failed**",
              "embeds": [{
-               "title": "Build Failed on '"${{ github.ref_name }}"'",
+               "title": "Build Failed on '"$REF"'",
                "description": "Tests failed during CI/CD pipeline execution",
                "color": 16711680,
                "fields": [
-                 {"name": "Repository", "value": "'"${{ github.repository }}"'", "inline": true},
-                 {"name": "Branch", "value": "'"${{ github.ref_name }}"'", "inline": true},
-                 {"name": "Commit Message", "value": "'"${{ github.event.head_commit.message }}"'", "inline": false},
-                 {"name": "Author", "value": "'"${{ github.event.head_commit.author.name }}"'", "inline": true},
-                 {"name": "Workflow URL", "value": "['"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"' ](View Run)", "inline": false}
+                 {"name": "Repository", "value": "'"$REPO"'", "inline": true},
+                 {"name": "Branch", "value": "'"$REF"'", "inline": true},
+                 {"name": "Commit Message", "value": "'"$MSG"'", "inline": false},
+                 {"name": "Author", "value": "'"$AUTHOR"'", "inline": true},
+                 {"name": "Workflow URL", "value": "['"$URL"' ](View Run)", "inline": false}
                ]
              }]
            }'

@@ -56,94 +56,48 @@ jobs:
       - name: Run tests (TypeScript type checks)
         run: npm test
 
-      # Step 5: Notify Discord on success
-      # Sends a success notification to Discord webhook
-      - name: Notify Discord on success
-        if: success()
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{
-              \"content\": \"✅ **RaidPresence CI/CD Pipeline Succeeded**\",
-              \"embeds\": [
-                {
-                  \"title\": \"Build Passed on \${{ github.ref_name }}\",
-                  \"description\": \"Tests passed successfully during CI/CD pipeline execution\",
-                  \"color\": 65280,
-                  \"fields\": [
-                    {
-                      \"name\": \"Repository\",
-                      \"value\": \"\${{ github.repository }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Branch\",
-                      \"value\": \"\${{ github.ref_name }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Commit Message\",
-                      \"value\": \"\${{ github.event.head_commit.message }}\",
-                      \"inline\": false
-                    },
-                    {
-                      \"name\": \"Author\",
-                      \"value\": \"\${{ github.event.head_commit.author.name }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Workflow URL\",
-                      \"value\": \"[\${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}](View Run)\",
-                      \"inline\": false
-                    }
-                  ]
-                }
-              ]
-            }" \
-            \${{ secrets.DISCORD_WEBHOOK_URL }}
-        continue-on-error: true
+       # Step 5: Notify Discord on success
+       # Sends a success notification to Discord webhook
+       - name: Notify Discord on success
+         if: success()
+         run: |
+           PAYLOAD=$(jq -n --arg ref "${{ github.ref_name }}" --arg repo "${{ github.repository }}" --arg msg "${{ github.event.head_commit.message }}" --arg author "${{ github.event.head_commit.author.name }}" --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '{
+             content: "✅ **RaidPresence CI/CD Pipeline Succeeded**",
+             embeds: [{
+               title: "Build Passed on \($ref)",
+               description: "Tests passed successfully during CI/CD pipeline execution",
+               color: 65280,
+               fields: [
+                 { name: "Repository", value: $repo, inline: true },
+                 { name: "Branch", value: $ref, inline: true },
+                 { name: "Commit Message", value: $msg, inline: false },
+                 { name: "Author", value: $author, inline: true },
+                 { name: "Workflow URL", value: "[\($url)](View Run)", inline: false }
+               ]
+             }]
+           }')
+           curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" ${{ secrets.DISCORD_WEBHOOK_URL }}
+         continue-on-error: true
 
-      # Step 6: Notify Discord on failure
-      # Sends a failure notification to Discord webhook
-      - name: Notify Discord on failure
-        if: failure()
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{
-              \"content\": \"❌ **RaidPresence CI/CD Pipeline Failed**\",
-              \"embeds\": [
-                {
-                  \"title\": \"Build Failed on \${{ github.ref_name }}\",
-                  \"description\": \"Tests failed during CI/CD pipeline execution\",
-                  \"color\": 16711680,
-                  \"fields\": [
-                    {
-                      \"name\": \"Repository\",
-                      \"value\": \"\${{ github.repository }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Branch\",
-                      \"value\": \"\${{ github.ref_name }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Commit Message\",
-                      \"value\": \"\${{ github.event.head_commit.message }}\",
-                      \"inline\": false
-                    },
-                    {
-                      \"name\": \"Author\",
-                      \"value\": \"\${{ github.event.head_commit.author.name }}\",
-                      \"inline\": true
-                    },
-                    {
-                      \"name\": \"Workflow URL\",
-                      \"value\": \"[\${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}](View Run)\",
-                      \"inline\": false
-                    }
-                  ]
-                }
-              ]
-            }" \
-            \${{ secrets.DISCORD_WEBHOOK_URL }}
-        continue-on-error: true
+       # Step 6: Notify Discord on failure
+       # Sends a failure notification to Discord webhook
+       - name: Notify Discord on failure
+         if: failure()
+         run: |
+           PAYLOAD=$(jq -n --arg ref "${{ github.ref_name }}" --arg repo "${{ github.repository }}" --arg msg "${{ github.event.head_commit.message }}" --arg author "${{ github.event.head_commit.author.name }}" --arg url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" '{
+             content: "❌ **RaidPresence CI/CD Pipeline Failed**",
+             embeds: [{
+               title: "Build Failed on \($ref)",
+               description: "Tests failed during CI/CD pipeline execution",
+               color: 16711680,
+               fields: [
+                 { name: "Repository", value: $repo, inline: true },
+                 { name: "Branch", value: $ref, inline: true },
+                 { name: "Commit Message", value: $msg, inline: false },
+                 { name: "Author", value: $author, inline: true },
+                 { name: "Workflow URL", value: "[\($url)](View Run)", inline: false }
+               ]
+             }]
+           }')
+           curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" ${{ secrets.DISCORD_WEBHOOK_URL }}
+         continue-on-error: true

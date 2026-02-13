@@ -19,12 +19,14 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
+       - run: npm test
 
-      - name: Notify success
-        if: success()
-        run: 'curl -X POST -H ''Content-type: application/json'' --data ''{"content": "✅ RaidPresence CI completed successfully"}'' ${{ secrets.DISCORD_WEBHOOK_URL }}'
-        continue-on-error: true
+       - run: npm run test:jest
+
+       - name: Notify success
+         if: success()
+         run: 'curl -X POST -H ''Content-type: application/json'' --data ''{"content": "New Version uploaded"}'' ${{ secrets.DISCORD_WEBHOOK_URL }}'
+         continue-on-error: true
 
       - name: Notify failure
         if: failure()

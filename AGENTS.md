@@ -7,7 +7,24 @@
 - **Language:** TypeScript
 - **Runtime:** Node.js 18+
 - **Framework:** discord.js v14
-- **Database:** PostgreSQL (production) / SQLite (local dev) via Prisma ORM
+- ## Database Management
+
+**SQLite for Development, PostgreSQL for Production**
+
+- **Development**: SQLite (`DATABASE_URL="file:./dev.db"`) - zero-config, fast iteration
+- **Production**: PostgreSQL - enterprise-ready with proper migrations
+
+### Commands
+- `npm run db:migrate` - Auto-detects database type and sets up schema
+- `npm run db:prod-migrations` - Generate PostgreSQL migrations before pushing to main
+
+### Workflow
+1. Develop with SQLite (fast, no setup)
+2. Before pushing: `npm run db:prod-migrations` (with production DATABASE_URL)
+3. Push migrations to main
+4. Production: `npm start` applies migrations automatically
+
+See `DATABASE-README.md` for complete documentation.
 - **Testing:** Jest 30 with ts-jest
 - **License:** Custom Business Source License (CBSL)
 

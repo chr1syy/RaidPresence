@@ -1,6 +1,0 @@
--- AlterTable
-ALTER TABLE "Raid" ADD COLUMN "templateName" TEXT;
-ALTER TABLE "Raid" ADD COLUMN "isTemplate" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "Raid" ADD COLUMN "createdFromTemplateId" TEXT;
-ALTER TABLE "Raid" ADD COLUMN "templateVersion" INTEGER NOT NULL DEFAULT 1;
-ALTER TABLE "Raid" ADD COLUMN "clonedAt" TIMESTAMP(3);

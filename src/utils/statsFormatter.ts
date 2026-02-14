@@ -63,8 +63,8 @@ export function formatRaidStatsEmbed(
         value: [
           `🛡️ ${trans.tank}: ${stats.composition.tanks}`,
           `💚 ${trans.heal}: ${stats.composition.healers}`,
-          `⚔️ ${trans.melee}: ${stats.composition.melee}`,
-          `🎯 ${trans.ranged}: ${stats.composition.ranged}`,
+          `⚔️ ${trans.compositionMeleeDps}: ${stats.composition.melee}`,
+          `🎯 ${trans.compositionRangedDps}: ${stats.composition.ranged}`,
         ].join('\n'),
         inline: true,
       },

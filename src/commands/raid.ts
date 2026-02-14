@@ -53,6 +53,18 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
     })
     .filter((mention) => mention !== null)
     .join(' ');
+
+  return roleMentions;
+
+  return roleMentions;
+
+  return roleMentions;
+
+  return roleMentions;
+
+  return roleMentions;
+
+  return roleMentions;
   
 /**
  * Parse role input string into array of role IDs
@@ -578,7 +590,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     noClass: 0,
   };
 
-  // Sort attending by role: Tanks -> Healers -> Melee -> Ranged -> No class set
+  // Sort attending by role: Tanks -> Healers -> Melee -> Ranged -> No class set, then by class, then by username
   const sortedAttending = attending.sort((a: typeof raid.attendance[0], b: typeof raid.attendance[0]) => {
     const roleA = getSpecRole(a.wowClass, a.wowSpec);
     const roleB = getSpecRole(b.wowClass, b.wowSpec);
@@ -588,7 +600,14 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     const orderB = roleB ? roleOrder[roleB] : 4;
 
     if (orderA !== orderB) return orderA - orderB;
-    return a.username.localeCompare(b.username); // Secondary sort by name
+
+    // Sort by class within same role
+    const classA = a.wowClass || '';
+    const classB = b.wowClass || '';
+    if (classA !== classB) return classA.localeCompare(classB);
+
+    // Then by username
+    return a.username.localeCompare(b.username);
   });
 
   sortedAttending.forEach((a: typeof raid.attendance[0]) => {

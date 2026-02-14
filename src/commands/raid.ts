@@ -301,16 +301,17 @@ const command: Command = {
       await handleCloseRaid(interaction);
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
-     } else if (subcommand === 'remind') {
+    } else if (subcommand === 'remind') {
         await handleRemindRaid(interaction);
-      } else if (subcommand === 'refresh') {
+    } else if (subcommand === 'refresh') {
         await handleRefreshRaid(interaction);
-      } else if (subcommand === 'edit') {
+    } else if (subcommand === 'edit') {
         await handleEditRaid(interaction);
-      } else if (subcommand === 'clone') {
+    } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
     }
-  };
+  },
+};
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
@@ -645,7 +646,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
    const totalParticipants = composition.tanks + composition.healers + composition.melee + composition.ranged + composition.noClass;
    
    // Add total participants field (spans full width)
-   baseFields.push({ name: trans.totalParticipants, value: `**${totalParticipants}**`, inline: false });
+    baseFields.push({ name: trans.totalParticipants, value: `**🔢 ${totalParticipants}**`, inline: false });
 
    // 3-column layout: Tank | Healer | DPS
   const dpsCount = composition.melee + composition.ranged;
@@ -1233,6 +1234,16 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   await interaction.editReply({
     content: `✅ Raid "${raid.description}" refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
   });
+}
+
+async function handleEditRaid(interaction: ChatInputCommandInteraction) {
+  // TODO: Implement edit raid functionality
+  await interaction.reply({ content: 'Edit raid not yet implemented', ephemeral: true });
+}
+
+async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
+  // TODO: Implement clone raid functionality
+  await interaction.reply({ content: 'Clone raid not yet implemented', ephemeral: true });
 }
 
 export default command;

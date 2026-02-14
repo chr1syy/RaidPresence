@@ -222,7 +222,7 @@ const translations: Record<SupportedLanguage, Translations> = {
   en: {
     // Raid embed
     raidEvent: 'Raid Event',
-    dateAndTime: 'Date & Time',
+    dateAndTime: '📅 🕐',
     composition: 'Composition',
     attending: 'Attending',
     optedOut: 'Opted Out',
@@ -429,7 +429,7 @@ const translations: Record<SupportedLanguage, Translations> = {
   de: {
     // Raid embed
     raidEvent: 'Raid Event',
-    dateAndTime: 'Datum & Uhrzeit',
+    dateAndTime: '📅 🕐',
     composition: 'Zusammensetzung',
     attending: 'Anwesend',
     optedOut: 'Abgemeldet',

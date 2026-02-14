@@ -139,7 +139,7 @@ model RaidFeedback {
   id        String    @id @default(cuid())
   raidId    String
   userId    String
-  mood String
+  mood      String
   comment   String?
   createdAt DateTime  @default(now())
 

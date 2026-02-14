@@ -102,11 +102,12 @@ export function formatAttendanceEmbed(
   if (recentRaids.length > 0) {
     const recentText = recentRaids
       .map((raid) => {
-        const dateStr = raid.raidDate.toISOString().split('T')[0];
+        const responseTime = raid.respondedAt || raid.raidDate;
+        const dateTimeStr = responseTime.toISOString().slice(0, 16).replace('T', ' ');
         const attended = raid.status === 'attending' || raid.status === 'late';
         const statusIcon = attended ? '✅' : '❌';
         const raidName = raid.raidDescription || 'Raid';
-        return `${statusIcon} ${dateStr} - ${raidName}`;
+        return `${statusIcon} ${dateTimeStr} - ${raidName}`;
       })
       .join('\n');
 

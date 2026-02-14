@@ -35,7 +35,7 @@ npm start
 | Command | Purpose | Environment |
 |---------|---------|-------------|
 | `npm run db:migrate` | Setup/update database | Auto-detects SQLite/PostgreSQL |
-| `npm run db:prod-migrations` | Generate production migrations | Requires PostgreSQL URL |
+| `npm run db:prod-migrations` | Rebuild canonical production migration set | Requires PostgreSQL URL |
 | `npm run db:studio` | Open Prisma Studio | Uses current DATABASE_URL |
 | `npm start` | Production deploy with migrations | PostgreSQL only |
 
@@ -59,7 +59,7 @@ npm run db:migrate  # Auto-updates SQLite schema
 # Set production DATABASE_URL temporarily
 export DATABASE_URL="postgresql://prod-url-here"
 
-# Generate PostgreSQL-compatible migrations
+# Rebuild deterministic PostgreSQL migration artifacts
 npm run db:prod-migrations
 
 # Reset to development URL
@@ -149,7 +149,7 @@ npm run test:jest
 # 2. Check linting
 npm run lint
 
-# 3. Generate production migrations (if schema changed)
+# 3. Rebuild production migration artifacts (if schema changed)
 npm run db:prod-migrations
 
 # 4. Verify migrations were created

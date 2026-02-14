@@ -23,7 +23,7 @@ import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
-import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
+import { archiveRaid, unarchiveRaid } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 
 /**
@@ -375,29 +375,7 @@ const command: Command = {
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('search')
-        .setDescription('Search archived raids')
-        .addStringOption((option) =>
-          option
-            .setName('query')
-            .setDescription('Search by raid name or player')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Filter by time period')
-            .addChoices(
-              { name: 'Last 7 days', value: '7' },
-              { name: 'Last 30 days', value: '30' },
-              { name: 'Last 90 days', value: '90' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
+
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -437,9 +415,7 @@ const command: Command = {
           await handlePinCommand(interaction);
         } else if (subcommand === 'unpin') {
           await handleUnpinCommand(interaction);
-  } else if (subcommand === 'search') {
-    await handleSearchCommand(interaction);
-  }
+
 }
    };
 
@@ -1299,6 +1275,6 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       if (!guildMember.user.bot) {
         currentEligibleMembers.add(memberId);
   }
-}
+};
 
 export default command;

@@ -54,7 +54,35 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
     .filter((mention) => mention !== null)
     .join(' ');
   
-  return roleMentions;
+/**
+ * Parse role input string into array of role IDs
+ * Supports @role mentions, role IDs, and role names
+ * @param input The input string
+ * @param guild Discord guild instance
+ * @returns Array of unique role IDs
+ */
+function parseRoleInput(input: string, guild: Guild): string[] {
+  const roleIds: string[] = [];
+
+  // Parse @role mentions
+  const mentionRegex = /<@&(\d+)>/g;
+  let match;
+  while ((match = mentionRegex.exec(input)) !== null) {
+    roleIds.push(match[1]);
+  }
+
+  // Parse comma-separated parts
+  const parts = input.replace(mentionRegex, '').split(',').map(r => r.trim()).filter(Boolean);
+  for (const part of parts) {
+    if (/^\d+$/.test(part)) {
+      roleIds.push(part);
+    } else {
+      const role = guild.roles.cache.find(r => r.name === part);
+      if (role) roleIds.push(role.id);
+    }
+  }
+
+  return [...new Set(roleIds)];
 }
 
 /**
@@ -120,7 +148,7 @@ const command: Command = {
         .addStringOption((option) =>
           option
             .setName('roles')
-            .setDescription('Discord roles for this raid (comma-separated role names or IDs)')
+            .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
             .setRequired(false)
         )
         .addBooleanOption((option) =>
@@ -409,10 +437,10 @@ const command: Command = {
           await handlePinCommand(interaction);
         } else if (subcommand === 'unpin') {
           await handleUnpinCommand(interaction);
-        } else if (subcommand === 'search') {
-          await handleSearchCommand(interaction);
-        }
-      },
+  } else if (subcommand === 'search') {
+    await handleSearchCommand(interaction);
+  }
+}
    };
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
@@ -486,8 +514,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  // Parse the roles parameter (or use guild defaults)
-  const roleIds = effectiveRolesInput.split(',').map((r: string) => r.trim()).filter(Boolean);
+  const roleIds = parseRoleInput(effectiveRolesInput, interaction.guild);
 
   if (roleIds.length === 0) {
     await interaction.editReply({
@@ -560,7 +587,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       channelId: interaction.channel.id,
       raidDate,
       description: title,
-      roles: effectiveRolesInput,
+      roles: roleIds.join(','),
       createdBy: interaction.user.id,
     },
   });

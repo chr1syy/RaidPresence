@@ -6,8 +6,10 @@
 # 2. Sets up Node.js environment
 # 3. Installs dependencies
 # 4. Runs TypeScript compilation checks (npm test)
-# 5. Notifies Discord of success or failure
-# 6. Blocks deployment if tests fail (Railway waits for this to pass)
+# 5. Runs Jest unit tests (npm run test:jest)
+# 6. Validates production migration consistency
+# 7. Notifies Discord of success or failure
+# 8. Blocks deployment if tests fail (Railway waits for this to pass)
 #
 # Once this workflow succeeds, Railway's integration automatically
 # deploys the build without requiring manual intervention.
@@ -49,14 +51,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Step 4: Run TypeScript compilation checks
-      # Executes: npm test -> tsc --noEmit
-      # This validates TypeScript type safety without emitting output files
-      # Fails the workflow if any TypeScript compilation errors are detected
+       # Step 4: Run TypeScript compilation checks
+       # Executes: npm test -> tsc --noEmit
+       # This validates TypeScript type safety without emitting output files
+       # Fails the workflow if any TypeScript compilation errors are detected
       - name: Run tests (TypeScript type checks)
         run: npm test
 
-      # Step 5: Notify Discord on success
+       # Step 5: Run Jest unit tests
+       # Executes: npm run test:jest
+       # Runs all Jest test suites to ensure functionality works correctly
+      - name: Run Jest tests
+        run: npm run test:jest
+
+      # Step 6: Validate production migration consistency
+      # Sets dummy PostgreSQL DATABASE_URL, generates migrations, and checks for drift
+      # Fails if generated migrations differ from committed ones
+      - name: Validate production migrations
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+        run: |
+          npm run db:prod-migrations
+          if git diff --name-only | grep -q "prisma/migrations/"; then
+            echo "❌ Migration drift detected: Generated migrations differ from committed ones."
+            git diff --name-only | grep "prisma/migrations/"
+            exit 1
+          else
+            echo "✅ No migration drift detected."
+          fi
+
+      # Step 7: Notify Discord on success
       # Sends a success notification to Discord webhook
       - name: Notify Discord on success
         if: success()
@@ -102,7 +126,7 @@ jobs:
             \${{ secrets.DISCORD_WEBHOOK_URL }}
         continue-on-error: true
 
-      # Step 6: Notify Discord on failure
+      # Step 8: Notify Discord on failure
       # Sends a failure notification to Discord webhook
       - name: Notify Discord on failure
         if: failure()

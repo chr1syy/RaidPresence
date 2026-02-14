@@ -196,36 +196,8 @@ async function handleSetRaidRoles(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
-  const roles = interaction.options.get('roles', true).value as string;
-
-  // Validate and clean up the roles string
-  const cleanedRoles = roles
-    .split(',')
-    .map((r) => r.trim())
-    .filter(Boolean)
-    .join(',');
-
-  if (!cleanedRoles) {
-    await interaction.editReply({
-      content: '❌ Invalid roles format. Please provide role names or IDs separated by commas.',
-    });
-    return;
-  }
-
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { raidRoles: cleanedRoles },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidRoles: cleanedRoles,
-      raidLeaderRoles: '',
-    },
-  });
-
   await interaction.editReply({
-    content: `✅ Raid attendance roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles will be automatically added to future raids.`,
+    content: '⚠️ **This command is deprecated.**\n\nRaid roles are now configured directly when creating raids using `/raid create`. This setting will be removed in a future update.',
   });
 }
 

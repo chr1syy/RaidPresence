@@ -37,35 +37,75 @@ export const pendingBulkCloses = new Map<string, {
 export async function handleButton(interaction: ButtonInteraction) {
   const customId = interaction.customId;
 
-  if (customId.startsWith('optout_')) {
-    const raidId = customId.split('_')[1];
+  if (customId.startsWith('raid_optout_') || customId.startsWith('optout_')) {
+    const raidId = parseCustomIdSuffix(customId, ['raid_optout_', 'optout_']);
+    if (!raidId) return;
     await handleOptOut(interaction, raidId);
-  } else if (customId.startsWith('optin_')) {
-    const raidId = customId.split('_')[1];
+  } else if (customId.startsWith('raid_optin_') || customId.startsWith('optin_')) {
+    const raidId = parseCustomIdSuffix(customId, ['raid_optin_', 'optin_']);
+    if (!raidId) return;
     await handleOptIn(interaction, raidId);
-  } else if (customId.startsWith('late_')) {
-    const raidId = customId.split('_')[1];
+  } else if (customId.startsWith('raid_late_') || customId.startsWith('late_')) {
+    const raidId = parseCustomIdSuffix(customId, ['raid_late_', 'late_']);
+    if (!raidId) return;
     await handleRunningLate(interaction, raidId);
-  } else if (customId.startsWith('class_')) {
-    const raidId = customId.split('_')[1];
+  } else if (customId.startsWith('raid_class_') || customId.startsWith('class_')) {
+    const raidId = parseCustomIdSuffix(customId, ['raid_class_', 'class_']);
+    if (!raidId) return;
     await handleClassSelection(interaction, raidId);
   } else if (customId.startsWith('feedback_')) {
-    const parts = customId.split('_');
-    const mood = parts[1];
-    const raidId = parts[2];
+    const feedback = parseFeedbackButtonId(customId);
+    if (!feedback) return;
+    const { mood, raidId } = feedback;
     await handleFeedback(interaction, raidId, mood);
   } else if (customId.startsWith('create_confirm_')) {
-    const confirmationId = customId.split('_')[2];
+    const confirmationId = customId.substring('create_confirm_'.length);
+    if (!confirmationId) return;
     await handleCreateConfirm(interaction, confirmationId);
   } else if (customId.startsWith('create_cancel_')) {
-    const confirmationId = customId.split('_')[2];
+    const confirmationId = customId.substring('create_cancel_'.length);
+    if (!confirmationId) return;
     await handleCreateCancel(interaction, confirmationId);
   } else if (customId.startsWith('close_all_confirm_')) {
-    const confirmationId = customId.split('_')[2];
+    const confirmationId = customId.substring('close_all_confirm_'.length);
+    if (!confirmationId) return;
     await handleCloseAllConfirm(interaction, confirmationId);
   } else if (customId === 'close_all_cancel') {
     await handleCloseAllCancel(interaction);
   }
+}
+
+function parseCustomIdSuffix(customId: string, prefixes: string[]): string | null {
+  for (const prefix of prefixes) {
+    if (customId.startsWith(prefix)) {
+      const suffix = customId.substring(prefix.length);
+      return suffix.length > 0 ? suffix : null;
+    }
+  }
+
+  return null;
+}
+
+function parseFeedbackButtonId(customId: string): { mood: string; raidId: string } | null {
+  const prefix = 'feedback_';
+  if (!customId.startsWith(prefix)) {
+    return null;
+  }
+
+  const payload = customId.substring(prefix.length);
+  const separatorIndex = payload.indexOf('_');
+  if (separatorIndex === -1) {
+    return null;
+  }
+
+  const mood = payload.substring(0, separatorIndex);
+  const raidId = payload.substring(separatorIndex + 1);
+
+  if (!mood || !raidId) {
+    return null;
+  }
+
+  return { mood, raidId };
 }
 
 async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
@@ -311,9 +351,19 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
 async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const customIdParts = interaction.customId.split('_');
-  const raidId = customIdParts[2];
-  const userId = customIdParts[3];
+  const optoutPrefix = 'optout_reason_';
+  const modalPayload = interaction.customId.substring(optoutPrefix.length);
+  const separatorIndex = modalPayload.lastIndexOf('_');
+
+  if (!modalPayload || separatorIndex === -1) {
+    await interaction.editReply({
+      content: '❌ Invalid modal data.',
+    });
+    return;
+  }
+
+  const raidId = modalPayload.substring(0, separatorIndex);
+  const userId = modalPayload.substring(separatorIndex + 1);
 
   // Verify the user submitting is the one who started the modal
   if (interaction.user.id !== userId) {
@@ -417,10 +467,21 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
 async function handleFeedbackCommentSubmit(interaction: ModalSubmitInteraction) {
   await interaction.deferReply({ ephemeral: true });
 
-  const customIdParts = interaction.customId.split('_');
-  const raidId = customIdParts[2];
-  const userId = customIdParts[3];
-  const mood = customIdParts[4];
+  const feedbackPrefix = 'feedback_comment_';
+  const modalPayload = interaction.customId.substring(feedbackPrefix.length);
+  const lastSeparatorIndex = modalPayload.lastIndexOf('_');
+  const secondLastSeparatorIndex = modalPayload.lastIndexOf('_', lastSeparatorIndex - 1);
+
+  if (!modalPayload || lastSeparatorIndex === -1 || secondLastSeparatorIndex === -1) {
+    await interaction.editReply({
+      content: '❌ Invalid modal data.',
+    });
+    return;
+  }
+
+  const raidId = modalPayload.substring(0, secondLastSeparatorIndex);
+  const userId = modalPayload.substring(secondLastSeparatorIndex + 1, lastSeparatorIndex);
+  const mood = modalPayload.substring(lastSeparatorIndex + 1);
 
   // Verify the user submitting is the one who started the modal
   if (interaction.user.id !== userId) {

@@ -77,11 +77,18 @@ git push origin main
 
 ## Production Deployment
 
-### Automated (Recommended)
+### Railway (Recommended)
 ```bash
-# In production environment with PostgreSQL URL set
-npm start  # Automatically runs: schema generate → migrate deploy → deploy commands → start bot
+# In Railway dashboard:
+# 1. Set environment variable: DATABASE_URL=postgresql://...
+# 2. Deploy from GitHub - Railway automatically runs:
+npm start  # → migrate deploy → deploy commands → start bot
 ```
+
+Expected outcomes:
+- Database migrations applied automatically
+- Discord commands deployed to all guilds
+- Bot starts and responds to interactions
 
 ### Manual Steps
 ```bash

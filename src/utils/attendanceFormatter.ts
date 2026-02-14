@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { t, getTranslations } from './localization';
 import { getTrendEmoji, formatResponseTime } from './attendanceAnalytics';
 import type { PlayerStats, PlayerRoleDistribution, AttendanceHistoryEntry } from './attendanceAnalytics';
+import { VERSION } from './version';
 
 /**
  * Format an attendance stats embed for a player.
@@ -116,7 +117,7 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.setFooter({ text: periodLabel });
+  embed.setFooter({ text: `${periodLabel} | v${VERSION} | raidpresence.dev` });
   embed.setTimestamp();
 
   return embed;

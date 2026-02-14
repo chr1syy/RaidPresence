@@ -18,11 +18,11 @@ import { calculateRaidStats, calculateGuildStats } from '../utils/statsCalculato
 import type { AttendanceRecord } from '../utils/statsCalculator';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsFormatter';
 import { formatStatusEmbed } from '../utils/statusFormatter';
+import { VERSION } from '../utils/version';
 import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory } from '../utils/attendanceAnalytics';
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
-import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { archiveRaid, unarchiveRaid } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 
@@ -101,6 +101,7 @@ function parseRoleInput(input: string, guild: Guild): string[] {
  *   - cancel: Cancels a raid event
  *   - remind: Sends a reminder message to raid participants
  *   - refresh: Updates roster and embed with current member status
+ *   - clone: Clones an existing raid to create a new one
  * 
  * Parameters:
  *   - Various subcommand options: Subcommands have their own parameter sets including raid_id, date, time, title, roles, etc.
@@ -282,99 +283,6 @@ const command: Command = {
             .setRequired(false)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('status')
-        .setDescription('View all upcoming raids at a glance')
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('stats')
-        .setDescription('View raid attendance statistics')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid (leave blank for guild stats)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period: week, month, all')
-            .addChoices(
-              { name: 'Last 7 days', value: 'week' },
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('attendance')
-        .setDescription('View a player\'s attendance history and reliability')
-        .addUserOption((option) =>
-          option
-            .setName('player')
-            .setDescription('The player to check')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period to analyze')
-            .addChoices(
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'Last 90 days', value: 'quarter' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('suggest')
-        .setDescription('Get composition suggestions for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to analyze')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('notes')
-        .setDescription('View all notes for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid ID')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('pin')
-        .setDescription('Archive a raid to keep history clean')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to archive')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unpin')
-        .setDescription('Restore an archived raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to restore')
-            .setRequired(true)
-        )
-    )
 
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
@@ -394,30 +302,15 @@ const command: Command = {
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
      } else if (subcommand === 'remind') {
-       await handleRemindRaid(interaction);
-     } else if (subcommand === 'refresh') {
-       await handleRefreshRaid(interaction);
-     } else if (subcommand === 'edit') {
-       await handleEditRaid(interaction);
-     } else if (subcommand === 'clone') {
-       await handleCloneRaid(interaction);
-     } else if (subcommand === 'stats') {
-       await handleStatsCommand(interaction);
-     } else if (subcommand === 'status') {
-       await handleStatusCommand(interaction);
-      } else if (subcommand === 'attendance') {
-         await handleAttendanceCommand(interaction);
-       } else if (subcommand === 'suggest') {
-         await handleSuggestCommand(interaction);
-        } else if (subcommand === 'notes') {
-          await handleNotesCommand(interaction);
-        } else if (subcommand === 'pin') {
-          await handlePinCommand(interaction);
-        } else if (subcommand === 'unpin') {
-          await handleUnpinCommand(interaction);
-
-}
-   };
+        await handleRemindRaid(interaction);
+      } else if (subcommand === 'refresh') {
+        await handleRefreshRaid(interaction);
+      } else if (subcommand === 'edit') {
+        await handleEditRaid(interaction);
+      } else if (subcommand === 'clone') {
+        await handleCloneRaid(interaction);
+    }
+  };
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
@@ -800,7 +693,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(embedColor)
     .addFields(...baseFields)
-    .setFooter({ text: `${trans.raidId}: ${raid.id}` })
+    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | raidpresence.dev` })
     .setTimestamp();
 
   return embed;
@@ -852,6 +745,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
         })
         .join('\n\n')
     )
+    .setFooter({ text: `v${VERSION} | raidpresence.dev` })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
@@ -1157,7 +1051,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
         timestamp: timestamp.toString(),
       })
     )
-    .setFooter({ text: `${trans.raidId}: ${raid.id}` })
+    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | raidpresence.dev` })
     .setTimestamp();
 
   // Add custom message prominently at top if provided
@@ -1274,7 +1168,71 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     for (const [memberId, guildMember] of interaction.guild.members.cache) {
       if (!guildMember.user.bot) {
         currentEligibleMembers.add(memberId);
+      }
+    }
   }
-};
+
+  // Get existing attendance records
+  const existingAttendance = raid.attendance.map((a: typeof raid.attendance[0]) => a.userId);
+  const existingAttendanceMap = new Map(raid.attendance.map((a: typeof raid.attendance[0]) => [a.userId, a]));
+
+  // Determine new members to add
+  const newMembers = Array.from(currentEligibleMembers).filter(userId => !existingAttendance.includes(userId));
+
+  // Determine members to remove (no longer eligible)
+  const membersToRemove = existingAttendance.filter(userId => !currentEligibleMembers.has(userId));
+
+  // Add new members
+  if (newMembers.length > 0) {
+    const newAttendanceData = newMembers.map((userId) => {
+      const member = interaction.guild!.members.cache.get(userId);
+      return {
+        raidId: raid.id,
+        userId,
+        guildId: interaction.guild!.id,
+        username: member?.displayName || 'Unknown',
+        status: 'attending' as const,
+        wowClass: null,
+        wowSpec: null,
+      };
+    });
+
+    await prisma.raidAttendance.createMany({
+      data: newAttendanceData,
+    });
+  }
+
+  // Remove ineligible members
+  if (membersToRemove.length > 0) {
+    await prisma.raidAttendance.deleteMany({
+      where: {
+        raidId: raid.id,
+        userId: { in: membersToRemove },
+      },
+    });
+  }
+
+  // Update the raid message
+  if (raid.messageId && raid.channelId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(raid.messageId);
+        const embed = await createRaidEmbed(raidId, guildData.language);
+
+        await message.edit({
+          embeds: [embed],
+          // Keep existing components
+        });
+      }
+    } catch (error) {
+      console.error('Error updating raid message:', error);
+    }
+  }
+
+  await interaction.editReply({
+    content: `✅ Raid "${raid.description}" refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
+  });
+}
 
 export default command;

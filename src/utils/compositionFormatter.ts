@@ -2,6 +2,7 @@ import { EmbedBuilder, ColorResolvable } from 'discord.js';
 import { CompositionAnalysis, GapAnalysis, SwapSuggestions, SuccessLikelihood } from './compositionAnalyzer';
 import { getTranslations, t } from './localization';
 import { ROLE_EMOJIS } from './wowData';
+import { VERSION } from './version';
 
 /**
  * Format a composition analysis into a Discord embed
@@ -109,7 +110,7 @@ ${likelihood.factors.map((f) => `• ${f}`).join('\n')}`;
 
   // Footer
   embed.setFooter({
-    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()}`,
+    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()} | v${VERSION} | raidpresence.dev`,
   });
 
   return embed;

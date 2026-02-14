@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { t, getTranslations } from './localization';
 import { getReliabilityScore } from './statsCalculator';
 import type { RaidStats, GuildStats } from './statsCalculator';
+import { VERSION } from './version';
 
 /**
  * Minimal raid info needed to build a stats embed.
@@ -78,7 +79,7 @@ export function formatRaidStatsEmbed(
         inline: true,
       },
     )
-    .setFooter({ text: `Raid ID: ${raid.id}` })
+    .setFooter({ text: `Raid ID: ${raid.id} | v${VERSION} | raidpresence.dev` })
     .setTimestamp();
 
   return embed;
@@ -153,6 +154,7 @@ export function formatGuildStatsEmbed(
     });
   }
 
+  embed.setFooter({ text: `v${VERSION} | raidpresence.dev` });
   embed.setTimestamp();
 
   return embed;

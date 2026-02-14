@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'en' | 'de';
+export type SupportedLanguage = 'en';
 
 interface Translations {
   // Raid embed
@@ -51,6 +51,7 @@ interface Translations {
   raidReminderSent: string;
   markedAsLate: string;
   raidEditSuccess: string;
+  badgeEarned: string;
 
   // Clone-specific messages
   cloneRaidSuccess: string;
@@ -176,6 +177,37 @@ interface Translations {
   attendanceAttended: string;
   attendanceMissed: string;
 
+  // Badge system
+  badgesTitle: string;
+  badgesNoBadges: string;
+  badgesEarnedOn: string;
+  badgesAwardedBy: string;
+  badgesReason: string;
+  badgePerfectAttendance: string;
+  badgeTankMain: string;
+  badgeHealerHero: string;
+  badgeDamageDealer: string;
+  badgeSharpshooter: string;
+  badgeAlwaysOnTime: string;
+  badgeEarlyBird: string;
+  badgeTeamPlayer: string;
+  badgeReliableMember: string;
+  badgeRisingStar: string;
+  badgeVeteranRaider: string;
+  badgeLeadersChoice: string;
+  badgeDescPerfectAttendance: string;
+  badgeDescTankMain: string;
+  badgeDescHealerHero: string;
+  badgeDescDamageDealer: string;
+  badgeDescSharpshooter: string;
+  badgeDescAlwaysOnTime: string;
+  badgeDescEarlyBird: string;
+  badgeDescTeamPlayer: string;
+  badgeDescReliableMember: string;
+  badgeDescRisingStar: string;
+  badgeDescVeteranRaider: string;
+  badgeDescLeadersChoice: string;
+
   // Raid Notes Feature (Phase 2.3)
   optoutReason: string;
   optoutReasonLabel: string;
@@ -205,7 +237,30 @@ interface Translations {
     archiveNotConfigured: string;
     raidAlreadyArchived: string;
     raidNotArchived: string;
-}
+
+    // Feedback system (Phase 3)
+    raidFeedbackSummary: string;
+    feedbackBreakdown: string;
+    commonWords: string;
+    guildMorale: string;
+    overallSentiment: string;
+    trend: string;
+    bestRaids: string;
+    worstRaids: string;
+    roleMorale: string;
+    lastDays: string;
+    noFeedback: string;
+    feedbackGreat: string;
+    feedbackOkay: string;
+    feedbackFrustrating: string;
+    trendImproving: string;
+    trendStable: string;
+    trendDeclining: string;
+    raidFeedback: string;
+    howDidRaidGo: string;
+    moodScore: string;
+    statusCritical: string;
+  }
 
 /**
  * Contains all translatable strings for the application, organized by supported languages.
@@ -270,6 +325,7 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidReminderSent: 'Reminder sent for raid "{title}"!',
     markedAsLate: 'You are now marked as running late for this raid.',
     raidEditSuccess: 'Raid updated successfully!',
+    badgeEarned: '🎉 {playerName} earned a new badge: {badgeName}!',
 
     // Clone-specific messages
     cloneRaidSuccess: 'Cloned "{title}" to {date} with {count} members!',
@@ -395,6 +451,37 @@ const translations: Record<SupportedLanguage, Translations> = {
      attendanceAttended: 'Attended',
      attendanceMissed: 'Missed',
 
+     // Badge system
+     badgesTitle: 'Badges: {player}',
+     badgesNoBadges: 'No badges earned yet.',
+     badgesEarnedOn: 'Earned on',
+     badgesAwardedBy: 'Awarded by',
+     badgesReason: 'Reason',
+     badgePerfectAttendance: 'Perfect Attendance',
+     badgeTankMain: 'Tank Main',
+     badgeHealerHero: 'Healer Hero',
+     badgeDamageDealer: 'Damage Dealer',
+     badgeSharpshooter: 'Sharpshooter',
+     badgeAlwaysOnTime: 'Always On Time',
+     badgeEarlyBird: 'Early Bird',
+     badgeTeamPlayer: 'Team Player',
+     badgeReliableMember: 'Reliable Member',
+     badgeRisingStar: 'Rising Star',
+     badgeVeteranRaider: 'Veteran Raider',
+     badgeLeadersChoice: 'Leader\'s Choice',
+     badgeDescPerfectAttendance: 'Attend 10 consecutive raids.',
+     badgeDescTankMain: 'Attend at least 5 raids as a tank.',
+     badgeDescHealerHero: 'Attend at least 5 raids as a healer.',
+     badgeDescDamageDealer: 'Attend at least 5 raids as melee DPS.',
+     badgeDescSharpshooter: 'Attend at least 5 raids as ranged DPS.',
+     badgeDescAlwaysOnTime: 'Attend 5 recent raids without being late.',
+     badgeDescEarlyBird: 'Be the first responder for a raid.',
+     badgeDescTeamPlayer: 'Play 3 different roles across raids.',
+     badgeDescReliableMember: 'Reach 95% attendance in the last 30 days.',
+     badgeDescRisingStar: 'Improve attendance rate by 30 points.',
+     badgeDescVeteranRaider: 'Attend 25 raids.',
+     badgeDescLeadersChoice: 'Special badge awarded by raid leadership.',
+
       // Raid Notes Feature (Phase 2.3)
       optoutReason: 'Opt Out Reason',
       optoutReasonLabel: 'Why are you opting out? (optional)',
@@ -422,238 +509,39 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveMovedNotification: 'has been moved to {channel}',
         raidRestored: 'Raid Restored',
         archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
-        raidAlreadyArchived: 'This raid is already archived.',
-        raidNotArchived: 'This raid is not archived.',
-    },
+    raidAlreadyArchived: 'This raid is already archived.',
+    raidNotArchived: 'This raid is not archived.',
 
-  de: {
-    // Raid embed
-    raidEvent: 'Raid Event',
-    dateAndTime: '📅 🕐',
-    composition: 'Zusammensetzung',
-    attending: 'Anwesend',
-    optedOut: 'Abgemeldet',
-    runningLate: 'Verspätet',
-    noOneAttending: 'Noch niemand angemeldet',
-    noOneOptedOut: 'Niemand abgemeldet',
-    noOneRunningLate: 'Niemand verspätet',
-    raidId: 'Raid ID',
-    raidStatus: 'Status',
-    totalParticipants: 'Teilnehmer insgesamt',
-
-    // Raid status labels
-    statusOpen: '🟢 Offen',
-    statusClosed: '🔴 Geschlossen',
-    statusCancelled: '❌ Abgesagt',
-
-    // Composition labels
-    tank: 'Tank',
-    heal: 'Heiler',
-    dps: 'DPS',
-    melee: 'Nahkampf',
-    ranged: 'Fernkampf',
-    noClass: 'Keine Klasse',
-
-    // Class/spec
-    noClassSet: 'Keine Klasse gesetzt',
-
-    // Countdown
-    countdownIn: 'in',
-    days: 'T',
-    hours: 'Std',
-    minutes: 'Min',
-
-    // Buttons
-    optOut: 'Abmelden',
-    optIn: 'Anmelden',
-    runningLateButton: 'Verspätet',
-    setClassSpec: 'Klasse/Spezialisierung',
-
-    // Success messages
-    raidCreatedSuccess: 'Raid "{title}" erfolgreich erstellt mit {count} Mitgliedern!',
-    raidDeletedSuccess: 'Raid "{title}" wurde gelöscht.',
-    raidClosedSuccess: 'Raid "{title}" wurde geschlossen. Keine weiteren Änderungen möglich.',
-    raidCancelledSuccess: 'Raid "{title}" wurde abgesagt.',
-    raidReminderSent: 'Erinnerung für Raid "{title}" gesendet!',
-    markedAsLate: 'Du bist jetzt als verspätet für diesen Raid markiert.',
-    raidEditSuccess: 'Raid erfolgreich aktualisiert!',
-
-    // Clone-specific messages
-    cloneRaidSuccess: '"{title}" geklont auf {date} mit {count} Mitgliedern!',
-    cloneNoRoles: 'Quell-Raid hat keine Rollen konfiguriert. Klonen nicht möglich.',
-    cloneDefaultTitle: 'Geklonter Raid',
-
-    // Edit-specific messages
-    raidEditDateUpdated: 'Datum/Uhrzeit aktualisiert auf ${date}',
-    raidEditTimeUpdated: 'Uhrzeit aktualisiert auf ${time}',
-    raidEditTitleUpdated: 'Titel aktualisiert auf "${title}"',
-    raidEditNoChanges: 'Keine Änderungen angefordert. Bitte gib mindestens einen neuen Wert an, der sich vom aktuellen unterscheidet.',
-    raidEditClosed: 'Kann einen geschlossenen Raid nicht bearbeiten. Kontaktiere einen Admin, wenn du ihn ändern möchtest.',
-    raidEditCancelled: 'Kann einen abgesagten Raid nicht bearbeiten. Kontaktiere einen Admin, wenn du ihn ändern möchtest.',
-    raidEditMembersScanChanged: 'Roster aktualisiert: ${addedCount} hinzugefügt, ${removedCount} entfernt',
-
-    // Error messages
-    serverOnlyCommand: 'Dieser Befehl kann nur auf einem Server verwendet werden!',
-    noPermission: 'Du hast keine Berechtigung, um {action}. Frage deinen Server-Admin, Raid-Leader-Rollen zu konfigurieren.',
-    invalidDateTime: 'Ungültiges Datum oder Zeitformat. Verwende YYYY-MM-DD für das Datum und HH:MM für die Uhrzeit.',
-    raidMustBeFuture: 'Das Raid-Datum muss in der Zukunft liegen!',
-    guildNotFound: 'Server nicht in der Datenbank gefunden. Bitte versuche es erneut.',
-    noEligibleMembers: 'Keine berechtigten Mitglieder für diesen Raid gefunden. Überprüfe deine RAID_ROLES Konfiguration.',
-    raidNotFound: 'Raid nicht gefunden.',
-    raidNotInServer: 'Dieser Raid gehört nicht zu diesem Server.',
-    cannotSendMessage: 'Kann keine Nachricht in diesem Kanaltyp senden.',
-    raidIsClosed: 'Dieser Raid ist geschlossen. Keine weiteren Änderungen möglich.',
-    raidIsCancelled: 'Dieser Raid wurde abgesagt.',
-    alreadyMarkedAsLate: 'Du bist bereits als verspätet markiert.',
-
-    // Config
-    configUpdated: 'Konfiguration erfolgreich aktualisiert!',
-    currentConfig: 'Aktuelle Konfiguration',
-    raidRoles: 'Raid-Rollen',
-    leaderRoles: 'Leader-Rollen',
-    language: 'Sprache',
-    notConfigured: 'Nicht konfiguriert',
-
-    // Raid list
-    upcomingRaids: 'Anstehende Raids',
-    noUpcomingRaids: 'Keine anstehenden Raids gefunden.',
-    date: 'Datum',
-    id: 'ID',
-    status: 'Status',
-
-    // Raid reminder
-    reminderTitle: '🔔 Raid-Erinnerung',
-    reminderMessage: 'Der Raid **{title}** beginnt <t:{timestamp}:R>!\n\nBitte bestätige deine Teilnahme, falls du es noch nicht getan hast.',
-    customMessage: 'Nachricht vom Raidleiter',
-    optedOutPlayers: 'Derzeit abgemeldet',
-    noOptedOutPlayers: 'Niemand hat sich abgemeldet.',
-
-    // Status dashboard command
-    statusTitle: 'Anstehende Raids',
-    statusNoUpcomingRaids: 'Keine anstehenden Raids geplant.',
-    statusRoster: 'Aufstellung',
-    statusFull: 'VOLL',
-    statusGood: 'GUT',
-    statusLow: 'NIEDRIG',
-    statusTimeUntil: 'Zeit bis',
-
-    // Stats command
-    statsRaidTitle: 'Statistiken: {title}',
-    statsGuildTitle: 'Server-Statistiken ({period})',
-    statsAttendanceRate: 'Teilnahmequote',
-    statsAttending: 'Anwesend',
-    statsOptedOut: 'Abgemeldet',
-    statsRunningLate: 'Verspätet',
-    statsComposition: 'Rollenzusammensetzung',
-    statsClassDistribution: 'Klassenverteilung',
-    statsTopAttendees: 'Top-Teilnehmer',
-    statsTotalRaids: 'Raids insgesamt',
-    statsTotalRaiders: 'Spieler insgesamt',
-    statsReliability: 'Zuverlässigkeit',
-    statsPeriodWeek: 'Letzte 7 Tage',
-    statsPeriodMonth: 'Letzte 30 Tage',
-    statsPeriodAll: 'Gesamt',
-     statsNoRaidsFound: 'Keine Raids für diesen Zeitraum gefunden.',
-
-      // Composition command
-      compositionAnalysis: 'Zusammensetzungsanalyse: {raid}',
-      compositionActivePlayers: 'Aktive Spieler',
-      compositionCurrentComposition: 'Aktuelle Zusammensetzung',
-      compositionStatus: 'Status',
-      compositionRoleAnalysis: 'Rollenanalyse',
-      compositionPlayerSuggestions: 'Spielervorschläge',
-      compositionSuccessLikelihood: 'Erfolgschance',
-      compositionFactors: 'Faktoren',
-      compositionNeedMore: 'Benötige {count} mehr {role}',
-      compositionExtraPlayers: '{count} extra {role}',
-      compositionCountFine: '{role} Anzahl ist in Ordnung',
-      compositionNoSuggestions: 'Keine Vorschläge verfügbar',
-      compositionAnalyzedAt: 'Analysiert um',
-       compositionTanks: 'Tanks',
-       compositionHealers: 'Heiler',
-       compositionMeleeDps: 'Nahkampf DPS',
-       compositionRangedDps: 'Fernkampf DPS',
-       compositionReady: '✅ Raid-Zusammensetzung ist bereit!',
-       compositionNeedsTanks: '❌ Mehr Tanks erforderlich',
-       compositionNeedsHealers: '❌ Mehr Heiler erforderlich',
-       compositionNeedsDps: '❌ Mehr DPS erforderlich',
-       compositionOverstockedTanks: '⚠️ Zu viele Tanks',
-       compositionOverstockedHealers: '⚠️ Zu viele Heiler',
-       compositionOverstockedDps: '⚠️ Zu viel DPS',
-       compositionUnknown: 'Status unbekannt',
-
-      // Attendance command
-     attendanceRecord: 'Anwesenheit: {player}',
-    attendanceRaidsInvited: 'Raids eingeladen',
-    attendanceRaidsAttended: 'Raids teilgenommen',
-    attendanceOptedOut: 'Abgemeldet',
-    attendanceRunningLate: 'Verspätet',
-    attendanceReliabilityScore: 'Zuverlässigkeit',
-    attendanceTrend: 'Trend',
-    attendanceMainRole: 'Hauptrolle',
-    attendanceAltRoles: 'Nebenrollen',
-    attendanceAvgResponseTime: 'Durchschn. Antwortzeit',
-    attendanceRecentRaids: 'Letzte Raids',
-    attendancePlayerNotFound: 'Spieler {player} hat keine Raid-Historie auf diesem Server.',
-    attendancePeriodMonth: 'Letzte 30 Tage',
-    attendancePeriodQuarter: 'Letzte 90 Tage',
-    attendancePeriodAll: 'Gesamt',
-     attendanceNoRaids: 'Keine Raids für diesen Zeitraum gefunden.',
-     attendanceAttended: 'Teilgenommen',
-     attendanceMissed: 'Verpasst',
-
-      // Raid Notes Feature (Phase 2.3)
-       optoutReason: 'Abmeldungsgrund',
-       optoutReasonLabel: 'Warum meldest du dich ab? (optional)',
-       optoutReasonSubmitted: '✅ Du hast dich von diesem Raid abgemeldet.',
-       playerNoteAdded: 'Notiz hinzugefügt',
-       raidNotes: 'Raid-Notizen',
-       raidNotesPlayerComments: 'Spieler-Kommentare',
-       raidNotesOptoutReasons: 'Abmeldungsgründe',
-       raidNotesNone: 'Keine Notizen oder Kommentare für diesen Raid.',
-
-        // Raid Archive Feature (Phase 2.4)
-        archiveSearchResults: 'Archiv-Suchergebnisse',
-        archiveSearchQuery: 'Abfrage',
-        archiveSearchPeriod: 'Zeitraum',
-        archiveSearchNoResults: 'Keine archivierten Raids entsprechen deiner Suche.',
-        archiveSearchNone: 'Keine Ergebnisse',
-        archiveDate: 'Datum',
-        archiveAttendance: 'Teilnahme',
-        archiveParticipants: 'Teilnehmer',
-        archiveRaidId: 'Raid ID',
-          archiveShowingResults: 'Zeige 10 von {total} Ergebnissen. Verwende spezifischere Filter zum Eingrenzen.',
-          archiveFoundCount: '{count} archivierte Raids gefunden',
-          archiveFoundCountSingular: '1 archivierter Raid gefunden',
-          raidArchived: 'Raid archiviert',
-         archiveMovedNotification: 'wurde zu {channel} verschoben',
-         raidRestored: 'Raid wiederhergestellt',
-        archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
-        raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
-        raidNotArchived: 'Dieser Raid ist nicht archiviert.',
-    },
+    // Feedback system (Phase 3)
+    raidFeedbackSummary: 'Feedback for {raid}',
+    feedbackBreakdown: 'Feedback Breakdown',
+    commonWords: 'Common Words',
+    guildMorale: 'Guild Morale',
+    overallSentiment: 'Overall Sentiment',
+    trend: 'Trend',
+    bestRaids: 'Best Raids',
+    worstRaids: 'Worst Raids',
+    roleMorale: 'Role Morale',
+    lastDays: 'Last {days} days',
+    noFeedback: 'No feedback yet',
+    feedbackGreat: 'Great',
+    feedbackOkay: 'Okay',
+    feedbackFrustrating: 'Frustrating',
+    trendImproving: 'Improving',
+    trendStable: 'Stable',
+    trendDeclining: 'Declining',
+    raidFeedback: 'Raid Feedback',
+    howDidRaidGo: 'How did the raid go?',
+    moodScore: 'Mood Score',
+    statusCritical: 'CRITICAL',
+  },
 };
 
 /**
- * Returns the translation object for the specified language, defaulting to English if the language is not supported.
- * 
- * This function provides access to all localized strings for the application, supporting both English ('en') and German ('de').
- * If an unsupported language is provided, it will fall back to English translations.
- * 
- * Parameters:
- *   - language: string - The language code to retrieve translations for ('en' or 'de')
- * 
- * Returns:
- *   Translations - The complete translation object containing all UI strings and messages for the specified language
- * 
- * Example:
- *   const english = getTranslations('en'); // Returns English translations
- *   const german = getTranslations('de'); // Returns German translations
- *   const fallback = getTranslations('fr'); // Returns English translations (fallback)
+ * Gets the translations for the specified language, falling back to English if unsupported.
  */
 export function getTranslations(language: string): Translations {
-  const lang = (language === 'de' ? 'de' : 'en') as SupportedLanguage;
-  return translations[lang];
+  return translations[language as SupportedLanguage] || translations.en;
 }
 
 /**

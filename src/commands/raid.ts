@@ -148,12 +148,12 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('close')
-        .setDescription('Close a raid (no further changes allowed)')
+        .setName('close-all')
+        .setDescription('Close multiple raids at once')
         .addStringOption((option) =>
           option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to close')
+            .setName('before')
+            .setDescription('Close all raids before this date (YYYY-MM-DD)')
             .setRequired(true)
         )
     )
@@ -385,6 +385,8 @@ const command: Command = {
       await handleDeleteRaid(interaction);
     } else if (subcommand === 'close') {
       await handleCloseRaid(interaction);
+    } else if (subcommand === 'close-all') {
+      await handleCloseAllRaids(interaction);
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
      } else if (subcommand === 'remind') {
@@ -1075,7 +1077,7 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
   });
 }
 
-async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
+async function handleCloseAllRaids(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     await interaction.reply({
       content: '❌ This command can only be used in a server!',
@@ -1090,108 +1092,66 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
     await interaction.editReply({
-      content: '❌ You do not have permission to send raid reminders. Ask your server admin to configure raid leader roles.',
+      content: '❌ You do not have permission to bulk close raids. Ask your server admin to configure raid leader roles.',
     });
     return;
   }
 
-  const raidId = interaction.options.get('raid_id', true).value as string;
-  const customMessage = interaction.options.get('message', false)?.value as string | undefined;
+  const beforeStr = interaction.options.get('before', true).value as string;
 
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: {
-      guild: true,
-      attendance: true,
+  // Validate date format
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(beforeStr)) {
+    await interaction.editReply({
+      content: '❌ Date must be in YYYY-MM-DD format (e.g., 2025-12-25)',
+    });
+    return;
+  }
+
+  const beforeDate = new Date(`${beforeStr}T23:59:59`);
+  if (isNaN(beforeDate.getTime())) {
+    await interaction.editReply({
+      content: '❌ Invalid date format.',
+    });
+    return;
+  }
+
+  // Find open raids before the specified date
+  const raids = await prisma.raid.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      status: 'open',
+      raidDate: { lt: beforeDate },
     },
+    orderBy: { raidDate: 'asc' },
   });
 
-  if (!raid) {
+  if (raids.length === 0) {
     await interaction.editReply({
-      content: '❌ Raid not found.',
+      content: 'ℹ️ No open raids found before the specified date.',
     });
     return;
   }
 
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
+  // For now, just show a confirmation dialog (simplified)
+  const embed = new EmbedBuilder()
+    .setTitle('Bulk Close Raids')
+    .setDescription(`Found ${raids.length} open raid(s) before ${beforeStr}.`)
+    .setColor(0xffa500);
 
-  if (!raid.channelId) {
-    await interaction.editReply({
-      content: '❌ Could not find the raid channel.',
-    });
-    return;
-  }
-
-  const lang = raid.guild.language || 'en';
-  const trans = getTranslations(lang);
-  const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
-
-  // Get channel to send reminder
-  const channel = await interaction.client.channels.fetch(raid.channelId);
-  if (!channel?.isTextBased() || !('send' in channel)) {
-    await interaction.editReply({
-      content: '❌ Could not send reminder to raid channel.',
-    });
-    return;
-  }
-
-  // Get opted-out players for leader awareness
-  const optedOut = raid.attendance.filter(
-    (a: typeof raid.attendance[0]) => a.status === 'opted_out'
+  const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('confirm_bulk_close')
+      .setLabel('Confirm Close All')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('cancel_bulk_close')
+      .setLabel('Cancel')
+      .setStyle(ButtonStyle.Secondary)
   );
 
-  const reminderEmbed = new EmbedBuilder()
-    .setTitle(trans.reminderTitle)
-    .setColor(0xffa500)
-    .setDescription(
-      t(lang, 'reminderMessage', {
-        title: raid.description || trans.raidEvent,
-        timestamp: timestamp.toString(),
-      })
-    )
-    .setFooter({ text: `${trans.raidId}: ${raid.id}` })
-    .setTimestamp();
-
-  // Add custom message prominently at top if provided
-  if (customMessage) {
-    // Truncate to Discord embed field value limit (1024 chars)
-    const truncatedMessage = customMessage.length > 1024
-      ? customMessage.substring(0, 1021) + '...'
-      : customMessage;
-    reminderEmbed.addFields({
-      name: `📣 ${trans.customMessage}`,
-      value: truncatedMessage,
-      inline: false,
-    });
-  }
-
-  // Show opted-out players so leader can see who's missing
-  if (optedOut.length > 0) {
-    const optedOutList = optedOut.map((a: typeof raid.attendance[0]) => a.username).join(', ');
-    reminderEmbed.addFields({
-      name: `❌ ${trans.optedOutPlayers} (${optedOut.length})`,
-      value: optedOutList,
-      inline: false,
-    });
-  }
-
-  // Build role mentions from raid's configured roles
-  const roleIds = raid.roles ? raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean) : [];
-  const roleMentions = buildRoleMentions(interaction.guild!, roleIds);
-
-  // Send reminder mentioning the raid's roles
-  await channel.send({
-    content: roleMentions || '@everyone',
-    embeds: [reminderEmbed],
-  });
-
   await interaction.editReply({
-    content: t(lang, 'raidReminderSent', { title: raid.description || 'Raid' }),
+    embeds: [embed],
+    components: [buttons],
   });
 }
 

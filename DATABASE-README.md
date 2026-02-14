@@ -35,7 +35,9 @@ npm start
 | Command | Purpose | Environment |
 |---------|---------|-------------|
 | `npm run db:migrate` | Setup/update database | Auto-detects SQLite/PostgreSQL |
+| `npm run db:generate` | Regenerate provider-aware schema + Prisma client | Auto-detects SQLite/PostgreSQL |
 | `npm run db:prod-migrations` | Rebuild canonical production migration set | Requires PostgreSQL URL |
+| `npm run db:migrate:deploy` | Regenerate schema then apply migrations | PostgreSQL only |
 | `npm run db:studio` | Open Prisma Studio | Uses current DATABASE_URL |
 | `npm start` | Production deploy with migrations | PostgreSQL only |
 
@@ -78,7 +80,7 @@ git push origin main
 ### Automated (Recommended)
 ```bash
 # In production environment with PostgreSQL URL set
-npm start  # Automatically runs: migrate deploy → deploy commands → start bot
+npm start  # Automatically runs: schema generate → migrate deploy → deploy commands → start bot
 ```
 
 ### Manual Steps

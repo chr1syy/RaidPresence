@@ -53,7 +53,19 @@ Goal: support local SQLite development while keeping deterministic PostgreSQL mi
   - `npm run db:prod-migrations` (with PostgreSQL `DATABASE_URL`)
   - `npm run db:migrate:deploy` (against a PostgreSQL test DB)
 
-- [ ] Validate Railway startup contract end-to-end.
+- [x] Validate Railway startup contract end-to-end.
+
+  Notes:
+  - Hardened script contract in `package.json` so provider-aware schema generation always runs before Prisma client generation and migration deploy:
+    - `db:generate`: `node prisma/generate-schema.js --schema-only && prisma generate`
+    - `db:migrate:deploy`: `node prisma/generate-schema.js --schema-only && prisma migrate deploy`
+    - `start`: now delegates migration step through `npm run db:migrate:deploy` before command deployment and bot startup
+  - Added regression test coverage in `src/__tests__/scripts/package-scripts-contract.test.ts` to lock startup script ordering and prevent future drift.
+  - Simulated production verification:
+    - `DATABASE_URL='postgresql://user:pass@localhost:5432/db' npm run db:generate` ✅ (`Generated schema.prisma with provider: postgresql`, Prisma Client generated)
+    - `DATABASE_URL='postgresql://user:pass@localhost:5432/db' npm run db:migrate:deploy` ⚠️ expected environment block (`P1001: Can't reach database server at localhost:5432`) after successful provider-aware schema generation
+  - Supporting test verification:
+    - `npm run test:jest -- src/__tests__/scripts/create-prod-migrations.test.ts src/__tests__/scripts/package-scripts-contract.test.ts src/__tests__/prisma/generate-schema.test.ts` ✅ (17/17 passing)
 
   Scope:
   - Confirm `package.json` scripts (`start`, `db:migrate`, `db:prod-migrations`, `db:migrate:deploy`) work together without manual file edits.

@@ -55,17 +55,8 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
     .join(' ');
 
   return roleMentions;
+}
 
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-  
 /**
  * Parse role input string into array of role IDs
  * Supports @role mentions, role IDs, and role names

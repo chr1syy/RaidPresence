@@ -118,7 +118,7 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.setFooter({ text: `${periodLabel} | v${VERSION} | raidpresence.dev` });
+  embed.setFooter({ text: `${periodLabel} | v${VERSION} | [Web](https://raidpresence.dev)` });
   embed.setTimestamp();
 
   return embed;

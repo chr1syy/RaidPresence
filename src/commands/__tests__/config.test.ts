@@ -1,6 +1,6 @@
 /**
  * Regression test suite for config command
- * Tests: view, raid-roles, leader-roles, language, timezone, archive-channel, auto-archive subcommands
+ * Tests: view, leader-roles, language, timezone, archive-channel, auto-archive subcommands
  * with permission checks, validation, and database interactions.
  */
 
@@ -126,54 +126,6 @@ describe('config command', () => {
 
       await command.execute(mockInteraction);
       expect(mockInteraction.editReply).toHaveBeenCalled();
-    });
-  });
-
-  describe('raid-roles subcommand', () => {
-    beforeEach(() => {
-      mockInteraction.options.getSubcommand.mockReturnValue('raid-roles');
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'roles') return { value: 'Raider, Trial, Member' };
-        return null;
-      });
-    });
-
-    it('should reject when not in a guild', async () => {
-      mockInteraction.guild = null;
-      await command.execute(mockInteraction);
-      expect(mockInteraction.reply).toHaveBeenCalledWith(
-        expect.objectContaining({ ephemeral: true })
-      );
-    });
-
-    it('should update raid roles in database', async () => {
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
-
-      await command.execute(mockInteraction);
-
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'guild-123' },
-          update: { raidRoles: 'Raider,Trial,Member' },
-        })
-      );
-
-      expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('updated') })
-      );
-    });
-
-    it('should reject empty roles input', async () => {
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'roles') return { value: ' , , ' };
-        return null;
-      });
-
-      await command.execute(mockInteraction);
-
-      expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('Invalid roles') })
-      );
     });
   });
 

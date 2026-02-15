@@ -52,7 +52,7 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
       .setTitle(trans.statusTitle)
       .setColor(0x808080)
       .setDescription(trans.statusNoUpcomingRaids)
-      .setFooter({ text: `v${VERSION} | raidpresence.dev` })
+      .setFooter({ text: `v${VERSION} | [Web](https://raidpresence.dev)` })
       .setTimestamp();
   }
 
@@ -112,7 +112,7 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
     .setTitle(trans.statusTitle)
     .setColor(embedColor)
     .setDescription(fieldLines.join('\n\n'))
-    .setFooter({ text: `v${VERSION} | raidpresence.dev` })
+    .setFooter({ text: `v${VERSION} | [Web](https://raidpresence.dev)` })
     .setTimestamp();
 
   return embed;

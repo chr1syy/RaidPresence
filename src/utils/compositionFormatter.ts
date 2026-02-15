@@ -110,7 +110,7 @@ ${likelihood.factors.map((f) => `• ${f}`).join('\n')}`;
 
   // Footer
   embed.setFooter({
-    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()} | v${VERSION} | raidpresence.dev`,
+    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()} | v${VERSION} | [Web](https://raidpresence.dev)`,
   });
 
   return embed;

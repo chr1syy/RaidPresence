@@ -704,7 +704,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(embedColor)
     .addFields(...baseFields)
-    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | raidpresence.dev` })
+    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | [Web](https://raidpresence.dev)` })
     .setTimestamp();
 
   return embed;
@@ -756,7 +756,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
         })
         .join('\n\n')
     )
-    .setFooter({ text: `v${VERSION} | raidpresence.dev` })
+    .setFooter({ text: `v${VERSION} | [Web](https://raidpresence.dev)` })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });

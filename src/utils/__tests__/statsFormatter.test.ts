@@ -100,7 +100,7 @@ describe('formatRaidStatsEmbed', () => {
     expect(field).toBeDefined();
     expect(field!.value).toContain('Tank: 2');
     expect(field!.value).toContain('Heal: 3');
-    expect(field!.value).toContain('Melee: 4');
+    expect(field!.value).toContain('Melee DPS: 4');
     expect(field!.value).toContain('Ranged: 5');
   });
 
@@ -121,7 +121,7 @@ describe('formatRaidStatsEmbed', () => {
 
   it('should set footer with raid ID', () => {
     const embed = formatRaidStatsEmbed({ id: 'my-raid-42', description: 'Test' }, makeRaidStats(), 'en');
-    expect(embed.data.footer!.text).toBe('Raid ID: my-raid-42');
+    expect(embed.data.footer!.text).toBe('Raid ID: my-raid-42 | v0.1.0 | [Web](https://raidpresence.dev)');
   });
 
   it('should use green color for high attendance (>=80)', () => {

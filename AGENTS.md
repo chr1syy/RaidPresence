@@ -312,12 +312,8 @@ Copy `.env.example` to `.env` and configure:
 
 ---
 
-## Architecture Decisions
+## Key Learnings and Workflow Notes
 
-- **Reverse sign-up** instead of opt-in reduces friction and improves raid planning visibility
-- **Separate formatter modules** per feature (stats, attendance, composition, archive, notes) for independent testing and maintenance
-- **Guild isolation** enforced at query level on every database operation
-- **Auto-archive** integrated into existing scheduler (no separate cron) with graceful failure that doesn't block raid closure
-- **Localization** centralized in one module with type-safe translation keys
-- **Prisma** over raw SQL for type safety and migration management
-- **No caching layer** - relies on database indexes and Prisma query optimization; cache can be added later if needed
+- **PR Splitting Approach:** For large PRs with multiple features, create separate branches from a base branch (e.g., raidpresence-updates), cherry-pick relevant commits, resolve conflicts, and compile before creating focused PRs. This was used for Phase 3 features: badge schema/system, feedback schema/system, admin tools.
+- **Feature Implementation:** Implement incrementally (schema → functionality), fix corrupted functions, add translations, and ensure guild isolation.
+- **Testing and Verification:** Run lint/typecheck after changes; focus on integration tests for new features.

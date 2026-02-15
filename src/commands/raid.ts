@@ -658,16 +658,12 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     embedColor = 0x808080; // Gray for cancelled
   }
 
-   const baseFields: { name: string; value: string; inline: boolean }[] = [
-     { name: trans.raidStatus, value: raidStatusText, inline: true },
-     { name: trans.dateAndTime, value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
-   ];
+   const participantsLabel = lang === 'de' ? 'Teilnehmer' : 'Participants';
+   const metaValue = `${raidStatusText}\n📅 **<t:${timestamp}:F>** (**<t:${timestamp}:R>**)\n👥 **${totalParticipants} ${participantsLabel}**`;
 
-   // Calculate total participants
-   const totalParticipants = composition.tanks + composition.healers + composition.melee + composition.ranged + composition.noClass;
-   
-   // Add total participants field (spans full width)
-    baseFields.push({ name: trans.totalParticipants, value: `**🔢 ${totalParticipants}**`, inline: false });
+   const baseFields: { name: string; value: string; inline: boolean }[] = [
+     { name: trans.raidStatus, value: metaValue, inline: false },
+   ];
 
    // 3-column layout: Tank | Healer | DPS
   const dpsCount = composition.melee + composition.ranged;

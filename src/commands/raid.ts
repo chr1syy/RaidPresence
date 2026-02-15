@@ -42,7 +42,7 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
       
       // Try to find role by ID first (exact match), then by name (exact match)
       const role = guild.roles.cache.get(trimmed) ||
-                   guild.roles.cache.find(r => r.name === trimmed);
+                    guild.roles.cache.find(r => r.name === trimmed);
       
       if (!role) {
         console.warn(`Role not found: ${trimmed}`);
@@ -55,21 +55,11 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
     .join(' ');
 
   return roleMentions;
+}
 
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-
-  return roleMentions;
-  
 /**
- * Parse role input string into array of role IDs
- * Supports @role mentions, role IDs, and role names
- * @param input The input string
+ * Parse role input string into role IDs array
+ * @param input Comma-separated string of role mentions, names, or IDs
  * @param guild Discord guild instance
  * @returns Array of unique role IDs
  */

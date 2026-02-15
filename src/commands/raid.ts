@@ -188,7 +188,7 @@ const command: Command = {
             .setDescription('The ID of the raid to reopen')
             .setRequired(true)
         )
-    ),
+    )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('pin')
@@ -200,7 +200,18 @@ const command: Command = {
             .setRequired(true)
         )
     )
+    ),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('pin')
+        .setDescription('Archive a raid')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid to archive')
+            .setRequired(true)
     )
+
     .addSubcommand((subcommand) =>
       subcommand
         .setName('cancel')
@@ -300,15 +311,34 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('pin')
-        .setDescription('Archive a raid')
+        .setName('unpin')
+        .setDescription('Restore archived raid')
         .addStringOption((option) =>
           option
             .setName('raid_id')
-            .setDescription('The ID of the raid to archive')
+            .setDescription('The ID of the raid to restore')
             .setRequired(true)
         )
-
+    )
+        .addStringOption((option) =>
+          option
+            .setName('date')
+            .setDescription('New raid date (YYYY-MM-DD)')
+            .setRequired(true)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('time')
+            .setDescription('New raid time (HH:MM in 24h format)')
+            .setRequired(false)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('title')
+            .setDescription('New raid title (optional, defaults to original)')
+            .setRequired(false)
+        )
+    )
     .addSubcommand((subcommand) =>
       subcommand
         .setName('unpin')
@@ -320,6 +350,8 @@ const command: Command = {
             .setRequired(true)
         )
     )
+
+  ,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
@@ -838,9 +870,14 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Delete the raid message if it exists
-  if (raid.messageId && raid.channelId) {
-    try {
+  if (!raid.isPinned) {
+    await interaction.editReply({
+      content: '❌ This raid is not archived.',
+    });
+    return;
+  }
+
+  try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
         const message = await channel.messages.fetch(raid.messageId);
@@ -1935,8 +1972,57 @@ async function handlePinRaid(interaction: ChatInputCommandInteraction) {
 }
 
 async function handleUnpinRaid(interaction: ChatInputCommandInteraction) {
-  // TODO: Implement unpin raid functionality
-  await interaction.reply({ content: 'Unpin raid not yet implemented', ephemeral: true });
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to restore raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  try {
+    await unarchiveRaid(raidId, interaction.guild.id, interaction.client);
+    await interaction.editReply({
+      content: `✅ Raid "${raid.description || 'Raid'}" has been restored.`,
+    });
+  } catch (error) {
+    console.error('Error restoring raid:', error);
+    await interaction.editReply({
+      content: `❌ Failed to restore raid: ${error.message}`,
+    });
+  }
 }
 
 export default command;

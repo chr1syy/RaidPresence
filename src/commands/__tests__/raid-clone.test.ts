@@ -32,6 +32,13 @@ class MockCollection<K, V> extends Map<K, V> {
     }
     return result;
   }
+
+  find(fn: (value: V, key: K, map: this) => boolean): V | undefined {
+    for (const [key, value] of this) {
+      if (fn(value, key, this)) return value;
+    }
+    return undefined;
+  }
 }
 
 // Helper: build a future date string (YYYY-MM-DD) N days from now
@@ -115,7 +122,7 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
         cache: membersCache,
         fetch: jest.fn().mockResolvedValue(undefined),
       },
-      roles: { cache: new Map() },
+      roles: { cache: new MockCollection() },
     },
     channel: {
       id: 'channel-123',
@@ -147,6 +154,11 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
     },
     ...extras,
   };
+
+  // Populate guild roles cache
+  mockInteraction.guild.roles.cache.set('role-raider', { id: 'role-raider', name: 'Raider' });
+  mockInteraction.guild.roles.cache.set('role-leader', { id: 'role-leader', name: 'Raid Leader' });
+  mockInteraction.guild.roles.cache.set('role-backup', { id: 'role-backup', name: 'Backup' });
 
   return mockInteraction;
 }

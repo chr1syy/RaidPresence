@@ -153,7 +153,7 @@ const command: Command = {
           option
             .setName('roles')
             .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
-            .setRequired(false)
+            .setRequired(true)
         )
         .addBooleanOption((option) =>
           option
@@ -1153,7 +1153,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   // Use raid-specific roles if available, otherwise fall back to guild defaults
   const roleSource = raid.roles && raid.roles.trim().length > 0
     ? raid.roles
-    : guildData.raidRoles;
+    : guildData.raidRoles || '';
   const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
 
   let currentEligibleMembers = new Set<string>();

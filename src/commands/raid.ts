@@ -114,7 +114,7 @@ function parseRoleInput(input: string, guild: Guild): string[] {
  *   - remind: Sends a reminder message to raid participants
  *   - refresh: Updates roster and embed with current member status
  *   - clone: Clones an existing raid to create a new one
- * 
+ *
  * Parameters:
  *   - Various subcommand options: Subcommands have their own parameter sets including raid_id, date, time, title, roles, etc.
  * 
@@ -391,6 +391,22 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (raidDate < new Date()) {
     await interaction.editReply({
       content: '❌ Raid date must be in the future!',
+    });
+    return;
+  }
+
+  // Check for duplicate raid
+  const existingRaid = await prisma.raid.findFirst({
+    where: {
+      guildId: interaction.guild.id,
+      description: title,
+      raidDate: raidDate,
+    },
+  });
+
+  if (existingRaid) {
+    await interaction.editReply({
+      content: '❌ A raid with this title and date/time already exists. Please choose a different title or time.',
     });
     return;
   }
@@ -1256,8 +1272,127 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
 }
 
 async function handleEditRaid(interaction: ChatInputCommandInteraction) {
-  // TODO: Implement edit raid functionality
-  await interaction.reply({ content: 'Edit raid not yet implemented', ephemeral: true });
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to edit raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+  const newDateStr = interaction.options.get('date', false)?.value as string | undefined;
+  const newTimeStr = interaction.options.get('time', false)?.value as string | undefined;
+  const newTitle = interaction.options.get('title', false)?.value as string | undefined;
+
+  // At least one field must be provided
+  if (!newDateStr && !newTimeStr && !newTitle) {
+    await interaction.editReply({
+      content: '❌ You must provide at least one field to edit (date, time, or title).',
+    });
+    return;
+  }
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const guildData = raid.guild;
+
+  let updateData: any = {};
+
+  // Handle date/time update
+  if (newDateStr || newTimeStr) {
+    const currentDate = raid.raidDate;
+    const dateStr = newDateStr || currentDate.toISOString().split('T')[0];
+    const timeStr = newTimeStr || currentDate.toISOString().split('T')[1].substring(0, 5);
+
+    const dateTimeStr = `${dateStr}T${timeStr}:00`;
+    const localDate = new Date(dateTimeStr);
+
+    // Apply timezone offset
+    const timezoneOffsetHours = guildData.timezoneOffset || 0;
+    const newRaidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+
+    if (isNaN(newRaidDate.getTime())) {
+      await interaction.editReply({
+        content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
+      });
+      return;
+    }
+
+    if (newRaidDate < new Date()) {
+      await interaction.editReply({
+        content: '❌ Raid date must be in the future!',
+      });
+      return;
+    }
+
+    updateData.raidDate = newRaidDate;
+  }
+
+  // Handle title update
+  if (newTitle) {
+    updateData.description = newTitle;
+  }
+
+  // Update the raid
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: updateData,
+  });
+
+  // Update the raid message
+  if (raid.messageId && raid.channelId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(raid.messageId);
+        const embed = await createRaidEmbed(raidId, guildData.language);
+
+        await message.edit({
+          embeds: [embed],
+          // Keep existing components
+        });
+      }
+    } catch (error) {
+      console.error('Error updating raid message:', error);
+    }
+  }
+
+  const changes = [];
+  if (newDateStr || newTimeStr) changes.push('date/time');
+  if (newTitle) changes.push('title');
+
+  await interaction.editReply({
+    content: `✅ Raid "${raid.description}" updated successfully (${changes.join(', ')}).`,
+  });
 }
 
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {

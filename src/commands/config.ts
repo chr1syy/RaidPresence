@@ -19,17 +19,6 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('raid-roles')
-        .setDescription('Set roles that are automatically added to raids')
-        .addStringOption((option) =>
-          option
-            .setName('roles')
-            .setDescription('Role names or IDs (comma-separated, e.g., "Raider,Member")')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
         .setName('leader-roles')
         .setDescription('Set roles that can create and manage raids')
         .addStringOption((option) =>
@@ -98,8 +87,6 @@ const command: Command = {
 
     if (subcommand === 'view') {
       await handleViewConfig(interaction);
-    } else if (subcommand === 'raid-roles') {
-      await handleSetRaidRoles(interaction);
     } else if (subcommand === 'leader-roles') {
       await handleSetLeaderRoles(interaction);
     } else if (subcommand === 'language') {
@@ -136,7 +123,6 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const raidRoles = guildData.raidRoles || 'Not configured';
   const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
   const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
   const timezoneOffset = guildData.timezoneOffset;
@@ -148,11 +134,6 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .setTitle('Server Configuration')
     .setColor(0x00ae86)
     .addFields(
-      {
-        name: 'Raid Attendance Roles',
-        value: `\`${raidRoles}\`\n\nMembers with these roles are automatically added to raid rosters.`,
-        inline: false,
-      },
       {
         name: 'Raid Leader Roles',
         value: `\`${leaderRoles}\`\n\nMembers with these roles can create and delete raids.`,
@@ -183,22 +164,6 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
-}
-
-async function handleSetRaidRoles(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  await interaction.editReply({
-    content: '⚠️ **This command is deprecated.**\n\nRaid roles are now configured directly when creating raids using `/raid create`. This setting will be removed in a future update.',
-  });
 }
 
 async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
@@ -235,7 +200,6 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
-      raidRoles: '',
       raidLeaderRoles: cleanedRoles,
     },
   });
@@ -272,7 +236,6 @@ async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
-      raidRoles: '',
       raidLeaderRoles: '',
       language,
     },
@@ -311,7 +274,6 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
-      raidRoles: '',
       raidLeaderRoles: '',
       language: 'en',
       timezoneOffset: offset,
@@ -355,7 +317,6 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
-      raidRoles: '',
       raidLeaderRoles: '',
       archiveChannelId: channel.id,
     },
@@ -398,7 +359,6 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
-      raidRoles: '',
       raidLeaderRoles: '',
       autoArchive: enabled,
     },

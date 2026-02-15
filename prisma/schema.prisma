@@ -10,7 +10,7 @@ datasource db {
 model Guild {
   id              String   @id
   name            String
-  raidRoles       String // Comma-separated role IDs or names for attendance
+  raidRoles       String?  @default("") // Comma-separated role IDs or names for attendance
   raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
   language        String   @default("en") // Language for bot messages (en, de)
   timezoneOffset  Int      @default(0) // Timezone offset in hours (e.g., +1 for GMT+1)

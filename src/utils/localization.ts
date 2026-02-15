@@ -205,6 +205,17 @@ interface Translations {
     archiveNotConfigured: string;
     raidAlreadyArchived: string;
     raidNotArchived: string;
+    feedbackSubmitted: string;
+
+  // Archive success messages
+  raidArchivedSuccess: string;
+  raidRestoredSuccess: string;
+
+  // Feedback System (Phase 3)
+  raidFeedback: string;
+  feedbackGreat: string;
+  feedbackGood: string;
+  feedbackPoor: string;
 }
 
 /**
@@ -424,6 +435,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
         raidAlreadyArchived: 'This raid is already archived.',
         raidNotArchived: 'This raid is not archived.',
+        feedbackSubmitted: 'Feedback submitted!',
+
+  // Archive success messages
+  raidArchivedSuccess: 'Raid archived successfully.',
+  raidRestoredSuccess: 'Raid restored successfully.',
+
+  // Feedback System (Phase 3)
+  raidFeedback: 'Raid Feedback',
+  feedbackGreat: 'Great',
+  feedbackGood: 'Good',
+  feedbackPoor: 'Poor',
     },
 
   de: {
@@ -631,6 +653,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
         raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
         raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+        feedbackSubmitted: 'Feedback eingereicht!',
+
+  // Archive success messages
+  raidArchivedSuccess: 'Raid erfolgreich archiviert.',
+  raidRestoredSuccess: 'Raid erfolgreich wiederhergestellt.',
+
+  // Feedback System (Phase 3)
+  raidFeedback: 'Raid-Feedback',
+  feedbackGreat: 'Großartig',
+  feedbackGood: 'Gut',
+  feedbackPoor: 'Schlecht',
     },
 };
 

@@ -154,7 +154,7 @@ const command: Command = {
             .setRequired(false)
         )
     )
-    .setDefaultMemberPermissions(0 as any),
+    .setDefaultMemberPermissions(0 as any) as any,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
@@ -339,11 +339,11 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   }
 
   const startDate = getStartDate(period);
-  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, startDate);
-  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id, startDate);
-  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, startDate);
+  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
+  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
+  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
 
-  const embed = formatAttendanceEmbed(player, playerStats, roleDistribution, history, period, guildData.language || 'en');
+  const embed = formatAttendanceEmbed(player.displayName, playerStats, roleDistribution, history, period, guildData.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -381,9 +381,9 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   }
 
   const composition = await analyzeRaidComposition(raid.attendance);
-  const gaps = findCompositionGaps(composition);
+  const gaps = findCompositionGaps(raid.attendance);
   const suggestions = suggestPlayerSwaps(raid.attendance, gaps);
-  const likelihood = calculateSuccessLikelihood(composition);
+  const likelihood = calculateSuccessLikelihood(raid.attendance);
 
   const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, raid.guild.language || 'en');
 
@@ -422,7 +422,18 @@ async function handleNotesCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const embed = formatRaidNotesEmbed(raid, raid.guild.language || 'en');
+  const raidName = raid.description || `Raid on ${raid.raidDate.toLocaleDateString(raid.guild.language || 'en')}`;
+  const notes = raid.attendance
+    .filter((a) => a.optoutReason || a.playerNote)
+    .map((a) => ({
+      username: a.username,
+      optoutReason: a.optoutReason || undefined,
+      playerNote: a.playerNote || undefined,
+      status: a.status,
+      notedAt: a.notedAt || undefined,
+    }));
+
+  const embed = formatRaidNotesEmbed(raidName, raid.raidDate, notes, raid.guild.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -452,7 +463,7 @@ async function handleArchiveCommand(interaction: ChatInputCommandInteraction) {
   const trans = getTranslations('en'); // or from guild
 
   try {
-    await archiveRaid(raidId, interaction.guild);
+    await archiveRaid(raidId, interaction.guild.id, interaction.client);
     await interaction.editReply({
       content: trans.raidArchivedSuccess || 'Raid archived successfully.',
     });
@@ -489,7 +500,7 @@ async function handleUnarchiveCommand(interaction: ChatInputCommandInteraction) 
   const trans = getTranslations('en');
 
   try {
-    await unarchiveRaid(raidId, interaction.guild);
+    await unarchiveRaid(raidId, interaction.guild.id, interaction.client);
     await interaction.editReply({
       content: trans.raidRestoredSuccess || 'Raid restored successfully.',
     });
@@ -521,7 +532,7 @@ async function handleSearchCommand(interaction: ChatInputCommandInteraction) {
 
   const startDate = getStartDate(period);
 
-  const results = await searchArchive(interaction.guild.id, query, startDate);
+  const results = await searchArchive({ guildId: interaction.guild.id, query: query || undefined, startDate });
 
   const embed = formatArchiveSearchEmbed(results, query, period, guildData?.language || 'en');
 

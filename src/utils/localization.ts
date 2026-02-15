@@ -48,6 +48,8 @@ interface Translations {
   raidDeletedSuccess: string;
   raidClosedSuccess: string;
   raidCancelledSuccess: string;
+  raidArchivedSuccess: string;
+  raidRestoredSuccess: string;
   raidReminderSent: string;
   markedAsLate: string;
   raidEditSuccess: string;
@@ -299,6 +301,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidDeletedSuccess: 'Raid "{title}" has been deleted.',
     raidClosedSuccess: 'Raid "{title}" has been closed. No further changes allowed.',
     raidCancelledSuccess: 'Raid "{title}" has been cancelled.',
+    raidArchivedSuccess: 'Raid "{title}" has been archived successfully.',
+    raidRestoredSuccess: 'Raid "{title}" has been restored successfully.',
     raidReminderSent: 'Reminder sent for raid "{title}"!',
     markedAsLate: 'You are now marked as running late for this raid.',
     raidEditSuccess: 'Raid updated successfully!',
@@ -538,6 +542,8 @@ const translations: Record<SupportedLanguage, Translations> = {
     raidDeletedSuccess: 'Raid "{title}" wurde gelöscht.',
     raidClosedSuccess: 'Raid "{title}" wurde geschlossen. Keine weiteren Änderungen möglich.',
     raidCancelledSuccess: 'Raid "{title}" wurde abgesagt.',
+    raidArchivedSuccess: 'Raid "{title}" wurde erfolgreich archiviert.',
+    raidRestoredSuccess: 'Raid "{title}" wurde erfolgreich wiederhergestellt.',
     raidReminderSent: 'Erinnerung für Raid "{title}" gesendet!',
     markedAsLate: 'Du bist jetzt als verspätet für diesen Raid markiert.',
     raidEditSuccess: 'Raid erfolgreich aktualisiert!',

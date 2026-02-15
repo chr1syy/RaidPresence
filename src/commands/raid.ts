@@ -295,6 +295,17 @@ const command: Command = {
             .setRequired(false)
         )
     )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('bulk-cancel')
+        .setDescription('Cancel multiple raids at once')
+        .addStringOption((option) =>
+          option
+            .setName('raid_ids')
+            .setDescription('Comma-separated list of raid IDs to cancel')
+            .setRequired(true)
+        )
+    )
 
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
@@ -321,6 +332,8 @@ const command: Command = {
         await handleEditRaid(interaction);
     } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
+    } else if (subcommand === 'bulk-cancel') {
+        await handleBulkCancelRaids(interaction);
     }
   },
 };
@@ -1398,6 +1411,102 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // TODO: Implement clone raid functionality
   await interaction.reply({ content: 'Clone raid not yet implemented', ephemeral: true });
+}
+
+async function handleBulkCancelRaids(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to cancel raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidIdsStr = interaction.options.get('raid_ids', true).value as string;
+  const raidIds = raidIdsStr.split(',').map(id => id.trim()).filter(id => id.length > 0);
+
+  if (raidIds.length === 0) {
+    await interaction.editReply({
+      content: '❌ No valid raid IDs provided.',
+    });
+    return;
+  }
+
+  const results = [];
+  let successCount = 0;
+
+  for (const raidId of raidIds) {
+    try {
+      const raid = await prisma.raid.findUnique({
+        where: { id: raidId },
+        include: { guild: true },
+      });
+
+      if (!raid) {
+        results.push(`❌ ${raidId}: Raid not found`);
+        continue;
+      }
+
+      if (raid.guildId !== interaction.guild.id) {
+        results.push(`❌ ${raidId}: Raid does not belong to this server`);
+        continue;
+      }
+
+      if (raid.status === 'cancelled') {
+        results.push(`⚠️ ${raidId}: Already cancelled`);
+        continue;
+      }
+
+      // Update raid status to cancelled
+      await prisma.raid.update({
+        where: { id: raidId },
+        data: { status: 'cancelled' },
+      });
+
+      // Update the raid message
+      if (raid.messageId && raid.channelId) {
+        try {
+          const channel = await interaction.client.channels.fetch(raid.channelId);
+          if (channel?.isTextBased() && 'messages' in channel) {
+            const message = await channel.messages.fetch(raid.messageId);
+            const embed = await createRaidEmbed(raidId, raid.guild.language);
+
+            // Remove buttons when cancelled
+            await message.edit({
+              embeds: [embed],
+              components: [],
+            });
+          }
+        } catch (error) {
+          console.error('Error updating raid message:', error);
+        }
+      }
+
+      results.push(`✅ ${raidId}: Cancelled`);
+      successCount++;
+    } catch (error) {
+      console.error(`Error cancelling raid ${raidId}:`, error);
+      results.push(`❌ ${raidId}: Error occurred`);
+    }
+  }
+
+  const summary = `Bulk cancel completed: ${successCount}/${raidIds.length} successful.`;
+  const details = results.join('\n');
+
+  await interaction.editReply({
+    content: `${summary}\n\n${details}`,
+  });
 }
 
 export default command;

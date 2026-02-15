@@ -180,14 +180,26 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('close')
-        .setDescription('Close a raid (no further changes allowed)')
+        .setName('reopen')
+        .setDescription('Reopen a closed raid to allow changes again')
         .addStringOption((option) =>
           option
             .setName('raid_id')
-            .setDescription('The ID of the raid to close')
+            .setDescription('The ID of the raid to reopen')
             .setRequired(true)
         )
+    ),
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('pin')
+        .setDescription('Archive a raid')
+        .addStringOption((option) =>
+          option
+            .setName('raid_id')
+            .setDescription('The ID of the raid to archive')
+            .setRequired(true)
+        )
+    )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -288,15 +300,14 @@ const command: Command = {
     )
     .addSubcommand((subcommand) =>
       subcommand
-        .setName('reopen')
-        .setDescription('Reopen a closed raid to allow changes again')
+        .setName('pin')
+        .setDescription('Archive a raid')
         .addStringOption((option) =>
           option
             .setName('raid_id')
-            .setDescription('The ID of the raid to reopen')
+            .setDescription('The ID of the raid to archive')
             .setRequired(true)
         )
-    )
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
@@ -579,9 +590,11 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   const lang = language || raid.guild.language || 'en';
   const trans = getTranslations(lang);
 
-  const attending = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'attending');
-  const optedOut = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'opted_out');
-  const runningLate = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'late');
+   const attending = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'attending');
+   const optedOut = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'opted_out');
+   const runningLate = raid.attendance.filter((a: typeof raid.attendance[0]) => a.status === 'late');
+
+   const totalParticipants = attending.length + optedOut.length + runningLate.length;
 
   // Calculate role composition and sort by role
   const composition: RoleComposition = {

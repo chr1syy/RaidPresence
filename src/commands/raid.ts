@@ -272,12 +272,23 @@ const command: Command = {
              .setDescription('New raid time (HH:MM 24h format)')
              .setRequired(false)
          )
-         .addStringOption((option) =>
-           option
-             .setName('title')
-             .setDescription('New raid title')
-             .setRequired(false)
-         )
+      .addStringOption((option) =>
+        option
+          .setName('title')
+          .setDescription('New raid title')
+          .setRequired(false)
+      )
+      .addStringOption((option) =>
+        option
+          .setName('status')
+          .setDescription('New raid status')
+          .setRequired(false)
+          .addChoices(
+            { name: 'Open', value: 'open' },
+            { name: 'Closed', value: 'closed' },
+            { name: 'Cancelled', value: 'cancelled' },
+          )
+      )
      )
      .addSubcommand((subcommand) =>
        subcommand
@@ -864,7 +875,7 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
 
   try {
     const channel = await interaction.client.channels.fetch(raid.channelId);
-    if (channel?.isTextBased() && 'messages' in channel) {
+    if (channel?.isTextBased() && 'messages' in channel && raid.messageId) {
       const message = await channel.messages.fetch(raid.messageId);
       await message.delete();
     }
@@ -942,7 +953,7 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
+        const message = await channel.messages.fetch(raid.messageId!);
         const embed = await createRaidEmbed(raidId, raid.guild.language);
 
         // Remove buttons when closed
@@ -952,7 +963,7 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
         });
       }
     } catch (error) {
-      console.error('Error updating raid message:', error);
+      console.error('Error updating raid message:', error as Error);
     }
   }
 
@@ -1020,7 +1031,7 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
+        const message = await channel.messages.fetch(raid.messageId!);
         const embed = await createRaidEmbed(raidId, raid.guild.language);
 
         // Remove buttons when cancelled
@@ -1030,7 +1041,7 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
         });
       }
     } catch (error) {
-      console.error('Error updating raid message:', error);
+      console.error('Error updating raid message:', error as Error);
     }
   }
 
@@ -1259,7 +1270,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
           where: {
             userId_guildId: {
               userId,
-              guildId: interaction.guild.id,
+        guildId: interaction.guild!.id,
             },
           },
           update: {
@@ -1286,7 +1297,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
 
     // Create attendance
     const attendanceData = newMembers.map(userId => {
-      const member = interaction.guild.members.cache.get(userId);
+      const member = interaction.guild!.members.cache.get(userId);
       const pref = prefsMap.get(userId);
       return {
         raidId: raid.id,
@@ -1319,7 +1330,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
+        const message = await channel.messages.fetch(raid.messageId!);
         const embed = await createRaidEmbed(raid.id, raid.guild.language);
 
         await message.edit({
@@ -1328,7 +1339,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         });
       }
     } catch (error) {
-      console.error('Error updating raid message:', error);
+      console.error('Error updating raid message:', error as Error);
     }
   }
 
@@ -1338,8 +1349,157 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
 }
 
 async function handleEditRaid(interaction: ChatInputCommandInteraction) {
-  // TODO: Implement edit raid functionality
-  await interaction.reply({ content: 'Edit raid not yet implemented', ephemeral: true });
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to edit raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+  const dateStr = interaction.options.get('date', false)?.value as string;
+  const timeStr = interaction.options.get('time', false)?.value as string;
+  const title = interaction.options.get('title', false)?.value as string;
+  const status = interaction.options.get('status', false)?.value as string;
+
+  // At least one option must be provided
+  if (!dateStr && !timeStr && !title && !status) {
+    await interaction.editReply({
+      content: '❌ You must provide at least one field to edit (date, time, title, or status).',
+    });
+    return;
+  }
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const guildData = raid.guild;
+  const timezoneOffsetHours = guildData.timezoneOffset || 0;
+
+  let newRaidDate: Date | undefined;
+
+  // Validate date/time if provided
+  if (dateStr || timeStr) {
+    if (!dateStr || !timeStr) {
+      await interaction.editReply({
+        content: '❌ Both date and time must be provided together.',
+      });
+      return;
+    }
+
+    const dateTimeStr = `${dateStr}T${timeStr}:00`;
+    const localDate = new Date(dateTimeStr);
+
+    if (isNaN(localDate.getTime())) {
+      await interaction.editReply({
+        content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
+      });
+      return;
+    }
+
+    // Apply timezone offset (user enters local time, we store UTC)
+    newRaidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+
+    if (newRaidDate < new Date()) {
+      await interaction.editReply({
+        content: '❌ New raid date must be in the future!',
+      });
+      return;
+    }
+  }
+
+  // Prepare update data
+  const updateData: any = {};
+  if (title !== undefined) updateData.description = title;
+  if (status !== undefined) updateData.status = status;
+  if (newRaidDate) updateData.raidDate = newRaidDate;
+
+  // Update raid in database
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: updateData,
+  });
+
+  // Update the raid message embed and components
+  if (raid.messageId && raid.channelId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(raid.messageId!);
+        const embed = await createRaidEmbed(raidId, guildData.language);
+
+        // Determine components based on status
+        let components: any[] = [];
+        if (status !== 'closed' && status !== 'cancelled') {
+          // Add buttons if not closed/cancelled
+          const trans = getTranslations(guildData.language || 'en');
+
+          const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`raid_optin_${raidId}`)
+              .setLabel(trans.optIn)
+              .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+              .setCustomId(`raid_late_${raidId}`)
+              .setLabel(trans.runningLateButton)
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId(`raid_optout_${raidId}`)
+              .setLabel(trans.optOut)
+              .setStyle(ButtonStyle.Danger)
+          );
+
+          const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`raid_class_${raidId}`)
+              .setLabel(trans.setClassSpec)
+              .setStyle(ButtonStyle.Primary)
+          );
+
+          components = [row1, row2];
+        }
+
+        await message.edit({
+          embeds: [embed],
+          components,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating raid message:', error as Error);
+    }
+  }
+
+  await interaction.editReply({
+    content: `✅ Raid "${raid.description}" has been updated successfully.`,
+  });
 }
 
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
@@ -1685,7 +1845,7 @@ async function handleReopenRaid(interaction: ChatInputCommandInteraction) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
+        const message = await channel.messages.fetch(raid.messageId!);
         const embed = await createRaidEmbed(raidId, raid.guild.language);
 
         // Get translations for buttons
@@ -1721,7 +1881,7 @@ async function handleReopenRaid(interaction: ChatInputCommandInteraction) {
         });
       }
     } catch (error) {
-      console.error('Error updating raid message:', error);
+      console.error('Error updating raid message:', error as Error);
     }
   }
 
@@ -1839,7 +1999,114 @@ async function handleUnpinRaid(interaction: ChatInputCommandInteraction) {
 }
 
 async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
-  await interaction.reply({ content: 'Open raid not yet implemented', ephemeral: true });
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to open raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  if (raid.isPinned) {
+    await interaction.editReply({
+      content: '❌ This raid is archived and cannot be opened.',
+    });
+    return;
+  }
+
+  if (raid.status !== 'closed') {
+    await interaction.editReply({
+      content: '❌ This raid is not closed.',
+    });
+    return;
+  }
+
+  // Update raid status to open
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: { status: 'open' },
+  });
+
+  // Update the raid message
+  if (raid.messageId && raid.channelId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased() && 'messages' in channel) {
+        const message = await channel.messages.fetch(raid.messageId!);
+        const embed = await createRaidEmbed(raidId, raid.guild.language);
+
+        // Get translations for buttons
+        const trans = getTranslations(raid.guild.language || 'en');
+
+        // Create buttons (2 rows due to Discord limit of 5 buttons per row)
+        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_optin_${raid.id}`)
+            .setLabel(trans.optIn)
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`raid_late_${raid.id}`)
+            .setLabel(trans.runningLateButton)
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`raid_optout_${raid.id}`)
+            .setLabel(trans.optOut)
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_class_${raid.id}`)
+            .setLabel(trans.setClassSpec)
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        // Restore buttons when opened
+        await message.edit({
+          embeds: [embed],
+          components: [row1, row2],
+        });
+      }
+    } catch (error) {
+      console.error('Error updating raid message:', error as Error);
+    }
+  }
+
+  await interaction.editReply({
+    content: `✅ Raid "${raid.description || 'Raid'}" has been opened.`,
+  });
 }
 
 export default command;

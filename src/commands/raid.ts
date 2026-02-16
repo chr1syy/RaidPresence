@@ -340,6 +340,60 @@ const command: Command = {
               .setDescription('The ID of the raid to restore')
               .setRequired(true)
           )
+       )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('stats')
+          .setDescription('View attendance statistics')
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('status')
+          .setDescription('View status dashboard of upcoming raids')
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('attendance')
+          .setDescription('View player attendance history')
+          .addUserOption((option) =>
+            option
+              .setName('player')
+              .setDescription('The player to view attendance for')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('period')
+              .setDescription('Time period for attendance history')
+              .setRequired(true)
+              .addChoices(
+                { name: '30 days', value: '30' },
+                { name: '90 days', value: '90' },
+                { name: 'All-time', value: 'all' },
+              )
+          )
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('suggest')
+          .setDescription('Analyze raid composition and suggest improvements')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to analyze')
+              .setRequired(true)
+          )
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('notes')
+          .setDescription('View raid notes and opt-out reasons')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to view notes for')
+              .setRequired(true)
+          )
       )
 
   ,

@@ -1059,6 +1059,13 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  if (raid.raidDate < new Date()) {
+    await interaction.editReply({
+      content: '❌ Cannot edit raids that have already passed.',
+    });
+    return;
+  }
+
   const guildData = raid.guild;
   const timezoneOffsetHours = guildData.timezoneOffset || 0;
 

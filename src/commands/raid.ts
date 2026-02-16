@@ -189,167 +189,136 @@ const command: Command = {
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('pin')
-        .setDescription('Archive a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to archive')
-            .setRequired(true)
-        )
-    )
-    ),
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('pin')
-        .setDescription('Archive a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to archive')
-            .setRequired(true)
-    )
-
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('cancel')
-        .setDescription('Cancel a raid event')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to cancel')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('remind')
-        .setDescription('Send a reminder for a raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to remind about')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('message')
-            .setDescription('Custom message to include in reminder (optional)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('refresh')
-        .setDescription('Refresh raid roster and embed (add new members, remove ineligible, update design)')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to refresh')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('edit')
-        .setDescription('Edit a raid event (date, time, title)')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to edit')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('New raid date (YYYY-MM-DD format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('New raid time (HH:MM 24h format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('New raid title')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('clone')
-        .setDescription('Clone an existing raid to create a new one')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to clone')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('New raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('New raid time (HH:MM in 24h format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('New raid title (optional, defaults to original)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unpin')
-        .setDescription('Restore archived raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to restore')
-            .setRequired(true)
-        )
-    )
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('New raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('New raid time (HH:MM in 24h format)')
-            .setRequired(false)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('New raid title (optional, defaults to original)')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unpin')
-        .setDescription('Restore archived raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to restore')
-            .setRequired(true)
-        )
-    )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('pin')
+         .setDescription('Archive a raid')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to archive')
+             .setRequired(true)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('close')
+         .setDescription('Close a raid event')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to close')
+             .setRequired(true)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('cancel')
+         .setDescription('Cancel a raid event')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to cancel')
+             .setRequired(true)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('remind')
+         .setDescription('Send a reminder for a raid')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to remind about')
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('message')
+             .setDescription('Custom message to include in reminder (optional)')
+             .setRequired(false)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('refresh')
+         .setDescription('Refresh raid roster and embed (add new members, remove ineligible, update design)')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to refresh')
+             .setRequired(true)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('edit')
+         .setDescription('Edit a raid event (date, time, title)')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to edit')
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('date')
+             .setDescription('New raid date (YYYY-MM-DD format)')
+             .setRequired(false)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('time')
+             .setDescription('New raid time (HH:MM 24h format)')
+             .setRequired(false)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('title')
+             .setDescription('New raid title')
+             .setRequired(false)
+         )
+     )
+     .addSubcommand((subcommand) =>
+       subcommand
+         .setName('clone')
+         .setDescription('Clone an existing raid to create a new one')
+         .addStringOption((option) =>
+           option
+             .setName('raid_id')
+             .setDescription('The ID of the raid to clone')
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('date')
+             .setDescription('New raid date (YYYY-MM-DD)')
+             .setRequired(true)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('time')
+             .setDescription('New raid time (HH:MM in 24h format)')
+             .setRequired(false)
+         )
+         .addStringOption((option) =>
+           option
+             .setName('title')
+             .setDescription('New raid title (optional, defaults to original)')
+             .setRequired(false)
+         )
+     )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('unpin')
+          .setDescription('Restore archived raid')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to restore')
+              .setRequired(true)
+          )
+      )
 
   ,
 
@@ -376,12 +345,13 @@ const command: Command = {
         await handleEditRaid(interaction);
     } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
-  } else if (subcommand === 'reopen') {
-    await handleReopenRaid(interaction);
-  } else if (subcommand === 'pin') {
-    await handlePinRaid(interaction);
-  } else if (subcommand === 'unpin') {
-    await handleUnpinRaid(interaction);
+    } else if (subcommand === 'reopen') {
+      await handleReopenRaid(interaction);
+    } else if (subcommand === 'pin') {
+      await handlePinRaid(interaction);
+    } else if (subcommand === 'unpin') {
+      await handleUnpinRaid(interaction);
+    }
   }
 };
 
@@ -408,7 +378,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const dateStr = interaction.options.get('date', true).value as string;
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
-  const rolesInput = interaction.options.get('roles', false)?.value as string;
+  const rolesInput = interaction.options.get('roles', true).value as string;
   const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
 
   // Get guild settings first for timezone and default roles
@@ -423,12 +393,12 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Determine which roles to use: custom roles from parameter, or guild defaults
-  const effectiveRolesInput = rolesInput || guildData.raidRoles;
+  // Use the specified roles
+  const effectiveRolesInput = rolesInput;
   
   if (!effectiveRolesInput || effectiveRolesInput.trim() === '') {
     await interaction.editReply({
-      content: '❌ No raid roles configured. Either specify roles in the command or configure default roles with `/config raid-roles`.',
+      content: '❌ Raid roles must be specified in the command.',
     });
     return;
   }
@@ -460,7 +430,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
 
   if (roleIds.length === 0) {
     await interaction.editReply({
-      content: '❌ No valid roles provided. Please specify at least one role or configure default roles with `/config raid-roles`.',
+      content: '❌ No valid roles provided. Please specify at least one valid role in the command.',
     });
     return;
   }
@@ -771,7 +741,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(embedColor)
     .addFields(...baseFields)
-    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | [Web](https://raidpresence.dev)` })
+    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
   return embed;
@@ -823,7 +794,8 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
         })
         .join('\n\n')
     )
-    .setFooter({ text: `v${VERSION} | [Web](https://raidpresence.dev)` })
+    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [embed] });
@@ -878,15 +850,14 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   }
 
   try {
-      const channel = await interaction.client.channels.fetch(raid.channelId);
-      if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
-        await message.delete();
-      }
-    } catch (error) {
-      console.error('Error deleting raid message:', error);
-      // Continue with database deletion even if message deletion fails
+    const channel = await interaction.client.channels.fetch(raid.channelId);
+    if (channel?.isTextBased() && 'messages' in channel) {
+      const message = await channel.messages.fetch(raid.messageId);
+      await message.delete();
     }
+  } catch (error) {
+    console.error('Error deleting raid message:', error);
+    // Continue with database deletion even if message deletion fails
   }
 
   // Delete from database (cascades to attendance)
@@ -1134,7 +1105,8 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
         timestamp: timestamp.toString(),
       })
     )
-    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION} | raidpresence.dev` })
+    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
   // Add custom message prominently at top if provided
@@ -1386,182 +1358,10 @@ if (!member || !(await canManageRaids(member as any))) {
     return;
   }
 
-async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to refresh raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
   const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: {
-      guild: true,
-      attendance: true,
-    },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  const guildData = raid.guild;
-
-  // Get members with raid roles (current eligible members)
-  // Use raid-specific roles if available, otherwise fall back to guild defaults
-  const roleSource = raid.roles && raid.roles.trim().length > 0
-    ? raid.roles
-    : guildData.raidRoles || '';
-  const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
-
-  let currentEligibleMembers = new Set<string>();
-
-  if (roleIds.length > 0) {
-    // Fetch all members if not cached
-    await interaction.guild.members.fetch();
-
-    for (const [memberId, guildMember] of interaction.guild.members.cache) {
-      if (guildMember.user.bot) continue;
-
-      const hasRaidRole = guildMember.roles.cache.some((role) =>
-        roleIds.includes(role.id) || roleIds.includes(role.name)
-      );
-
-      if (hasRaidRole) {
-        currentEligibleMembers.add(memberId);
-      }
-    }
-  } else {
-    // No roles configured, include all non-bot members
-    await interaction.guild.members.fetch();
-    for (const [memberId, guildMember] of interaction.guild.members.cache) {
-      if (!guildMember.user.bot) {
-        currentEligibleMembers.add(memberId);
-      }
-    }
-  }
-
-  // Get current attendance user IDs
-  const currentAttendanceUserIds = new Set(raid.attendance.map(a => a.userId));
-
-  // Calculate new members to add
-  const newMembers = Array.from(currentEligibleMembers).filter(id => !currentAttendanceUserIds.has(id));
-
-  // Calculate members to remove
-  const membersToRemove = Array.from(currentAttendanceUserIds).filter(id => !currentEligibleMembers.has(id));
-
-  // Add new members
-  if (newMembers.length > 0) {
-    // Ensure UserPreference records
-    for (const userId of newMembers) {
-      const member = interaction.guild.members.cache.get(userId);
-      if (member) {
-        await prisma.userPreference.upsert({
-          where: {
-            userId_guildId: {
-              userId,
-              guildId: interaction.guild.id,
-            },
-          },
-          update: {
-            username: member.displayName,
-          },
-          create: {
-            userId,
-            guildId: interaction.guild.id,
-            username: member.displayName,
-          },
-        });
-      }
-    }
-
-    // Get prefs
-    const userPrefs = await prisma.userPreference.findMany({
-      where: {
-        guildId: interaction.guild.id,
-        userId: { in: newMembers },
-      },
-    });
-
-    const prefsMap = new Map(userPrefs.map(p => [p.userId, p]));
-
-    // Create attendance
-    const attendanceData = newMembers.map(userId => {
-      const member = interaction.guild.members.cache.get(userId);
-      const pref = prefsMap.get(userId);
-      return {
-        raidId: raid.id,
-        userId,
-        guildId: interaction.guild.id,
-        username: member?.displayName || 'Unknown',
-        status: 'attending' as const,
-        wowClass: pref?.wowClass || null,
-        wowSpec: pref?.wowSpec || null,
-      };
-    });
-
-    await prisma.raidAttendance.createMany({
-      data: attendanceData,
-    });
-  }
-
-  // Remove ineligible members
-  if (membersToRemove.length > 0) {
-    await prisma.raidAttendance.deleteMany({
-      where: {
-        raidId: raid.id,
-        userId: { in: membersToRemove },
-      },
-    });
-  }
-
-  // Update the embed
-  if (raid.messageId && raid.channelId) {
-    try {
-      const channel = await interaction.client.channels.fetch(raid.channelId);
-      if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
-        const embed = await createRaidEmbed(raid.id, raid.guild.language);
-
-        await message.edit({
-          embeds: [embed],
-          components: raid.status === 'closed' ? [] : message.components, // keep components if not closed
-        });
-      }
-    } catch (error) {
-      console.error('Error updating raid message:', error);
-    }
-  }
-
-  await interaction.editReply({
-    content: `✅ Raid "${raid.description}" refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
-  });
-}
+  const dateStr = interaction.options.get('date', true).value as string;
+  const timeStr = interaction.options.get('time', false)?.value as string;
+  const customTitle = interaction.options.get('title', false)?.value as string;
 
   // Validate time format if provided
   let hour: number | undefined;

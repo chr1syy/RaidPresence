@@ -312,27 +312,29 @@ describe('formatAttendanceEmbed()', () => {
 
   it('should show "Last 30 days" footer for month period', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'month', 'en');
-    expect(embed.data.footer?.text).toBe('Last 30 days | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embed.data.footer?.text).toBe('Last 30 days | v0.1.0');
   });
 
   it('should show "Last 90 days" footer for quarter period', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'quarter', 'en');
-    expect(embed.data.footer?.text).toBe('Last 90 days | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embed.data.footer?.text).toBe('Last 90 days | v0.1.0');
   });
 
   it('should show "All time" footer for all period', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'all', 'en');
-    expect(embed.data.footer?.text).toBe('All time | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embed.data.footer?.text).toBe('All time | v0.1.0');
   });
 
   it('should default to month period for unknown period string', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'unknown', 'en');
-    expect(embed.data.footer?.text).toBe('Last 30 days | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embed.data.footer?.text).toBe('Last 30 days | v0.1.0');
   });
 
-  it('should set a timestamp on the embed', () => {
+  it('should include a Links field with clickable web link', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'month', 'en');
-    expect(embed.data.timestamp).toBeDefined();
+    const linksField = getField(embed, 'Links');
+    expect(linksField.value).toBe('[Web](https://raidpresence.dev)');
+    expect(linksField.inline).toBe(true);
   });
 
   // ── Inline Layout ──────────────────────────────────────────
@@ -376,13 +378,13 @@ describe('formatAttendanceEmbed()', () => {
 
   it('should use German period labels in footer', () => {
     const embedMonth = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'month', 'de');
-    expect(embedMonth.data.footer?.text).toBe('Letzte 30 Tage | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embedMonth.data.footer?.text).toBe('Letzte 30 Tage | v0.1.0');
 
     const embedQuarter = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'quarter', 'de');
-    expect(embedQuarter.data.footer?.text).toBe('Letzte 90 Tage | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embedQuarter.data.footer?.text).toBe('Letzte 90 Tage | v0.1.0');
 
     const embedAll = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'all', 'de');
-    expect(embedAll.data.footer?.text).toBe('Gesamt | v0.1.0 | [Web](https://raidpresence.dev)');
+    expect(embedAll.data.footer?.text).toBe('Gesamt | v0.1.0');
   });
 
   // ── Edge Cases ─────────────────────────────────────────────

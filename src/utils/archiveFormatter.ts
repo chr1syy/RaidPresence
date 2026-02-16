@@ -63,7 +63,7 @@ export function formatArchiveSearchEmbed(
     // Add info about result count
     if (results.length > 10) {
       embed.setFooter({ 
-        text: `${t(language, 'archiveShowingResults', { total: results.length.toString() })} | v${VERSION} | raidpresence.dev`
+        text: `${t(language, 'archiveShowingResults', { total: results.length.toString() })} | v${VERSION}`
       });
     } else {
       // For this case, we need a localized message about found raids
@@ -72,9 +72,11 @@ export function formatArchiveSearchEmbed(
       embed.setFooter({ 
         text: (count === 1 
           ? t(language, 'archiveFoundCountSingular')
-          : t(language, 'archiveFoundCount', { count: count.toString() })) + ` | v${VERSION} | raidpresence.dev`
+          : t(language, 'archiveFoundCount', { count: count.toString() })) + ` | v${VERSION}`
       });
     }
+
+    embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
 
   return embed;
 }
@@ -103,7 +105,8 @@ export function formatArchiveNotificationEmbed(
         `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
         `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
       )
-      .setFooter({ text: `v${VERSION} | raidpresence.dev` })
+      .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+      .setFooter({ text: `v${VERSION}` })
       .setTimestamp(new Date());
 }
 

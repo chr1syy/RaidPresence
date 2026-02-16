@@ -108,9 +108,11 @@ ${likelihood.factors.map((f) => `• ${f}`).join('\n')}`;
     inline: false,
   });
 
+  embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
+
   // Footer
   embed.setFooter({
-    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()} | v${VERSION} | [Web](https://raidpresence.dev)`,
+    text: `${trans.compositionAnalyzedAt} ${new Date().toLocaleString()} | v${VERSION}`,
   });
 
   return embed;

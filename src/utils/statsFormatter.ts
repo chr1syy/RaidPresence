@@ -79,7 +79,8 @@ export function formatRaidStatsEmbed(
         inline: true,
       },
     )
-    .setFooter({ text: `Raid ID: ${raid.id} | v${VERSION} | [Web](https://raidpresence.dev)` })
+    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .setFooter({ text: `Raid ID: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
   return embed;
@@ -154,7 +155,9 @@ export function formatGuildStatsEmbed(
     });
   }
 
-  embed.setFooter({ text: `v${VERSION} | [Web](https://raidpresence.dev)` });
+  embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
+
+  embed.setFooter({ text: `v${VERSION}` });
   embed.setTimestamp();
 
   return embed;

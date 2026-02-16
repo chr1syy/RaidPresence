@@ -118,7 +118,9 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.setFooter({ text: `${periodLabel} | v${VERSION} | [Web](https://raidpresence.dev)` });
+  embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
+
+  embed.setFooter({ text: `${periodLabel} | v${VERSION}` });
   embed.setTimestamp();
 
   return embed;

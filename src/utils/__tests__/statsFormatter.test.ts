@@ -101,7 +101,7 @@ describe('formatRaidStatsEmbed', () => {
     expect(field!.value).toContain('Tank: 2');
     expect(field!.value).toContain('Heal: 3');
     expect(field!.value).toContain('Melee DPS: 4');
-    expect(field!.value).toContain('Ranged: 5');
+    expect(field!.value).toContain('Ranged DPS: 5');
   });
 
   it('should include class distribution', () => {
@@ -119,9 +119,11 @@ describe('formatRaidStatsEmbed', () => {
     expect(field!.value).toBe('-');
   });
 
-  it('should set footer with raid ID', () => {
+  it('should include a Links field with clickable web link', () => {
     const embed = formatRaidStatsEmbed({ id: 'my-raid-42', description: 'Test' }, makeRaidStats(), 'en');
-    expect(embed.data.footer!.text).toBe('Raid ID: my-raid-42 | v0.1.0 | [Web](https://raidpresence.dev)');
+    const linksField = embed.data.fields!.find((f) => f.name === 'Links');
+    expect(linksField!.value).toBe('[Web](https://raidpresence.dev)');
+    expect(linksField!.inline).toBe(true);
   });
 
   it('should use green color for high attendance (>=80)', () => {
@@ -195,6 +197,13 @@ describe('formatGuildStatsEmbed', () => {
   it('should build an embed with period in title (all)', () => {
     const embed = formatGuildStatsEmbed(makeGuildStats(), 'all', 'en');
     expect(embed.data.title).toContain('All time');
+  });
+
+  it('should include a Links field with clickable web link', () => {
+    const embed = formatGuildStatsEmbed(makeGuildStats(), 'month', 'en');
+    const linksField = embed.data.fields!.find((f) => f.name === 'Links');
+    expect(linksField!.value).toBe('[Web](https://raidpresence.dev)');
+    expect(linksField!.inline).toBe(true);
   });
 
   it('should include total raids, attendance rate, and total raiders', () => {

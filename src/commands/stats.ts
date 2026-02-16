@@ -339,11 +339,11 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   }
 
   const startDate = getStartDate(period);
-  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, startDate);
-  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id, startDate);
-  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, startDate);
+  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
+  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
+  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
 
-  const embed = formatAttendanceEmbed(player, playerStats, roleDistribution, history, period, guildData.language || 'en');
+  const embed = formatAttendanceEmbed(player.displayName || player.username || 'Unknown', playerStats, roleDistribution, history, period, guildData.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -381,11 +381,15 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   }
 
   const composition = await analyzeRaidComposition(raid.attendance);
-  const gaps = findCompositionGaps(composition);
+  const gaps = findCompositionGaps(raid.attendance);
   const suggestions = suggestPlayerSwaps(raid.attendance, gaps);
-  const likelihood = calculateSuccessLikelihood(composition);
+  const likelihood = calculateSuccessLikelihood(raid.attendance);
 
-  const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, raid.guild.language || 'en');
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, guildData?.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -422,7 +426,25 @@ async function handleNotesCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const embed = formatRaidNotesEmbed(raid, raid.guild.language || 'en');
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const noteEntries: Array<{
+    username: string;
+    playerNote?: string;
+    optoutReason?: string;
+    status: string;
+    notedAt?: Date;
+  }> = raid.attendance.map(att => ({
+    username: att.username,
+    playerNote: att.playerNote || undefined,
+    optoutReason: att.optoutReason || undefined,
+    status: att.status,
+    notedAt: att.notedAt || undefined,
+  }));
+
+  const embed = formatRaidNotesEmbed(raid.description || 'Raid', raid.raidDate, noteEntries, guildData?.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -452,9 +474,9 @@ async function handleArchiveCommand(interaction: ChatInputCommandInteraction) {
   const trans = getTranslations('en'); // or from guild
 
   try {
-    await archiveRaid(raidId, interaction.guild);
+    await archiveRaid(raidId, interaction.guild!.id, interaction.client);
     await interaction.editReply({
-      content: trans.raidArchivedSuccess || 'Raid archived successfully.',
+      content: '✅ Raid archived successfully.',
     });
   } catch (error) {
     console.error('Error archiving raid:', error);
@@ -486,12 +508,10 @@ async function handleUnarchiveCommand(interaction: ChatInputCommandInteraction) 
 
   const raidId = interaction.options.get('raid_id', true).value as string;
 
-  const trans = getTranslations('en');
-
   try {
-    await unarchiveRaid(raidId, interaction.guild);
+    await unarchiveRaid(raidId, interaction.guild!.id, interaction.client);
     await interaction.editReply({
-      content: trans.raidRestoredSuccess || 'Raid restored successfully.',
+      content: '✅ Raid restored successfully.',
     });
   } catch (error) {
     console.error('Error restoring raid:', error);
@@ -521,7 +541,11 @@ async function handleSearchCommand(interaction: ChatInputCommandInteraction) {
 
   const startDate = getStartDate(period);
 
-  const results = await searchArchive(interaction.guild.id, query, startDate);
+  const results = await searchArchive({
+    guildId: interaction.guild.id,
+    query,
+    startDate,
+  });
 
   const embed = formatArchiveSearchEmbed(results, query, period, guildData?.language || 'en');
 

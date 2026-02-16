@@ -118,7 +118,7 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
+  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
 
   embed.setFooter({ text: `${periodLabel} | v${VERSION}` });
   embed.setTimestamp();

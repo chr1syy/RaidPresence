@@ -76,7 +76,7 @@ export function formatArchiveSearchEmbed(
       });
     }
 
-    embed.addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true });
+    embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
 
   return embed;
 }
@@ -105,7 +105,7 @@ export function formatArchiveNotificationEmbed(
         `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
         `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
       )
-      .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
       .setFooter({ text: `v${VERSION}` })
       .setTimestamp(new Date());
 }

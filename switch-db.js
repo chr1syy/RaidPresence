@@ -7,7 +7,9 @@ const provider = dbEnv === 'prod' ? 'postgresql' : 'sqlite';
 const schemaPath = path.join(__dirname, 'prisma', 'schema.prisma');
 let schema = fs.readFileSync(schemaPath, 'utf8');
 
-schema = schema.replace(/provider = "[^"]*"/, `provider = "${provider}"`);
+// Only replace the datasource provider, not the generator
+schema = schema.replace(/datasource db \{[\s\S]*?provider = "[^"]*"/, 
+  `datasource db {\n  provider = "${provider}"`);
 
 fs.writeFileSync(schemaPath, schema);
 

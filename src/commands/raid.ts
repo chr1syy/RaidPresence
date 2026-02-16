@@ -23,6 +23,7 @@ import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHis
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
+import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { archiveRaid, unarchiveRaid } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 
@@ -178,20 +179,9 @@ const command: Command = {
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('reopen')
-        .setDescription('Reopen a closed raid to allow changes again')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid to reopen')
-            .setRequired(true)
-        )
-    )
      .addSubcommand((subcommand) =>
        subcommand
-         .setName('pin')
+          .setName('pin')
          .setDescription('Archive a raid')
          .addStringOption((option) =>
            option
@@ -422,13 +412,21 @@ const command: Command = {
     } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
     } else if (subcommand === 'open') {
-      await handleOpenRaid(interaction);
-    } else if (subcommand === 'reopen') {
-      await handleReopenRaid(interaction);
-    } else if (subcommand === 'pin') {
+       await handleOpenRaid(interaction);
+     } else if (subcommand === 'pin') {
       await handlePinRaid(interaction);
     } else if (subcommand === 'unpin') {
       await handleUnpinRaid(interaction);
+    } else if (subcommand === 'stats') {
+      await handleRaidStats(interaction);
+    } else if (subcommand === 'status') {
+      await handleRaidStatus(interaction);
+    } else if (subcommand === 'attendance') {
+      await handleRaidAttendance(interaction);
+    } else if (subcommand === 'suggest') {
+      await handleRaidSuggest(interaction);
+    } else if (subcommand === 'notes') {
+      await handleRaidNotes(interaction);
     }
   }
 };
@@ -819,7 +817,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     .setTitle(`${raid.description || trans.raidEvent}`)
     .setColor(embedColor)
     .addFields(...baseFields)
-    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
     .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
@@ -872,7 +870,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
         })
         .join('\n\n')
     )
-    .addFields({ name: 'Links', value: '[Web](https://raidpresence.dev)', inline: true })
+    .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
     .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 
@@ -904,6 +902,7 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   // Check if raid exists and belongs to this guild
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
+    include: { attendance: true },
   });
 
   if (!raid) {
@@ -927,7 +926,16 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const guildData = raid.guild;
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild configuration not found.',
+    });
+    return;
+  }
 
   // Get members with raid roles (current eligible members)
   // Use raid-specific roles if available, otherwise fall back to guild defaults
@@ -1014,7 +1022,7 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
       return {
         raidId: raid.id,
         userId,
-        guildId: interaction.guild.id,
+        guildId: interaction.guild!.id,
         username: member?.displayName || 'Unknown',
         status: 'attending' as const,
         wowClass: pref?.wowClass || null,
@@ -1043,7 +1051,7 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
         const message = await channel.messages.fetch(raid.messageId!);
-        const embed = await createRaidEmbed(raid.id, raid.guild.language);
+        const embed = await createRaidEmbed(raid.id, guildData.language || 'en');
 
         await message.edit({
           embeds: [embed],
@@ -1505,109 +1513,6 @@ if (!member || !(await canManageRaids(member as any))) {
   return;
 }
 
-async function handleReopenRaid(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to reopen raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  if (raid.status === 'open') {
-    await interaction.editReply({
-      content: '❌ This raid is already open.',
-    });
-    return;
-  }
-
-  // Update raid status to open
-  await prisma.raid.update({
-    where: { id: raidId },
-    data: { status: 'open' },
-  });
-
-  // Update the raid message
-  if (raid.messageId && raid.channelId) {
-    try {
-      const channel = await interaction.client.channels.fetch(raid.channelId);
-      if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId!);
-        const embed = await createRaidEmbed(raidId, raid.guild.language);
-
-        // Get translations for buttons
-        const trans = getTranslations(raid.guild.language || 'en');
-
-        // Create buttons (2 rows due to Discord limit of 5 buttons per row)
-        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_optin_${raid.id}`)
-            .setLabel(trans.optIn)
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`raid_late_${raid.id}`)
-            .setLabel(trans.runningLateButton)
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId(`raid_optout_${raid.id}`)
-            .setLabel(trans.optOut)
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_class_${raid.id}`)
-            .setLabel(trans.setClassSpec)
-            .setStyle(ButtonStyle.Primary)
-        );
-
-        // Restore buttons when reopened
-        await message.edit({
-          embeds: [embed],
-          components: [row1, row2],
-        });
-      }
-    } catch (error) {
-      console.error('Error updating raid message:', error as Error);
-    }
-  }
-
-  await interaction.editReply({
-    content: `✅ Raid "${raid.description || 'Raid'}" has been reopened.`,
-  });
-}
 
 async function handlePinRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
@@ -1658,7 +1563,7 @@ async function handlePinRaid(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error archiving raid:', error);
     await interaction.editReply({
-      content: `❌ Failed to archive raid: ${error.message}`,
+      content: `❌ Failed to archive raid: ${(error as Error).message}`,
     });
   }
 }
@@ -1712,7 +1617,7 @@ async function handleUnpinRaid(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     console.error('Error restoring raid:', error);
     await interaction.editReply({
-      content: `❌ Failed to restore raid: ${error.message}`,
+      content: `❌ Failed to restore raid: ${(error as Error).message}`,
     });
   }
 }
@@ -1825,6 +1730,582 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
 
   await interaction.editReply({
     content: `✅ Raid "${raid.description || 'Raid'}" has been opened.`,
+  });
+}
+
+async function handleRaidStats(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database.',
+    });
+    return;
+  }
+
+  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+  const raids = await prisma.raid.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      raidDate: { gte: startDate },
+    },
+    include: { attendance: true },
+  });
+
+  const stats = calculateGuildStats(raids);
+  const embed = formatGuildStatsEmbed(stats, 'month', guildData.language || 'en');
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleRaidStatus(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const now = new Date();
+  const raids = await prisma.raid.findMany({
+    where: {
+      guildId: interaction.guild.id,
+      status: 'open',
+      raidDate: {
+        gte: now,
+      },
+    },
+    orderBy: {
+      raidDate: 'asc',
+    },
+    take: 7,
+    include: {
+      attendance: true,
+    },
+  });
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const embed = formatStatusEmbed(raids, guildData?.language || 'en');
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleRaidAttendance(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const player = interaction.options.get('player', true).user!;
+  const periodValue = interaction.options.get('period', false)?.value as string || '30';
+
+  let period: string;
+  if (periodValue === '30') period = 'month';
+  else if (periodValue === '90') period = 'quarter';
+  else period = 'all';
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild not found in database.',
+    });
+    return;
+  }
+
+  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
+  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
+  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
+
+  const embed = formatAttendanceEmbed(player.displayName, playerStats, roleDistribution, history, period, guildData.language || 'en');
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+function getStartDate(period: string): Date {
+  const now = new Date();
+  switch (period) {
+    case 'month':
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case 'quarter':
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    case 'all':
+      return new Date(0);
+    default:
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  }
+}
+
+async function handleRaidSuggest(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true, guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const composition = await analyzeRaidComposition(raid.attendance);
+  const gaps = findCompositionGaps(raid.attendance);
+  const suggestions = suggestPlayerSwaps(raid.attendance, gaps);
+  const likelihood = calculateSuccessLikelihood(raid.attendance);
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, guildData?.language || 'en');
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleRaidNotes(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true, guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const noteEntries: Array<{
+    username: string;
+    playerNote?: string;
+    optoutReason?: string;
+    status: string;
+    notedAt?: Date;
+  }> = raid.attendance.map(att => ({
+    username: att.username,
+    playerNote: att.playerNote || undefined,
+    optoutReason: att.optoutReason || undefined,
+    status: att.status,
+    notedAt: att.notedAt || undefined,
+  }));
+
+  const embed = formatRaidNotesEmbed(raid.description || 'Raid', raid.raidDate, noteEntries, guildData?.language || 'en');
+
+  await interaction.editReply({ embeds: [embed] });
+}
+
+async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to close raids.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  if (raid.status === 'closed' || raid.status === 'cancelled') {
+    await interaction.editReply({
+      content: '❌ This raid is already closed or cancelled.',
+    });
+    return;
+  }
+
+  // Update raid status
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: { status: 'closed' },
+  });
+
+  await interaction.editReply({
+    content: '✅ Raid has been closed.',
+  });
+}
+
+async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to cancel raids.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  if (raid.status === 'cancelled') {
+    await interaction.editReply({
+      content: '❌ This raid is already cancelled.',
+    });
+    return;
+  }
+
+  // Update raid status
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: { status: 'cancelled' },
+  });
+
+  await interaction.editReply({
+    content: '✅ Raid has been cancelled.',
+  });
+}
+
+async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to send reminders.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+  const customMessage = interaction.options.get('message', false)?.value as string | undefined;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  // Get channel and send reminder
+  const channel = await interaction.client.channels.fetch(raid.channelId);
+  if (!channel?.isTextBased()) {
+    await interaction.editReply({
+      content: '❌ Could not access raid channel.',
+    });
+    return;
+  }
+
+  const optedOut = raid.attendance.filter(a => a.status === 'opted_out');
+  const attendingCount = raid.attendance.filter(a => a.status === 'attending').length;
+
+  let reminderText = `**Raid Reminder: ${raid.description}**\n`;
+  reminderText += `📅 Date: <t:${Math.floor(raid.raidDate.getTime() / 1000)}:f>\n`;
+  reminderText += `👥 Current: ${attendingCount} confirmed\n`;
+
+  if (customMessage) {
+    reminderText += `\n**Message from Leader:**\n${customMessage}\n`;
+  }
+
+  if (optedOut.length > 0) {
+    reminderText += `\n**Opted Out:** ${optedOut.map(a => a.username).join(', ')}\n`;
+  }
+
+  await (channel as any).send(reminderText);
+
+  await interaction.editReply({
+    content: '✅ Reminder sent.',
+  });
+}
+
+async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to refresh raids.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  // Get guild config for roles
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  if (!guildData) {
+    await interaction.editReply({
+      content: '❌ Guild configuration not found.',
+    });
+    return;
+  }
+
+  const roleSource = raid.roles && raid.roles.trim().length > 0
+    ? raid.roles
+    : guildData.raidRoles || '';
+  const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
+
+  let eligibleMembers = new Set<string>();
+
+  if (roleIds.length > 0) {
+    await interaction.guild.members.fetch();
+
+    for (const [memberId, guildMember] of interaction.guild.members.cache) {
+      if (guildMember.user.bot) continue;
+
+      const hasRaidRole = guildMember.roles.cache.some((role) =>
+        roleIds.includes(role.id) || roleIds.includes(role.name)
+      );
+
+      if (hasRaidRole) {
+        eligibleMembers.add(memberId);
+      }
+    }
+  } else {
+    await interaction.guild.members.fetch();
+    for (const [memberId, guildMember] of interaction.guild.members.cache) {
+      if (!guildMember.user.bot) {
+        eligibleMembers.add(memberId);
+      }
+    }
+  }
+
+  const currentAttendanceUserIds = new Set(raid.attendance.map(a => a.userId));
+
+  // Add new members
+  const newMembers = Array.from(eligibleMembers).filter(id => !currentAttendanceUserIds.has(id));
+
+  if (newMembers.length > 0) {
+    for (const userId of newMembers) {
+      const member = interaction.guild.members.cache.get(userId);
+      if (member) {
+        await prisma.userPreference.upsert({
+          where: {
+            userId_guildId: {
+              userId,
+              guildId: interaction.guild!.id,
+            },
+          },
+          update: {
+            username: member.displayName,
+          },
+          create: {
+            userId,
+            guildId: interaction.guild.id,
+            username: member.displayName,
+          },
+        });
+      }
+    }
+
+    const userPrefs = await prisma.userPreference.findMany({
+      where: {
+        guildId: interaction.guild.id,
+        userId: { in: newMembers },
+      },
+    });
+
+    const prefsMap = new Map(userPrefs.map(p => [p.userId, p]));
+
+    const attendanceData = newMembers.map(userId => {
+      const member = interaction.guild!.members.cache.get(userId);
+      const pref = prefsMap.get(userId);
+      return {
+        raidId: raid.id,
+        userId,
+        username: member?.displayName || 'Unknown',
+        status: 'attending' as const,
+        wowClass: pref?.wowClass || null,
+        wowSpec: pref?.wowSpec || null,
+        guildId: interaction.guild!.id,
+      };
+    });
+
+    await prisma.raidAttendance.createMany({
+      data: attendanceData,
+    });
+  }
+
+  // Remove ineligible members
+  const membersToRemove = Array.from(currentAttendanceUserIds).filter(id => !eligibleMembers.has(id));
+
+  if (membersToRemove.length > 0) {
+    await prisma.raidAttendance.deleteMany({
+      where: {
+        raidId: raid.id,
+        userId: { in: membersToRemove },
+      },
+    });
+  }
+
+  await interaction.editReply({
+    content: `✅ Raid refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
   });
 }
 

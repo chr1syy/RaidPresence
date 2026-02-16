@@ -307,7 +307,18 @@ const command: Command = {
              .setDescription('New raid title (optional, defaults to original)')
              .setRequired(false)
          )
-     )
+      )
+       .addSubcommand((subcommand) =>
+         subcommand
+           .setName('open')
+           .setDescription('Reopen a closed raid to allow changes again')
+           .addStringOption((option) =>
+             option
+               .setName('raid_id')
+               .setDescription('The ID of the raid to open')
+               .setRequired(true)
+           )
+       )
       .addSubcommand((subcommand) =>
         subcommand
           .setName('unpin')
@@ -345,6 +356,8 @@ const command: Command = {
         await handleEditRaid(interaction);
     } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
+    } else if (subcommand === 'open') {
+      await handleOpenRaid(interaction);
     } else if (subcommand === 'reopen') {
       await handleReopenRaid(interaction);
     } else if (subcommand === 'pin') {
@@ -1823,6 +1836,10 @@ async function handleUnpinRaid(interaction: ChatInputCommandInteraction) {
       content: `❌ Failed to restore raid: ${error.message}`,
     });
   }
+}
+
+async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
+  await interaction.reply({ content: 'Open raid not yet implemented', ephemeral: true });
 }
 
 export default command;

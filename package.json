@@ -17,7 +17,7 @@
     "db:studio": "npm run switch-db && prisma studio",
     "test": "npm run switch-db && tsc --noEmit",
     "lint": "npm run switch-db && tsc --noEmit",
-    "test:jest": "jest",
+    "test:jest": "npm run switch-db && jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "version:patch": "npm version patch --no-git-tag-version",

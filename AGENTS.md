@@ -135,9 +135,10 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - Database migration: `20260210100000_add_raid_notes` (adds `optoutReason`, `playerNote`, `notedAt` to RaidAttendance)
 
 #### 2.4 Raid Archive System
-- **`/raid pin raid_id:`** - Archive a raid (copy to archive channel, remove original)
-- **`/raid unpin raid_id:`** - Restore archived raid to original channel
-- **`/raid search query: period:`** - Search archived raids by name/player/date
+- Archive functionality consolidated to `/stats` command for centralized access
+- **`/stats archive raid_id:`** - Archive a raid (copy to archive channel, remove original)
+- **`/stats unarchive raid_id:`** - Restore archived raid to original channel
+- **`/stats search query: period:`** - Search archived raids by name/player/date
 - **`/config archive-channel channel:`** - Set guild archive channel
 - **`/config auto-archive enabled:`** - Toggle auto-archive on raid close
 - `archiveManager.ts` - `archiveRaid()`, `unarchiveRaid()`, `searchArchive()`, `getArchiveStats()`, `setupArchiveChannel()`
@@ -150,7 +151,7 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 
 ## Commands Reference
 
-### `/raid` Subcommands (14 total)
+### `/raid` Subcommands (12 total)
 
 | Subcommand | Permission | Description |
 |-----------|-----------|-------------|
@@ -168,9 +169,6 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 | `attendance` | Any member | View player attendance history |
 | `suggest` | Any member | Composition analysis and recommendations |
 | `notes` | Any member | View raid notes and opt-out reasons |
-| `pin` | Leader role | Archive a raid |
-| `unpin` | Leader role | Restore archived raid |
-| `search` | Any member | Search archived raids |
 
 ### `/config` Subcommands (6 total)
 

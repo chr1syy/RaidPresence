@@ -24,8 +24,6 @@ import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
-import { archiveRaid, unarchiveRaid } from '../utils/archiveManager';
-import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 
 /**
  * Build role mentions from role IDs or names
@@ -181,17 +179,6 @@ const command: Command = {
     )
      .addSubcommand((subcommand) =>
        subcommand
-          .setName('pin')
-         .setDescription('Archive a raid')
-         .addStringOption((option) =>
-           option
-             .setName('raid_id')
-             .setDescription('The ID of the raid to archive')
-             .setRequired(true)
-         )
-     )
-     .addSubcommand((subcommand) =>
-       subcommand
          .setName('close')
          .setDescription('Close a raid event')
          .addStringOption((option) =>
@@ -319,21 +306,10 @@ const command: Command = {
                .setDescription('The ID of the raid to open')
                .setRequired(true)
            )
-       )
-      .addSubcommand((subcommand) =>
-        subcommand
-          .setName('unpin')
-          .setDescription('Restore archived raid')
-          .addStringOption((option) =>
-            option
-              .setName('raid_id')
-              .setDescription('The ID of the raid to restore')
-              .setRequired(true)
-          )
-       )
-      .addSubcommand((subcommand) =>
-        subcommand
-          .setName('stats')
+        )
+       .addSubcommand((subcommand) =>
+         subcommand
+           .setName('stats')
           .setDescription('View attendance statistics')
       )
       .addSubcommand((subcommand) =>
@@ -411,13 +387,9 @@ const command: Command = {
         await handleEditRaid(interaction);
     } else if (subcommand === 'clone') {
         await handleCloneRaid(interaction);
-    } else if (subcommand === 'open') {
-       await handleOpenRaid(interaction);
-     } else if (subcommand === 'pin') {
-      await handlePinRaid(interaction);
-    } else if (subcommand === 'unpin') {
-      await handleUnpinRaid(interaction);
-    } else if (subcommand === 'stats') {
+     } else if (subcommand === 'open') {
+        await handleOpenRaid(interaction);
+     } else if (subcommand === 'stats') {
       await handleRaidStats(interaction);
     } else if (subcommand === 'status') {
       await handleRaidStatus(interaction);
@@ -1514,113 +1486,6 @@ if (!member || !(await canManageRaids(member as any))) {
 }
 
 
-async function handlePinRaid(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to archive raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  try {
-    await archiveRaid(raidId, interaction.guild.id, interaction.client);
-    await interaction.editReply({
-      content: `✅ Raid "${raid.description || 'Raid'}" has been archived.`,
-    });
-  } catch (error) {
-    console.error('Error archiving raid:', error);
-    await interaction.editReply({
-      content: `❌ Failed to archive raid: ${(error as Error).message}`,
-    });
-  }
-}
-
-async function handleUnpinRaid(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to restore raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  try {
-    await unarchiveRaid(raidId, interaction.guild.id, interaction.client);
-    await interaction.editReply({
-      content: `✅ Raid "${raid.description || 'Raid'}" has been restored.`,
-    });
-  } catch (error) {
-    console.error('Error restoring raid:', error);
-    await interaction.editReply({
-      content: `❌ Failed to restore raid: ${(error as Error).message}`,
-    });
-  }
-}
 
 async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {

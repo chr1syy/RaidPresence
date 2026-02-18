@@ -153,13 +153,24 @@ const command: Command = {
             )
             .setRequired(false)
         )
-    )
-    .setDefaultMemberPermissions(0 as any),
+     ),
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
 
     const subcommand = interaction.options.getSubcommand();
+
+    // Check permissions for leader-only subcommands
+    const isLeaderOnly = ['archive', 'unarchive'].includes(subcommand);
+    if (isLeaderOnly) {
+      if (!(await canManageRaids(interaction.member as any))) {
+        await interaction.reply({
+          content: 'You do not have permission to use this subcommand.',
+          ephemeral: true,
+        });
+        return;
+      }
+    }
 
     if (subcommand === 'raid') {
       await handleRaidStats(interaction);

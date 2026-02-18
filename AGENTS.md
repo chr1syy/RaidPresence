@@ -69,12 +69,27 @@ RaidPresence/
 
 ---
 
+## Database Configuration
+
+### Provider Setup
+- **Development:** SQLite (file-based, zero setup) via `prisma/dev.db`
+- **Production:** PostgreSQL (cloud-hosted, managed) via `DATABASE_URL` env var
+- **Switching:** Use `DB_ENV` variable (dev/prod) with `npm run switch-db`
+  - `DB_ENV=dev` → SQLite provider for local development
+  - `DB_ENV=prod` → PostgreSQL provider for production
+  - Runs automatically on `npm install` (postinstall) and before each npm command
+- **Migration Path:** See `docs/guides/DATABASE-MIGRATION-GUIDE.md` for PostgreSQL ↔ SQLite migration instructions
+
+---
+
 ## Database Schema
 
 Four Prisma models in `prisma/schema.prisma`:
 
 ### Guild
-Per-server configuration. Fields: `id`, `name`, `raidRoles`, `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
+Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
+
+**Note:** `raidRoles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 
 ### UserPreference
 Player class/spec preferences per guild. Fields: `userId`, `guildId`, `username`, `wowClass`, `wowSpec`. Unique on `[userId, guildId]`.
@@ -151,7 +166,7 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 
 ## Commands Reference
 
-### `/raid` Subcommands (12 total)
+### `/raid` Subcommands (14 total)
 
 | Subcommand | Permission | Description |
 |-----------|-----------|-------------|
@@ -170,16 +185,28 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 | `suggest` | Any member | Composition analysis and recommendations |
 | `notes` | Any member | View raid notes and opt-out reasons |
 
+### `/stats` Subcommands (Archive operations consolidated here)
+
+| Subcommand | Permission | Description |
+|-----------|-----------|-------------|
+| `archive` | Leader role | Archive a raid to archive channel |
+| `unarchive` | Leader role | Restore archived raid to original channel |
+| `search` | Any member | Search archived raids by name/player/date |
+
+**Note:** Archive operations previously in `/raid pin/unpin` are now consolidated in `/stats` for centralized access to statistics and archival functionality.
+
 ### `/config` Subcommands (6 total)
 
 | Subcommand | Permission | Description |
 |-----------|-----------|-------------|
-| `raid-roles` | Admin | Set roles scanned for raids |
+| `raid-roles` | Admin | Set roles scanned for raids (deprecated) |
 | `leader-roles` | Admin | Set roles that can manage raids |
 | `timezone` | Admin | Set server timezone offset |
 | `language` | Admin | Set bot language (en/de) |
 | `archive-channel` | Admin | Set archive channel |
 | `auto-archive` | Admin | Toggle auto-archive |
+
+**Note:** `/config raid-roles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 
 ### `/setup`
 Initial server configuration wizard.
@@ -301,12 +328,28 @@ npm run build
 npm start
 ```
 
+### Version Management Commands
+
+```bash
+# Bump patch version (1.0.0 → 1.0.1) - Bug fixes
+npm run version:patch
+
+# Bump minor version (1.0.0 → 1.1.0) - New features
+npm run version:minor
+
+# Bump major version (1.0.0 → 2.0.0) - Breaking changes
+npm run version:major
+```
+
+Version is automatically displayed in embed footers. See `docs/VERSION.md` for detailed versioning guidelines.
+
 ### Environment Variables
 Copy `.env.example` to `.env` and configure:
 - `DISCORD_TOKEN` - Bot token
 - `CLIENT_ID` - Application client ID
-- `DATABASE_URL` - PostgreSQL connection string
+- `DATABASE_URL` - PostgreSQL connection string (prod) or leave empty for SQLite (dev)
 - `GUILD_ID` - (optional) Guild ID for guild-specific command deployment
+- `DB_ENV` - Database environment: `dev` (SQLite) or `prod` (PostgreSQL)
 
 ---
 

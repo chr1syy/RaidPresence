@@ -61,10 +61,11 @@ function buildRoleMentions(guild: Guild, roleIds: string[]): string {
  * Supports @role mentions, role IDs, and role names
  * @param input The input string
  * @param guild Discord guild instance
- * @returns Array of unique role IDs
+ * @returns Object with valid role IDs and invalid role names
  */
-function parseRoleInput(input: string, guild: Guild): string[] {
+function parseRoleInput(input: string, guild: Guild): { validIds: string[]; invalidNames: string[] } {
   const roleIds: string[] = [];
+  const invalidNames: string[] = [];
 
   // Parse @role mentions
   const mentionRegex = /<@&(\d+)>/g;
@@ -80,11 +81,15 @@ function parseRoleInput(input: string, guild: Guild): string[] {
       roleIds.push(part);
     } else {
       const role = guild.roles.cache.find(r => r.name === part);
-      if (role) roleIds.push(role.id);
+      if (role) {
+        roleIds.push(role.id);
+      } else {
+        invalidNames.push(part);
+      }
     }
   }
 
-  return [...new Set(roleIds)];
+  return { validIds: [...new Set(roleIds)], invalidNames };
 }
 
 /**
@@ -474,7 +479,22 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Get members with raid roles
-  const roleIds = parseRoleInput(effectiveRolesInput, interaction.guild);
+  const { validIds: roleIds, invalidNames } = parseRoleInput(effectiveRolesInput, interaction.guild);
+
+  if (invalidNames.length > 0) {
+    const invalidList = invalidNames.join(', ');
+    if (roleIds.length === 0) {
+      await interaction.editReply({
+        content: `❌ No valid roles provided. The following roles were not found: ${invalidList}`,
+      });
+      return;
+    } else {
+      // Warn user about invalid roles but proceed with valid ones
+      await interaction.editReply({
+        content: `⚠️ These roles were not found: ${invalidList}. Proceeding with available roles.`,
+      });
+    }
+  }
 
   if (roleIds.length === 0) {
     await interaction.editReply({
@@ -1213,14 +1233,14 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
-// Check permissions
-const member = interaction.member;
-if (!member || !(await canManageRaids(member as any))) {
-  await interaction.editReply({
-    content: '❌ You do not have permission to clone raids. Ask your server admin to configure raid leader roles.',
-  });
-  return;
-}
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to clone raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
 
   // Check if channel is sendable
   if (!('send' in interaction.channel)) {
@@ -1263,225 +1283,225 @@ if (!member || !(await canManageRaids(member as any))) {
     }
   }
 
-    // Fetch and validate source raid existence
-    const sourceRaid = await prisma.raid.findUnique({
-      where: { id: raidId },
-      include: { guild: true },
+  // Fetch and validate source raid existence
+  const sourceRaid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!sourceRaid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
     });
+    return;
+  }
 
-    if (!sourceRaid) {
-      await interaction.editReply({
-        content: '❌ Raid not found.',
-      });
-      return;
+  if (sourceRaid.guildId !== interaction.guild!.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  // Check source raid has roles
+  if (!sourceRaid.roles || sourceRaid.roles.trim() === '') {
+    await interaction.editReply({
+      content: '❌ Cannot clone a raid with no roles configured.',
+    });
+    return;
+  }
+
+  // Get guild settings for timezone
+  const guildData = sourceRaid.guild;
+
+  // Parse and validate date
+  const dateParts = dateStr.split('-');
+  const year = parseInt(dateParts[0], 10);
+  const month = parseInt(dateParts[1], 10) - 1; // JS months are 0-based
+  const day = parseInt(dateParts[2], 10);
+
+  if (month < 0 || month > 11) {
+    await interaction.editReply({
+      content: '❌ Invalid month in date.',
+    });
+    return;
+  }
+
+  if (day < 1 || day > new Date(year, month + 1, 0).getDate()) {
+    await interaction.editReply({
+      content: '❌ Invalid day in date.',
+    });
+    return;
+  }
+
+  // Compute new raid date
+  const timezoneOffsetHours = guildData.timezoneOffset || 0;
+
+  let localTimeStr: string;
+  if (timeStr) {
+    localTimeStr = timeStr;
+  } else {
+    // Extract time from source raid (convert UTC to local)
+    const sourceLocalDate = new Date(sourceRaid.raidDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
+    localTimeStr = sourceLocalDate.toISOString().split('T')[1].substring(0, 5); // HH:MM
+  }
+
+  const localDateTimeStr = `${dateStr}T${localTimeStr}:00`;
+  const localDate = new Date(localDateTimeStr);
+
+  if (isNaN(localDate.getTime())) {
+    await interaction.editReply({
+      content: '❌ Invalid date or time combination.',
+    });
+    return;
+  }
+
+  // Apply timezone offset to store as UTC
+  const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+
+  if (raidDate < new Date()) {
+    await interaction.editReply({
+      content: '❌ New raid date must be in the future.',
+    });
+    return;
+  }
+
+  // Get eligible members (same as source raid's roles)
+  const { validIds: roleIds } = parseRoleInput(sourceRaid.roles, interaction.guild!);
+
+  let eligibleMembers = new Set<string>();
+
+  // Fetch all members if not cached
+  await interaction.guild!.members.fetch();
+
+  for (const [memberId, member] of interaction.guild!.members.cache) {
+    if (member.user.bot) continue;
+
+    const hasRaidRole = member.roles.cache.some((role) =>
+      roleIds.includes(role.id) || roleIds.includes(role.name)
+    );
+
+    if (hasRaidRole) {
+      eligibleMembers.add(memberId);
     }
+  }
 
-    if (sourceRaid.guildId !== interaction.guild!.id) {
-      await interaction.editReply({
-        content: '❌ This raid does not belong to this server.',
-      });
-      return;
-    }
+  if (eligibleMembers.size === 0) {
+    await interaction.editReply({
+      content: '❌ No eligible members found with the required roles.',
+    });
+    return;
+  }
 
-    // Check source raid has roles
-    if (!sourceRaid.roles || sourceRaid.roles.trim() === '') {
-      await interaction.editReply({
-        content: '❌ Cannot clone a raid with no roles configured.',
-      });
-      return;
-    }
-
-    // Get guild settings for timezone
-    const guildData = sourceRaid.guild;
-
-    // Parse and validate date
-    const dateParts = dateStr.split('-');
-    const year = parseInt(dateParts[0], 10);
-    const month = parseInt(dateParts[1], 10) - 1; // JS months are 0-based
-    const day = parseInt(dateParts[2], 10);
-
-    if (month < 0 || month > 11) {
-      await interaction.editReply({
-        content: '❌ Invalid month in date.',
-      });
-      return;
-    }
-
-    if (day < 1 || day > new Date(year, month + 1, 0).getDate()) {
-      await interaction.editReply({
-        content: '❌ Invalid day in date.',
-      });
-      return;
-    }
-
-    // Compute new raid date
-    const timezoneOffsetHours = guildData.timezoneOffset || 0;
-
-    let localTimeStr: string;
-    if (timeStr) {
-      localTimeStr = timeStr;
-    } else {
-      // Extract time from source raid (convert UTC to local)
-      const sourceLocalDate = new Date(sourceRaid.raidDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
-      localTimeStr = sourceLocalDate.toISOString().split('T')[1].substring(0, 5); // HH:MM
-    }
-
-    const localDateTimeStr = `${dateStr}T${localTimeStr}:00`;
-    const localDate = new Date(localDateTimeStr);
-
-    if (isNaN(localDate.getTime())) {
-      await interaction.editReply({
-        content: '❌ Invalid date or time combination.',
-      });
-      return;
-    }
-
-    // Apply timezone offset to store as UTC
-    const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
-
-    if (raidDate < new Date()) {
-      await interaction.editReply({
-        content: '❌ New raid date must be in the future.',
-      });
-      return;
-    }
-
-    // Get eligible members (same as source raid's roles)
-    const roleIds = parseRoleInput(sourceRaid.roles, interaction.guild!);
-
-    let eligibleMembers = new Set<string>();
-
-    // Fetch all members if not cached
-    await interaction.guild!.members.fetch();
-
-    for (const [memberId, member] of interaction.guild!.members.cache) {
-      if (member.user.bot) continue;
-
-      const hasRaidRole = member.roles.cache.some((role) =>
-        roleIds.includes(role.id) || roleIds.includes(role.name)
-      );
-
-      if (hasRaidRole) {
-        eligibleMembers.add(memberId);
-      }
-    }
-
-    if (eligibleMembers.size === 0) {
-      await interaction.editReply({
-        content: '❌ No eligible members found with the required roles.',
-      });
-      return;
-    }
-
-    // Ensure all eligible members have UserPreference records
-    for (const userId of eligibleMembers) {
-      const member = interaction.guild!.members.cache.get(userId);
-      if (member) {
-        await prisma.userPreference.upsert({
-          where: {
-            userId_guildId: {
-              userId,
-              guildId: interaction.guild!.id,
-            },
-          },
-          update: {
-            username: member.displayName,
-          },
-          create: {
+  // Ensure all eligible members have UserPreference records
+  for (const userId of eligibleMembers) {
+    const member = interaction.guild!.members.cache.get(userId);
+    if (member) {
+      await prisma.userPreference.upsert({
+        where: {
+          userId_guildId: {
             userId,
             guildId: interaction.guild!.id,
-            username: member.displayName,
           },
-        });
-      }
+        },
+        update: {
+          username: member.displayName,
+        },
+        create: {
+          userId,
+          guildId: interaction.guild!.id,
+          username: member.displayName,
+        },
+      });
     }
+  }
 
-    // Get user preferences for class/spec
-    const userPrefs = await prisma.userPreference.findMany({
-      where: {
-        guildId: interaction.guild!.id,
-        userId: { in: Array.from(eligibleMembers) },
-      },
-    });
+  // Get user preferences for class/spec
+  const userPrefs = await prisma.userPreference.findMany({
+    where: {
+      guildId: interaction.guild!.id,
+      userId: { in: Array.from(eligibleMembers) },
+    },
+  });
 
-    const prefsMap = new Map(userPrefs.map((p) => [p.userId, p]));
+  const prefsMap = new Map(userPrefs.map((p) => [p.userId, p]));
 
-    // Determine description
-    const description = customTitle || sourceRaid.description || 'Cloned Raid';
+  // Determine description
+  const description = customTitle || sourceRaid.description || 'Cloned Raid';
 
-    // Create cloned raid
-    const newRaid = await prisma.raid.create({
-      data: {
-        guildId: interaction.guild!.id,
-        channelId: interaction.channel.id,
-        raidDate,
-        description,
-        roles: sourceRaid.roles,
-        createdBy: interaction.user.id,
-        createdFromTemplateId: sourceRaid.id,
-        clonedAt: new Date(),
-      },
-    });
+  // Create cloned raid
+  const newRaid = await prisma.raid.create({
+    data: {
+      guildId: interaction.guild!.id,
+      channelId: interaction.channel.id,
+      raidDate,
+      description,
+      roles: sourceRaid.roles,
+      createdBy: interaction.user.id,
+      createdFromTemplateId: sourceRaid.id,
+      clonedAt: new Date(),
+    },
+  });
 
-    // Create attendance records
-    const attendanceData = Array.from(eligibleMembers).map((userId) => {
-      const member = interaction.guild!.members.cache.get(userId);
-      const pref = prefsMap.get(userId);
-      return {
-        raidId: newRaid.id,
-        userId,
-        guildId: interaction.guild!.id,
-        username: member?.displayName || 'Unknown',
-        status: 'attending' as const,
-        wowClass: pref?.wowClass || null,
-        wowSpec: pref?.wowSpec || null,
-      };
-    });
+  // Create attendance records
+  const attendanceData = Array.from(eligibleMembers).map((userId) => {
+    const member = interaction.guild!.members.cache.get(userId);
+    const pref = prefsMap.get(userId);
+    return {
+      raidId: newRaid.id,
+      userId,
+      guildId: interaction.guild!.id,
+      username: member?.displayName || 'Unknown',
+      status: 'attending' as const,
+      wowClass: pref?.wowClass || null,
+      wowSpec: pref?.wowSpec || null,
+    };
+  });
 
-    await prisma.raidAttendance.createMany({
-      data: attendanceData,
-    });
+  await prisma.raidAttendance.createMany({
+    data: attendanceData,
+  });
 
-    // Create embed with guild's language
-    const embed = await createRaidEmbed(newRaid.id, guildData.language);
+  // Create embed with guild's language
+  const embed = await createRaidEmbed(newRaid.id, guildData.language);
 
-    // Get translations for buttons
-    const trans = getTranslations(guildData.language || 'en');
+  // Get translations for buttons
+  const trans = getTranslations(guildData.language || 'en');
 
-    // Create buttons
-    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`raid_optin_${newRaid.id}`)
-        .setLabel(trans.optIn)
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`raid_late_${newRaid.id}`)
-        .setLabel(trans.runningLateButton)
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId(`raid_optout_${newRaid.id}`)
-        .setLabel(trans.optOut)
-        .setStyle(ButtonStyle.Danger)
-    );
+  // Create buttons
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_optin_${newRaid.id}`)
+      .setLabel(trans.optIn)
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`raid_late_${newRaid.id}`)
+      .setLabel(trans.runningLateButton)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`raid_optout_${newRaid.id}`)
+      .setLabel(trans.optOut)
+      .setStyle(ButtonStyle.Danger)
+  );
 
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`raid_class_${newRaid.id}`)
-        .setLabel(trans.setClassSpec)
-        .setStyle(ButtonStyle.Primary)
-    );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_class_${newRaid.id}`)
+      .setLabel(trans.setClassSpec)
+      .setStyle(ButtonStyle.Primary)
+  );
 
-    // Send public raid message to channel
-    const message = await interaction.channel.send({
-      embeds: [embed],
-      components: [row1, row2],
-    });
+  // Send public raid message to channel
+  const message = await interaction.channel.send({
+    embeds: [embed],
+    components: [row1, row2],
+  });
 
-    // Update raid with message ID
-    await prisma.raid.update({
-      where: { id: newRaid.id },
-      data: { messageId: message.id },
-    });
+  // Update raid with message ID
+  await prisma.raid.update({
+    where: { id: newRaid.id },
+    data: { messageId: message.id },
+  });
   return;
 }
 

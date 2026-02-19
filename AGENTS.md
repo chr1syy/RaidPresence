@@ -358,3 +358,80 @@ Copy `.env.example` to `.env` and configure:
 - **PR Splitting Approach:** For large PRs with multiple features, create separate branches from a base branch (e.g., raidpresence-updates), cherry-pick relevant commits, resolve conflicts, and compile before creating focused PRs. This was used for Phase 3 features: badge schema/system, feedback schema/system, admin tools.
 - **Feature Implementation:** Implement incrementally (schema → functionality), fix corrupted functions, add translations, and ensure guild isolation.
 - **Testing and Verification:** Run lint/typecheck after changes; focus on integration tests for new features.
+
+---
+
+## Auto Run Documentation Framework (PR #15 Review Fixes)
+
+### Lessons from Second Review Cycle
+
+**Issue:** Initial Copilot review (13 issues) was fixed successfully, but second review revealed 13 NEW implementation gaps despite first-round fixes. This highlighted the need for a structured, repeatable Auto Run documentation format.
+
+### Auto Run Document Structure
+
+Auto Run documents should follow this structure for agent execution:
+
+1. **One Markdown File = One Auto Run Session**
+   - Files: `PR15-05-CRITICAL-FIXES.md`, `PR15-06-HIGH-PRIORITY-FIXES.md`, `PR15-07-MEDIUM-POLISH.md`
+   - Each file contains multiple related fixes
+
+2. **Each Fix is a Markdown Task**
+   - Every fix section starts with `- [ ]` checkbox before the heading
+   - Checkbox allows agents to track completion per fix
+   - Format: `- [ ] ## Fix N: Description`
+
+3. **Flowing Narrative, No Subtasks**
+   - Each fix section is a complete, self-contained task prompt
+   - Plain prose instructions (no numbered subtasks like 1.1, 1.2, 1.3)
+   - No checkbox lists for agents to follow
+   - Structured with: Issue → Current State → What to fix → After fix, verify
+
+4. **Verification at Each Step**
+   - Explicit verification commands after each fix
+   - Expected results clearly stated
+   - Tests to run, build to check
+
+### Document Organization by Severity
+
+- **CRITICAL:** Blocking deployment, runtime failures (1-1.5 hrs, 5 fixes)
+- **HIGH:** Functionality broken, must fix before merge (1.5-2 hrs, 6 fixes)
+- **MEDIUM:** UX/maintainability issues, before release (30-45 min, 3 fixes)
+
+### Execution Flow
+
+1. Agent reads entire markdown file
+2. Works through each `- [ ]` fix sequentially
+3. Auto Run checks off checkbox on completion
+4. Moves to next file (next session) after all fixes complete
+5. No dependencies between files (each is independent)
+
+### Key Success Factors
+
+- **Clear problem statements:** What's broken and why
+- **Current state documentation:** How to identify the issue
+- **Actionable instructions:** What code changes to make
+- **Explicit verification:** How to prove the fix works
+- **Git commits:** Clear commit messages per fix for tracking
+- **No ambiguity:** Agents should never guess what to do
+
+### Anti-Patterns to Avoid
+
+- ❌ Checkbox lists for agents (they don't check boxes, they execute)
+- ❌ Numbered subtasks (1.1, 1.2, 1.3) - too granular for agent sessions
+- ❌ Vague instructions ("fix this" without specifics)
+- ❌ Multiple independent fixes in one task (merge them into flowing narrative)
+- ❌ Missing verification steps (always provide test commands)
+- ❌ Hardcoded versions or file paths (use variables or search instructions)
+
+### PR #15 Results
+
+**Second Review Cycle (13 issues discovered):**
+- Phase 5 (CRITICAL): 5 fixes → 0 failures ✅
+- Phase 6 (HIGH): 6 fixes → 0 failures ✅
+- Phase 7 (MEDIUM): 3 fixes → 0 failures ✅
+- All 14 Markdown Tasks executed successfully
+- 11 commits pushed to origin
+- 100% issue resolution rate
+
+**Total Session Duration:** ~4 hours from issue discovery to full resolution and push
+

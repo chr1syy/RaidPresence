@@ -366,6 +366,7 @@ const command: Command = {
               .setRequired(true)
           )
       )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;

@@ -51,6 +51,7 @@ function buildAttendanceInteraction(
       getSubcommand: jest.fn().mockReturnValue('attendance'),
       getUser: jest.fn().mockReturnValue(targetUser),
       get: jest.fn((key: string) => {
+        if (key === 'player') return { user: targetUser };
         if (key === 'period' && period) return { value: period };
         return undefined;
       }),

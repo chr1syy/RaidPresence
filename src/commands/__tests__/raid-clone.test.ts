@@ -155,10 +155,12 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
     ...extras,
   };
 
-  // Populate guild roles cache
-  mockInteraction.guild.roles.cache.set('role-raider', { id: 'role-raider', name: 'Raider' });
-  mockInteraction.guild.roles.cache.set('role-leader', { id: 'role-leader', name: 'Raid Leader' });
-  mockInteraction.guild.roles.cache.set('role-backup', { id: 'role-backup', name: 'Backup' });
+  // Populate guild roles cache (if guild exists)
+  if (mockInteraction.guild) {
+    mockInteraction.guild.roles.cache.set('role-raider', { id: 'role-raider', name: 'Raider' });
+    mockInteraction.guild.roles.cache.set('role-leader', { id: 'role-leader', name: 'Raid Leader' });
+    mockInteraction.guild.roles.cache.set('role-backup', { id: 'role-backup', name: 'Backup' });
+  }
 
   return mockInteraction;
 }
@@ -393,7 +395,7 @@ describe('handleCloneRaid()', () => {
 
       expect(interaction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
-          content: expect.stringContaining('YYYY-MM-DD'),
+          content: expect.stringContaining('Invalid day'),
         })
       );
       expect(prisma.raid.create).not.toHaveBeenCalled();

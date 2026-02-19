@@ -1746,7 +1746,7 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true },
+    include: { attendance: true, guild: true },
   });
 
   if (!raid) {
@@ -1775,6 +1775,24 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
     where: { id: raidId },
     data: { status: 'closed' },
   });
+
+  // Update Discord message with closed status embed and remove buttons
+  if (raid.messageId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased()) {
+        const message = await (channel as any).messages.fetch(raid.messageId);
+        const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
+        await message.edit({
+          embeds: [updatedEmbed],
+          components: [],
+        });
+      }
+    } catch (error) {
+      console.error('[handleCloseRaid] Failed to update message:', error);
+      // Continue - raid was closed in DB, just message update failed
+    }
+  }
 
   await interaction.editReply({
     content: '✅ Raid has been closed.',
@@ -1805,7 +1823,7 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true },
+    include: { attendance: true, guild: true },
   });
 
   if (!raid) {
@@ -1834,6 +1852,24 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
     where: { id: raidId },
     data: { status: 'cancelled' },
   });
+
+  // Update Discord message with cancelled status embed and remove buttons
+  if (raid.messageId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased()) {
+        const message = await (channel as any).messages.fetch(raid.messageId);
+        const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
+        await message.edit({
+          embeds: [updatedEmbed],
+          components: [],
+        });
+      }
+    } catch (error) {
+      console.error('[handleCancelRaid] Failed to update message:', error);
+      // Continue - raid was cancelled in DB, just message update failed
+    }
+  }
 
   await interaction.editReply({
     content: '✅ Raid has been cancelled.',
@@ -1937,7 +1973,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true },
+    include: { attendance: true, guild: true },
   });
 
   if (!raid) {
@@ -2064,9 +2100,33 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
     });
   }
 
-  await interaction.editReply({
-    content: `✅ Raid refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
-  });
+  // Update Discord message with refreshed embed
+  if (raid.messageId && (newMembers.length > 0 || membersToRemove.length > 0)) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased()) {
+        const message = await (channel as any).messages.fetch(raid.messageId);
+        const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
+        await message.edit({
+          embeds: [updatedEmbed],
+        });
+      }
+    } catch (error) {
+      console.error('[handleRefreshRaid] Failed to update message:', error);
+      // Continue - roster was updated in DB, just message update failed
+    }
+  }
+
+  // Report changes
+  if (newMembers.length > 0 || membersToRemove.length > 0) {
+    await interaction.editReply({
+      content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).`,
+    });
+  } else {
+    await interaction.editReply({
+      content: '✅ No roster changes needed.',
+    });
+  }
 }
 
 export default command;

@@ -171,6 +171,12 @@ describe('handleRefreshRaid()', () => {
         attendance: [],
       });
 
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      id: 'guild-123',
+      raidRoles: 'Raider',
+      language: 'en',
+    });
+
     (prisma.userPreference.upsert as jest.Mock).mockResolvedValue({});
     (prisma.userPreference.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 2 });
@@ -184,7 +190,10 @@ describe('handleRefreshRaid()', () => {
     // Should remove user-removed (no longer eligible)
     expect(prisma.raidAttendance.deleteMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: { in: ['att-removed'] } },
+        where: {
+          raidId: 'raid-123',
+          userId: { in: ['user-removed'] },
+        },
       })
     );
 
@@ -224,6 +233,12 @@ describe('handleRefreshRaid()', () => {
         guild: { language: 'en' },
         attendance: [],
       });
+
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      id: 'guild-123',
+      raidRoles: 'Raider',
+      language: 'en',
+    });
 
     (prisma.userPreference.findMany as jest.Mock).mockResolvedValue([]);
 

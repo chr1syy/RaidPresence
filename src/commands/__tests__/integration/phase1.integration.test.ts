@@ -197,14 +197,18 @@ describe('Phase 1 Integration Tests', () => {
       const sentMessage = { id: 'msg-cloned-123' };
       const membersCache = buildMembersCache();
 
-      const cloneInteraction: any = {
-        isChatInputCommand: jest.fn().mockReturnValue(true),
-        guild: {
-          id: 'guild-int',
-          name: 'Integration Guild',
-          members: { cache: membersCache, fetch: jest.fn().mockResolvedValue(undefined) },
-          roles: { cache: new Map() },
-        },
+       const rolesCache = new MockCollection<string, any>();
+       rolesCache.set('role-raider', { id: 'role-raider', name: 'Raider' });
+       rolesCache.set('role-leader', { id: 'role-leader', name: 'Raid Leader' });
+
+       const cloneInteraction: any = {
+         isChatInputCommand: jest.fn().mockReturnValue(true),
+         guild: {
+           id: 'guild-int',
+           name: 'Integration Guild',
+           members: { cache: membersCache, fetch: jest.fn().mockResolvedValue(undefined) },
+           roles: { cache: rolesCache },
+         },
         channel: {
           id: 'channel-int',
           isTextBased: jest.fn().mockReturnValue(true),
@@ -333,6 +337,7 @@ describe('Phase 1 Integration Tests', () => {
         status: 'open',
         createdBy: 'user-leader',
         messageId: 'msg-stats',
+        guild: { ...guildData },
         attendance,
       };
 
@@ -427,6 +432,7 @@ describe('Phase 1 Integration Tests', () => {
           status: 'open',
           createdBy: 'user-leader',
           messageId: 'msg-1',
+          guild: { ...guildData },
           attendance: [
             { id: 'ga1', raidId: 'gr-1', userId: 'u1', guildId: 'guild-int', username: 'Player1', status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' },
             { id: 'ga2', raidId: 'gr-1', userId: 'u2', guildId: 'guild-int', username: 'Player2', status: 'attending', wowClass: 'Mage', wowSpec: 'Fire' },
@@ -443,6 +449,7 @@ describe('Phase 1 Integration Tests', () => {
           status: 'open',
           createdBy: 'user-leader',
           messageId: 'msg-2',
+          guild: { ...guildData },
           attendance: [
             { id: 'ga4', raidId: 'gr-2', userId: 'u1', guildId: 'guild-int', username: 'Player1', status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' },
             { id: 'ga5', raidId: 'gr-2', userId: 'u2', guildId: 'guild-int', username: 'Player2', status: 'opted_out', wowClass: null, wowSpec: null },

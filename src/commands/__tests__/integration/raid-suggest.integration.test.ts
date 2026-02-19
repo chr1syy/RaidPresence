@@ -44,8 +44,8 @@ function buildSuggestInteraction(raidId: string, extras: Record<string, any> = {
     reply: jest.fn().mockResolvedValue(undefined),
     options: {
       getSubcommand: jest.fn().mockReturnValue('suggest'),
-      getString: jest.fn((key: string) => {
-        if (key === 'raid_id') return raidId;
+      get: jest.fn((key: string, required?: boolean) => {
+        if (key === 'raid_id') return { value: raidId };
         return undefined;
       }),
     },
@@ -78,6 +78,11 @@ function makeRaid(overrides: {
     description: overrides.description ?? `Raid ${overrides.id}`,
     raidDate,
     guildId,
+    guild: {
+      id: guildId,
+      language: 'en',
+      timezoneOffset: 0,
+    },
     createdAt: new Date(raidDate.getTime() - 86400000),
     closedAt: null,
     archivedAt: null,

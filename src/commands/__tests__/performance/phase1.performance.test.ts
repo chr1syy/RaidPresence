@@ -78,6 +78,11 @@ function generateRaids(count: number, membersPerRaid: number) {
       status: 'open',
       createdBy: 'user-leader',
       messageId: `msg-${i}`,
+      guild: {
+        id: 'guild-perf',
+        language: 'en',
+        timezoneOffset: 0,
+      },
       attendance: generateAttendance(membersPerRaid, raidId),
     };
   });
@@ -98,6 +103,13 @@ class MockCollection<K, V> extends Map<K, V> {
       if (fn(value, key, this)) result.set(key, value);
     }
     return result;
+  }
+
+  find(fn: (value: V, key: K, map: this) => boolean): V | undefined {
+    for (const [key, value] of this) {
+      if (fn(value, key, this)) return value;
+    }
+    return undefined;
   }
 }
 
@@ -361,7 +373,7 @@ describe('Phase 1 Performance Tests', () => {
       (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: memberCount });
       (prisma.raid.update as jest.Mock).mockResolvedValue({ ...createdRaid, messageId: 'msg-new' });
 
-      const dateStr = futureDateStr(30);
+       const dateStr = futureDateStr(30);
 
       const options: Record<string, any> = {
         raid_id: { value: 'source-raid' },
@@ -369,6 +381,9 @@ describe('Phase 1 Performance Tests', () => {
         time: undefined,
         title: undefined,
       };
+
+      // Populate rolesCache with all needed roles
+      rolesCache.set('role-leader', { id: 'role-leader', name: 'Raid Leader' });
 
       const interaction: any = {
         isChatInputCommand: jest.fn().mockReturnValue(true),
@@ -379,6 +394,7 @@ describe('Phase 1 Performance Tests', () => {
             cache: membersCache,
             fetch: jest.fn().mockResolvedValue(undefined),
           },
+          roles: { cache: rolesCache },
         },
         channel: {
           id: 'channel-perf',

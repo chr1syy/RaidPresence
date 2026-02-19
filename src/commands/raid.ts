@@ -1726,7 +1726,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true },
+    include: { attendance: true, guild: true },
   });
 
   if (!raid) {
@@ -1743,11 +1743,19 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Check if channel exists
+  if (!raid.channelId) {
+    await interaction.editReply({
+      content: '❌ Could not find the raid channel.',
+    });
+    return;
+  }
+
   // Get channel and send reminder
   const channel = await interaction.client.channels.fetch(raid.channelId);
   if (!channel?.isTextBased()) {
     await interaction.editReply({
-      content: '❌ Could not access raid channel.',
+      content: '❌ Could not send reminder to raid channel.',
     });
     return;
   }
@@ -1755,22 +1763,63 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   const optedOut = raid.attendance.filter(a => a.status === 'opted_out');
   const attendingCount = raid.attendance.filter(a => a.status === 'attending').length;
 
-  let reminderText = `**Raid Reminder: ${raid.description}**\n`;
-  reminderText += `📅 Date: <t:${Math.floor(raid.raidDate.getTime() / 1000)}:f>\n`;
-  reminderText += `👥 Current: ${attendingCount} confirmed\n`;
+  // Get guild config for roles (using raid-specific roles or guild default)
+  const roleSource = raid.roles && raid.roles.trim().length > 0
+    ? raid.roles
+    : raid.guild.raidRoles || '';
+  const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
+  let roleMentions = roleIds.length > 0 ? buildRoleMentions(interaction.guild!, roleIds) : '';
+
+  // Fall back to @everyone if no valid roles found
+  if (!roleMentions) {
+    roleMentions = '@everyone';
+  }
+
+  const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
+  const trans = getTranslations(raid.guild.language || 'en');
+
+  // Build fields array
+  const fields: { name: string; value: string; inline: boolean }[] = [
+    { name: '📅 Date & Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
+    { name: '👥 Current Attendance', value: `${attendingCount} confirmed`, inline: false },
+  ];
 
   if (customMessage) {
-    reminderText += `\n**Message from Leader:**\n${customMessage}\n`;
+    // Truncate message to 1024 chars if needed (Discord embed field limit)
+    const truncatedMessage = customMessage.length > 1024
+      ? customMessage.substring(0, 1021) + '...'
+      : customMessage;
+    fields.push({
+      name: trans.customMessage || 'Message from Raid Leader',
+      value: truncatedMessage,
+      inline: false,
+    });
   }
 
   if (optedOut.length > 0) {
-    reminderText += `\n**Opted Out:** ${optedOut.map(a => a.username).join(', ')}\n`;
+    fields.push({
+      name: `${trans.optedOutPlayers} (${optedOut.length})`,
+      value: optedOut.map(a => `${a.username}${a.optoutReason ? ` (${a.optoutReason})` : ''}`).join('\n'),
+      inline: false,
+    });
   }
 
-  await (channel as any).send(reminderText);
+  // Build reminder embed
+  const reminderEmbed = new EmbedBuilder()
+    .setTitle('🔔 Raid Reminder')
+    .setDescription(`**${raid.description}**`)
+    .addFields(...fields)
+    .setColor(0x00ae86)
+    .setTimestamp();
+
+  const messageContent = roleMentions;
+  await (channel as any).send({
+    content: messageContent,
+    embeds: [reminderEmbed],
+  });
 
   await interaction.editReply({
-    content: '✅ Reminder sent.',
+    content: `✅ Reminder sent for **${raid.description}**.`,
   });
 }
 

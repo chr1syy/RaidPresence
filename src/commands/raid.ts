@@ -367,8 +367,6 @@ const command: Command = {
           )
       )
 
-  ,
-
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
 
@@ -894,7 +892,7 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   // Check if raid exists and belongs to this guild
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true },
+    include: { guild: true },
   });
 
   if (!raid) {
@@ -911,152 +909,27 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  if (raid.raidDate < new Date()) {
-    await interaction.editReply({
-      content: '❌ Cannot edit raids that have already passed.',
-    });
-    return;
-  }
-
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  if (!guildData) {
-    await interaction.editReply({
-      content: '❌ Guild configuration not found.',
-    });
-    return;
-  }
-
-  // Get members with raid roles (current eligible members)
-  // Use raid-specific roles if available, otherwise fall back to guild defaults
-  const roleSource = raid.roles && raid.roles.trim().length > 0
-    ? raid.roles
-    : guildData.raidRoles || '';
-  const roleIds = roleSource.split(',').map((r: string) => r.trim()).filter(Boolean);
-
-  let currentEligibleMembers = new Set<string>();
-
-  if (roleIds.length > 0) {
-    // Fetch all members if not cached
-    await interaction.guild.members.fetch();
-
-    for (const [memberId, guildMember] of interaction.guild.members.cache) {
-      if (guildMember.user.bot) continue;
-
-      const hasRaidRole = guildMember.roles.cache.some((role) =>
-        roleIds.includes(role.id) || roleIds.includes(role.name)
-      );
-
-      if (hasRaidRole) {
-        currentEligibleMembers.add(memberId);
-      }
-    }
-  } else {
-    // No roles configured, include all non-bot members
-    await interaction.guild.members.fetch();
-    for (const [memberId, guildMember] of interaction.guild.members.cache) {
-      if (!guildMember.user.bot) {
-        currentEligibleMembers.add(memberId);
-      }
-    }
-  }
-
-  // Get current attendance user IDs
-  const currentAttendanceUserIds = new Set(raid.attendance.map(a => a.userId));
-
-  // Calculate new members to add
-  const newMembers = Array.from(currentEligibleMembers).filter(id => !currentAttendanceUserIds.has(id));
-
-  // Calculate members to remove
-  const membersToRemove = Array.from(currentAttendanceUserIds).filter(id => !currentEligibleMembers.has(id));
-
-  // Add new members
-  if (newMembers.length > 0) {
-    // Ensure UserPreference records
-    for (const userId of newMembers) {
-      const member = interaction.guild.members.cache.get(userId);
-      if (member) {
-        await prisma.userPreference.upsert({
-          where: {
-            userId_guildId: {
-              userId,
-        guildId: interaction.guild!.id,
-            },
-          },
-          update: {
-            username: member.displayName,
-          },
-          create: {
-            userId,
-            guildId: interaction.guild.id,
-            username: member.displayName,
-          },
-        });
-      }
-    }
-
-    // Get prefs
-    const userPrefs = await prisma.userPreference.findMany({
-      where: {
-        guildId: interaction.guild.id,
-        userId: { in: newMembers },
-      },
-    });
-
-    const prefsMap = new Map(userPrefs.map(p => [p.userId, p]));
-
-    // Create attendance
-    const attendanceData = newMembers.map(userId => {
-      const member = interaction.guild!.members.cache.get(userId);
-      const pref = prefsMap.get(userId);
-      return {
-        raidId: raid.id,
-        userId,
-        guildId: interaction.guild!.id,
-        username: member?.displayName || 'Unknown',
-        status: 'attending' as const,
-        wowClass: pref?.wowClass || null,
-        wowSpec: pref?.wowSpec || null,
-      };
-    });
-
-    await prisma.raidAttendance.createMany({
-      data: attendanceData,
-    });
-  }
-
-  // Remove ineligible members
-  if (membersToRemove.length > 0) {
-    await prisma.raidAttendance.deleteMany({
-      where: {
-        raidId: raid.id,
-        userId: { in: membersToRemove },
-      },
-    });
-  }
-
-  // Update the embed
+  // Delete the raid message if it exists
   if (raid.messageId && raid.channelId) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId!);
-        const embed = await createRaidEmbed(raid.id, guildData.language || 'en');
-
-        await message.edit({
-          embeds: [embed],
-          components: raid.status === 'closed' ? [] : message.components, // keep components if not closed
-        });
+        const message = await channel.messages.fetch(raid.messageId);
+        await message.delete();
       }
     } catch (error) {
-      console.error('Error updating raid message:', error as Error);
+      console.error('Error deleting raid message:', error);
+      // Continue with database deletion even if message deletion fails
     }
   }
 
+  // Delete from database (cascades to attendance)
+  await prisma.raid.delete({
+    where: { id: raidId },
+  });
+
   await interaction.editReply({
-    content: `✅ Raid "${raid.description}" refreshed. Added ${newMembers.length} members, removed ${membersToRemove.length} members.`,
+    content: t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }),
   });
 }
 

@@ -71,7 +71,7 @@ try {
 }`
     : `datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL", "file:./dev.db")
 }`;
 
   schema = schema.replace(datasourcePattern, newDatasource);

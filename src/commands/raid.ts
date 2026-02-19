@@ -1408,19 +1408,66 @@ async function handleRaidStats(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
-  const raids = await prisma.raid.findMany({
-    where: {
-      guildId: interaction.guild.id,
-      raidDate: { gte: startDate },
-    },
-    include: { attendance: true },
-  });
+  // Check if raid_id parameter is provided for per-raid stats
+  const raidId = interaction.options.get('raid_id', false)?.value as string | undefined;
 
-  const stats = calculateGuildStats(raids);
-  const embed = formatGuildStatsEmbed(stats, 'month', guildData.language || 'en');
+  if (raidId) {
+    // Per-raid stats
+    const raid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      include: { attendance: true },
+    });
 
-  await interaction.editReply({ embeds: [embed] });
+    if (!raid) {
+      await interaction.editReply({
+        content: '❌ Raid not found.',
+      });
+      return;
+    }
+
+    if (raid.guildId !== interaction.guild.id) {
+      await interaction.editReply({
+        content: '❌ This raid does not belong to this server.',
+      });
+      return;
+    }
+
+    const stats = calculateRaidStats(raid.attendance);
+    const embed = formatRaidStatsEmbed(raid, stats, guildData.language || 'en');
+
+    await interaction.editReply({ embeds: [embed] });
+  } else {
+    // Guild-wide stats
+    // Get period parameter (default: 'month')
+    const periodValue = interaction.options.get('period', false)?.value as string || 'month';
+    
+    let startDate: Date;
+    let period: 'week' | 'month' | 'all' = 'month';
+    
+    if (periodValue === 'week') {
+      startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
+      period = 'week';
+    } else if (periodValue === 'all') {
+      startDate = new Date(0); // Epoch start (all time)
+      period = 'all';
+    } else {
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+      period = 'month';
+    }
+    
+    const raids = await prisma.raid.findMany({
+      where: {
+        guildId: interaction.guild.id,
+        raidDate: { gte: startDate },
+      },
+      include: { attendance: true },
+    });
+
+    const stats = calculateGuildStats(raids);
+    const embed = formatGuildStatsEmbed(stats, period, guildData.language || 'en');
+
+    await interaction.editReply({ embeds: [embed] });
+  }
 }
 
 async function handleRaidStatus(interaction: ChatInputCommandInteraction) {

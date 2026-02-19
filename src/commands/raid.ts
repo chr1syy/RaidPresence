@@ -1175,11 +1175,12 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
         const message = await channel.messages.fetch(raid.messageId!);
         const embed = await createRaidEmbed(raidId, guildData.language);
 
-        // Determine components based on status
-        let components: any[] = [];
-        if (status !== 'closed' && status !== 'cancelled') {
-          // Add buttons if not closed/cancelled
-          const trans = getTranslations(guildData.language || 'en');
+         // Determine components based on status
+         let components: any[] = [];
+         const effectiveStatus = status ?? raid.status;
+         if (effectiveStatus !== 'closed' && effectiveStatus !== 'cancelled') {
+           // Add buttons if not closed/cancelled
+           const trans = getTranslations(guildData.language || 'en');
 
           const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()

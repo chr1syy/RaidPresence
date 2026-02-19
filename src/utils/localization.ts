@@ -95,6 +95,9 @@ interface Translations {
   id: string;
   status: string;
 
+  // Links
+  links: string;
+
   // Raid reminder
   reminderTitle: string;
   reminderMessage: string;
@@ -314,6 +317,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     id: 'ID',
     status: 'Status',
 
+    // Links
+    links: 'Links',
+
     // Raid reminder
     reminderTitle: '🔔 Raid Reminder',
     reminderMessage: 'The raid **{title}** starts <t:{timestamp}:R>!\n\nPlease confirm your attendance if you haven\'t already.',
@@ -520,6 +526,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     date: 'Datum',
     id: 'ID',
     status: 'Status',
+
+    // Links
+    links: 'Verknüpfungen',
 
     // Raid reminder
     reminderTitle: '🔔 Raid-Erinnerung',

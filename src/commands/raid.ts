@@ -182,28 +182,39 @@ const command: Command = {
             .setRequired(true)
         )
     )
-     .addSubcommand((subcommand) =>
-       subcommand
-         .setName('close')
-         .setDescription('Close a raid event')
-         .addStringOption((option) =>
-           option
-             .setName('raid_id')
-             .setDescription('The ID of the raid to close')
-             .setRequired(true)
-         )
-     )
-     .addSubcommand((subcommand) =>
-       subcommand
-         .setName('cancel')
-         .setDescription('Cancel a raid event')
-         .addStringOption((option) =>
-           option
-             .setName('raid_id')
-             .setDescription('The ID of the raid to cancel')
-             .setRequired(true)
-         )
-     )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('close')
+          .setDescription('Close a raid event')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to close')
+              .setRequired(true)
+          )
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('open')
+          .setDescription('Reopen a closed raid to allow changes')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to reopen')
+              .setRequired(true)
+          )
+      )
+      .addSubcommand((subcommand) =>
+        subcommand
+          .setName('cancel')
+          .setDescription('Cancel a raid event')
+          .addStringOption((option) =>
+            option
+              .setName('raid_id')
+              .setDescription('The ID of the raid to cancel')
+              .setRequired(true)
+          )
+      )
      .addSubcommand((subcommand) =>
        subcommand
          .setName('remind')
@@ -359,6 +370,8 @@ const command: Command = {
       await handleDeleteRaid(interaction);
     } else if (subcommand === 'close') {
       await handleCloseRaid(interaction);
+    } else if (subcommand === 'open') {
+      await handleOpenRaid(interaction);
     } else if (subcommand === 'cancel') {
       await handleCancelRaid(interaction);
     } else if (subcommand === 'remind') {
@@ -1621,6 +1634,111 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
 
   await interaction.editReply({
     content: '✅ Raid has been closed.',
+  });
+}
+
+async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to open raids.',
+    });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { attendance: true, guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({
+      content: '❌ Raid not found.',
+    });
+    return;
+  }
+
+  if (raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({
+      content: '❌ This raid does not belong to this server.',
+    });
+    return;
+  }
+
+  if (raid.status !== 'closed') {
+    await interaction.editReply({
+      content: '❌ This raid is not closed.',
+    });
+    return;
+  }
+
+  // Update raid status
+  await prisma.raid.update({
+    where: { id: raidId },
+    data: { status: 'open' },
+  });
+
+  // Update Discord message with open status embed and restore buttons
+  if (raid.messageId) {
+    try {
+      const channel = await interaction.client.channels.fetch(raid.channelId);
+      if (channel?.isTextBased()) {
+        const message = await (channel as any).messages.fetch(raid.messageId);
+        const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
+
+        // Get translations for buttons
+        const trans = getTranslations(raid.guild.language || 'en');
+
+        // Create buttons (2 rows due to Discord limit of 5 buttons per row)
+        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_optin_${raid.id}`)
+            .setLabel(trans.optIn)
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`raid_late_${raid.id}`)
+            .setLabel(trans.runningLateButton)
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`raid_optout_${raid.id}`)
+            .setLabel(trans.optOut)
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_class_${raid.id}`)
+            .setLabel(trans.setClassSpec)
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        // Restore buttons when opened
+        await message.edit({
+          embeds: [updatedEmbed],
+          components: [row1, row2],
+        });
+      }
+    } catch (error) {
+      console.error('[handleOpenRaid] Failed to update message:', error);
+      // Continue - raid was opened in DB, just message update failed
+    }
+  }
+
+  await interaction.editReply({
+    content: '✅ Raid has been opened.',
   });
 }
 

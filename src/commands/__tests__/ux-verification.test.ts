@@ -124,12 +124,12 @@ describe('UX: Slash Command Registration', () => {
     const subcommands = (commandJson.options || []).filter(
       (opt: any) => opt.type === 1 // SUB_COMMAND type
     );
-    expect(subcommands.length).toBe(13);
+    expect(subcommands.length).toBe(14);
 
     const names = subcommands.map((s: any) => s.name).sort();
     expect(names).toEqual([
       'attendance', 'cancel', 'clone', 'close', 'create', 'delete',
-      'edit', 'list', 'refresh', 'remind', 'stats', 'status', 'suggest',
+      'edit', 'list', 'open', 'refresh', 'remind', 'stats', 'status', 'suggest',
     ]);
   });
 

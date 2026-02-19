@@ -1,5 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { getTranslations } from './localization';
+import { VERSION } from './version';
 
 export interface RaidNoteEntry {
   username: string;
@@ -169,6 +170,10 @@ export function formatRaidNotesEmbed(
   if (currentFieldCount >= DISCORD_FIELD_LIMIT) {
     console.warn(`[notesFormatter] Field count limit reached (${DISCORD_FIELD_LIMIT}). Some fields may not be displayed.`);
   }
+
+  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
+
+  embed.setFooter({ text: `v${VERSION}` });
 
   return embed;
 }

@@ -37,7 +37,6 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
     where: { id: interaction.guild.id },
   });
 
-  const raidRoles = guildData?.raidRoles || 'Not configured';
   const leaderRoles = guildData?.raidLeaderRoles || 'Not configured';
 
   const setupEmbed = new EmbedBuilder()
@@ -51,26 +50,19 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
     .addFields(
       {
         name: '📊 Current Configuration',
-        value: `**Raid Roles:** \`${raidRoles}\`\n**Leader Roles:** \`${leaderRoles}\``,
+        value: `**Leader Roles:** \`${leaderRoles}\``,
         inline: false,
       },
       {
-        name: '1️⃣ Set Raid Attendance Roles',
-        value: '```/config raid-roles roles:Raider,Member,Trial```\n' +
-               '**What it does:** Members with these roles are automatically added to all raid rosters.\n' +
-               '**Example:** If you set "Raider,Trial", anyone with the Raider OR Trial role gets added.',
-        inline: false,
-      },
-      {
-        name: '2️⃣ Set Raid Leader Roles',
+        name: '1️⃣ Set Raid Leader Roles',
         value: '```/config leader-roles roles:Officer,Raid Leader```\n' +
                '**What it does:** Only members with these roles can create/delete raids.\n' +
                '**Note:** Server admins can always create raids regardless of this setting.',
         inline: false,
       },
       {
-        name: '3️⃣ Create Your First Raid',
-        value: '```/raid create date:2026-01-15 time:20:00 title:Heroic Night```\n' +
+        name: '2️⃣ Create Your First Raid',
+        value: '```/raid create date:2026-01-15 time:20:00 title:Heroic Night roles:Raider,Member```\n' +
                '**What happens:** Bot creates a raid message with all eligible members listed as attending.',
         inline: false,
       },

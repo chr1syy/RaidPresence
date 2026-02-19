@@ -1,6 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { ArchiveRaidSummary } from './archiveManager';
 import { getTranslations, t } from './localization';
+import { VERSION } from './version';
 
 /**
  * Format archive search results into an embed.
@@ -59,21 +60,23 @@ export function formatArchiveSearchEmbed(
      });
    }
 
-   // Add info about result count
-   if (results.length > 10) {
-     embed.setFooter({ 
-       text: t(language, 'archiveShowingResults', { total: results.length.toString() })
-     });
+    // Add info about result count
+    if (results.length > 10) {
+      embed.setFooter({ 
+        text: `${t(language, 'archiveShowingResults', { total: results.length.toString() })} | v${VERSION}`
+      });
     } else {
       // For this case, we need a localized message about found raids
       // Handle pluralization: 1 result uses singular form, multiple uses plural form
       const count = results.length;
       embed.setFooter({ 
-        text: count === 1 
+        text: (count === 1 
           ? t(language, 'archiveFoundCountSingular')
-          : t(language, 'archiveFoundCount', { count: count.toString() })
+          : t(language, 'archiveFoundCount', { count: count.toString() })) + ` | v${VERSION}`
       });
     }
+
+    embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
 
   return embed;
 }
@@ -95,14 +98,16 @@ export function formatArchiveNotificationEmbed(
 ): EmbedBuilder {
    const trans = getTranslations(language);
 
-   return new EmbedBuilder()
-     .setColor(0x95a5a6)
-     .setTitle(`📦 ${trans.raidArchived}`)
-     .setDescription(
-       `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
-       `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
-     )
-     .setTimestamp(new Date());
+    return new EmbedBuilder()
+      .setColor(0x95a5a6)
+      .setTitle(`📦 ${trans.raidArchived}`)
+      .setDescription(
+        `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
+        `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
+      )
+      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
+      .setFooter({ text: `v${VERSION}` })
+      .setTimestamp(new Date());
 }
 
 /**

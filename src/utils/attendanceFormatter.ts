@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { t, getTranslations } from './localization';
 import { getTrendEmoji, formatResponseTime } from './attendanceAnalytics';
 import type { PlayerStats, PlayerRoleDistribution, AttendanceHistoryEntry } from './attendanceAnalytics';
+import { VERSION } from './version';
 
 /**
  * Format an attendance stats embed for a player.
@@ -101,11 +102,12 @@ export function formatAttendanceEmbed(
   if (recentRaids.length > 0) {
     const recentText = recentRaids
       .map((raid) => {
-        const dateStr = raid.raidDate.toISOString().split('T')[0];
+        const responseTime = raid.respondedAt || raid.raidDate;
+        const dateTimeStr = responseTime.toISOString().slice(0, 16).replace('T', ' ');
         const attended = raid.status === 'attending' || raid.status === 'late';
         const statusIcon = attended ? '✅' : '❌';
         const raidName = raid.raidDescription || 'Raid';
-        return `${statusIcon} ${dateStr} - ${raidName}`;
+        return `${statusIcon} ${dateTimeStr} - ${raidName}`;
       })
       .join('\n');
 
@@ -116,7 +118,9 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.setFooter({ text: periodLabel });
+  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true });
+
+  embed.setFooter({ text: `${periodLabel} | v${VERSION}` });
   embed.setTimestamp();
 
   return embed;

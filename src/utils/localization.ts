@@ -95,6 +95,9 @@ interface Translations {
   id: string;
   status: string;
 
+  // Links
+  links: string;
+
   // Raid reminder
   reminderTitle: string;
   reminderMessage: string;
@@ -222,7 +225,7 @@ const translations: Record<SupportedLanguage, Translations> = {
   en: {
     // Raid embed
     raidEvent: 'Raid Event',
-    dateAndTime: 'Date & Time',
+    dateAndTime: '📅 🕐',
     composition: 'Composition',
     attending: 'Attending',
     optedOut: 'Opted Out',
@@ -313,6 +316,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     date: 'Date',
     id: 'ID',
     status: 'Status',
+
+    // Links
+    links: 'Links',
 
     // Raid reminder
     reminderTitle: '🔔 Raid Reminder',
@@ -429,7 +435,7 @@ const translations: Record<SupportedLanguage, Translations> = {
   de: {
     // Raid embed
     raidEvent: 'Raid Event',
-    dateAndTime: 'Datum & Uhrzeit',
+    dateAndTime: '📅 🕐',
     composition: 'Zusammensetzung',
     attending: 'Anwesend',
     optedOut: 'Abgemeldet',
@@ -520,6 +526,9 @@ const translations: Record<SupportedLanguage, Translations> = {
     date: 'Datum',
     id: 'ID',
     status: 'Status',
+
+    // Links
+    links: 'Verknüpfungen',
 
     // Raid reminder
     reminderTitle: '🔔 Raid-Erinnerung',

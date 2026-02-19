@@ -2,6 +2,7 @@ import { EmbedBuilder } from 'discord.js';
 import { t, getTranslations } from './localization';
 import { getReliabilityScore } from './statsCalculator';
 import type { RaidStats, GuildStats } from './statsCalculator';
+import { VERSION } from './version';
 
 /**
  * Minimal raid info needed to build a stats embed.
@@ -62,8 +63,8 @@ export function formatRaidStatsEmbed(
         value: [
           `🛡️ ${trans.tank}: ${stats.composition.tanks}`,
           `💚 ${trans.heal}: ${stats.composition.healers}`,
-          `⚔️ ${trans.melee}: ${stats.composition.melee}`,
-          `🎯 ${trans.ranged}: ${stats.composition.ranged}`,
+          `⚔️ ${trans.compositionMeleeDps}: ${stats.composition.melee}`,
+          `🎯 ${trans.compositionRangedDps}: ${stats.composition.ranged}`,
         ].join('\n'),
         inline: true,
       },
@@ -78,7 +79,8 @@ export function formatRaidStatsEmbed(
         inline: true,
       },
     )
-    .setFooter({ text: `Raid ID: ${raid.id}` })
+    .addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true })
+    .setFooter({ text: `Raid ID: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
   return embed;
@@ -153,6 +155,9 @@ export function formatGuildStatsEmbed(
     });
   }
 
+  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true });
+
+  embed.setFooter({ text: `v${VERSION}` });
   embed.setTimestamp();
 
   return embed;

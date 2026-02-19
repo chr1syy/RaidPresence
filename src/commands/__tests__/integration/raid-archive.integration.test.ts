@@ -1,5 +1,5 @@
 /**
- * Integration Tests for /raid pin, unpin, search commands (Task 2.4.8)
+ * Integration Tests for /stats archive, unarchive, search commands (Task 2.4.8)
  *
  * These tests exercise the full pipeline:
  *   Command handler → archiveManager → archiveFormatter → embed
@@ -18,7 +18,7 @@ jest.mock('discord.js', () => {
   };
 });
 
-import command from '../../raid';
+import command from '../../stats';
 
 // ─── Tests ────────────────────────────────────────────────────────
 
@@ -28,31 +28,31 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
     (canManageRaids as jest.Mock).mockResolvedValue(true);
   });
 
-  describe('pin subcommand', () => {
-    it('should have pin subcommand registered', () => {
-      const pinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      expect(pinSubcommand).toBeDefined();
-      expect(pinSubcommand?.description?.toLowerCase()).toContain('archive');
+  describe('archive subcommand', () => {
+    it('should have archive subcommand registered', () => {
+      const archiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      expect(archiveSubcommand).toBeDefined();
+      expect(archiveSubcommand?.description?.toLowerCase()).toContain('archive');
     });
 
     it('should accept raid_id parameter', () => {
-      const pinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      const raidIdOption = pinSubcommand?.options?.find((opt: any) => opt.name === 'raid_id');
+      const archiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      const raidIdOption = archiveSubcommand?.options?.find((opt: any) => opt.name === 'raid_id');
       expect(raidIdOption).toBeDefined();
       expect(raidIdOption?.required).toBe(true);
     });
   });
 
-  describe('unpin subcommand', () => {
-    it('should have unpin subcommand registered', () => {
-      const unpinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unpin');
-      expect(unpinSubcommand).toBeDefined();
-      expect(unpinSubcommand?.description).toContain('Restore');
+  describe('unarchive subcommand', () => {
+    it('should have unarchive subcommand registered', () => {
+      const unarchiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unarchive');
+      expect(unarchiveSubcommand).toBeDefined();
+      expect(unarchiveSubcommand?.description).toContain('Restore');
     });
 
     it('should accept raid_id parameter', () => {
-      const unpinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unpin');
-      const raidIdOption = unpinSubcommand?.options?.find((opt: any) => opt.name === 'raid_id');
+      const unarchiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unarchive');
+      const raidIdOption = unarchiveSubcommand?.options?.find((opt: any) => opt.name === 'raid_id');
       expect(raidIdOption).toBeDefined();
       expect(raidIdOption?.required).toBe(true);
     });
@@ -92,11 +92,11 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
 
   describe('full workflows', () => {
     it('should be able to pin and unpin raids in sequence', () => {
-      const pinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      const unpinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unpin');
+      const archiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      const unarchiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unarchive');
       
-      expect(pinSubcommand).toBeDefined();
-      expect(unpinSubcommand).toBeDefined();
+      expect(archiveSubcommand).toBeDefined();
+      expect(unarchiveSubcommand).toBeDefined();
     });
 
     it('should support searching for archived raids', () => {
@@ -105,12 +105,12 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
     });
 
     it('all three archive subcommands should be defined', () => {
-      const pin = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      const unpin = (command.data.options as any)?.find((opt: any) => opt.name === 'unpin');
+      const archive = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      const unarchive = (command.data.options as any)?.find((opt: any) => opt.name === 'unarchive');
       const search = (command.data.options as any)?.find((opt: any) => opt.name === 'search');
       
-      expect(pin).toBeDefined();
-      expect(unpin).toBeDefined();
+      expect(archive).toBeDefined();
+      expect(unarchive).toBeDefined();
       expect(search).toBeDefined();
     });
   });
@@ -123,21 +123,21 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
       expect(searchSubcommand).toBeDefined();
     });
 
-    it('should enforce permission checks for pin/unpin commands', () => {
+    it('should enforce permission checks for archive/unarchive commands', () => {
       // Permission checks are enforced via canManageRaids check in handlers
-      const pinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      const unpinSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unpin');
+      const archiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      const unarchiveSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'unarchive');
       
-      expect(pinSubcommand).toBeDefined();
-      expect(unpinSubcommand).toBeDefined();
+      expect(archiveSubcommand).toBeDefined();
+      expect(unarchiveSubcommand).toBeDefined();
       // Actual permission enforcement tested in raid.test.ts
     });
 
     it('should support graceful archive channel validation', () => {
       // Archive channel validation tested in archiveManager.test.ts
       // Integration tests verify the command structure supports this
-      const pin = (command.data.options as any)?.find((opt: any) => opt.name === 'pin');
-      expect(pin).toBeDefined();
+      const archive = (command.data.options as any)?.find((opt: any) => opt.name === 'archive');
+      expect(archive).toBeDefined();
     });
   });
 });

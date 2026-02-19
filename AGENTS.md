@@ -69,12 +69,27 @@ RaidPresence/
 
 ---
 
+## Database Configuration
+
+### Provider Setup
+- **Development:** SQLite (file-based, zero setup) via `prisma/dev.db`
+- **Production:** PostgreSQL (cloud-hosted, managed) via `DATABASE_URL` env var
+- **Switching:** Use `DB_ENV` variable (dev/prod) with `npm run switch-db`
+  - `DB_ENV=dev` → SQLite provider for local development
+  - `DB_ENV=prod` → PostgreSQL provider for production
+  - Runs automatically on `npm install` (postinstall) and before each npm command
+- **Migration Path:** See `docs/guides/DATABASE-MIGRATION-GUIDE.md` for PostgreSQL ↔ SQLite migration instructions
+
+---
+
 ## Database Schema
 
 Four Prisma models in `prisma/schema.prisma`:
 
 ### Guild
-Per-server configuration. Fields: `id`, `name`, `raidRoles`, `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
+Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
+
+**Note:** `raidRoles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 
 ### UserPreference
 Player class/spec preferences per guild. Fields: `userId`, `guildId`, `username`, `wowClass`, `wowSpec`. Unique on `[userId, guildId]`.
@@ -135,9 +150,10 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - Database migration: `20260210100000_add_raid_notes` (adds `optoutReason`, `playerNote`, `notedAt` to RaidAttendance)
 
 #### 2.4 Raid Archive System
-- **`/raid pin raid_id:`** - Archive a raid (copy to archive channel, remove original)
-- **`/raid unpin raid_id:`** - Restore archived raid to original channel
-- **`/raid search query: period:`** - Search archived raids by name/player/date
+- Archive functionality consolidated to `/stats` command for centralized access
+- **`/stats archive raid_id:`** - Archive a raid (copy to archive channel, remove original)
+- **`/stats unarchive raid_id:`** - Restore archived raid to original channel
+- **`/stats search query: period:`** - Search archived raids by name/player/date
 - **`/config archive-channel channel:`** - Set guild archive channel
 - **`/config auto-archive enabled:`** - Toggle auto-archive on raid close
 - `archiveManager.ts` - `archiveRaid()`, `unarchiveRaid()`, `searchArchive()`, `getArchiveStats()`, `setupArchiveChannel()`
@@ -168,20 +184,29 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 | `attendance` | Any member | View player attendance history |
 | `suggest` | Any member | Composition analysis and recommendations |
 | `notes` | Any member | View raid notes and opt-out reasons |
-| `pin` | Leader role | Archive a raid |
-| `unpin` | Leader role | Restore archived raid |
-| `search` | Any member | Search archived raids |
+
+### `/stats` Subcommands (Archive operations consolidated here)
+
+| Subcommand | Permission | Description |
+|-----------|-----------|-------------|
+| `archive` | Leader role | Archive a raid to archive channel |
+| `unarchive` | Leader role | Restore archived raid to original channel |
+| `search` | Any member | Search archived raids by name/player/date |
+
+**Note:** Archive operations previously in `/raid pin/unpin` are now consolidated in `/stats` for centralized access to statistics and archival functionality.
 
 ### `/config` Subcommands (6 total)
 
 | Subcommand | Permission | Description |
 |-----------|-----------|-------------|
-| `raid-roles` | Admin | Set roles scanned for raids |
+| `raid-roles` | Admin | Set roles scanned for raids (deprecated) |
 | `leader-roles` | Admin | Set roles that can manage raids |
 | `timezone` | Admin | Set server timezone offset |
 | `language` | Admin | Set bot language (en/de) |
 | `archive-channel` | Admin | Set archive channel |
 | `auto-archive` | Admin | Toggle auto-archive |
+
+**Note:** `/config raid-roles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 
 ### `/setup`
 Initial server configuration wizard.
@@ -303,21 +328,110 @@ npm run build
 npm start
 ```
 
+### Version Management Commands
+
+```bash
+# Bump patch version (1.0.0 → 1.0.1) - Bug fixes
+npm run version:patch
+
+# Bump minor version (1.0.0 → 1.1.0) - New features
+npm run version:minor
+
+# Bump major version (1.0.0 → 2.0.0) - Breaking changes
+npm run version:major
+```
+
+Version is automatically displayed in embed footers. See `docs/VERSION.md` for detailed versioning guidelines.
+
 ### Environment Variables
 Copy `.env.example` to `.env` and configure:
 - `DISCORD_TOKEN` - Bot token
 - `CLIENT_ID` - Application client ID
-- `DATABASE_URL` - PostgreSQL connection string
+- `DATABASE_URL` - PostgreSQL connection string (prod) or leave empty for SQLite (dev)
 - `GUILD_ID` - (optional) Guild ID for guild-specific command deployment
+- `DB_ENV` - Database environment: `dev` (SQLite) or `prod` (PostgreSQL)
 
 ---
 
-## Architecture Decisions
+## Key Learnings and Workflow Notes
 
-- **Reverse sign-up** instead of opt-in reduces friction and improves raid planning visibility
-- **Separate formatter modules** per feature (stats, attendance, composition, archive, notes) for independent testing and maintenance
-- **Guild isolation** enforced at query level on every database operation
-- **Auto-archive** integrated into existing scheduler (no separate cron) with graceful failure that doesn't block raid closure
-- **Localization** centralized in one module with type-safe translation keys
-- **Prisma** over raw SQL for type safety and migration management
-- **No caching layer** - relies on database indexes and Prisma query optimization; cache can be added later if needed
+- **PR Splitting Approach:** For large PRs with multiple features, create separate branches from a base branch (e.g., raidpresence-updates), cherry-pick relevant commits, resolve conflicts, and compile before creating focused PRs. This was used for Phase 3 features: badge schema/system, feedback schema/system, admin tools.
+- **Feature Implementation:** Implement incrementally (schema → functionality), fix corrupted functions, add translations, and ensure guild isolation.
+- **Testing and Verification:** Run lint/typecheck after changes; focus on integration tests for new features.
+
+---
+
+## Auto Run Documentation Framework (PR #15 Review Fixes)
+
+### Lessons from Second Review Cycle
+
+**Issue:** Initial Copilot review (13 issues) was fixed successfully, but second review revealed 13 NEW implementation gaps despite first-round fixes. This highlighted the need for a structured, repeatable Auto Run documentation format.
+
+### Auto Run Document Structure
+
+Auto Run documents should follow this structure for agent execution:
+
+1. **One Markdown File = One Auto Run Session**
+   - Files: `PR15-05-CRITICAL-FIXES.md`, `PR15-06-HIGH-PRIORITY-FIXES.md`, `PR15-07-MEDIUM-POLISH.md`
+   - Each file contains multiple related fixes
+
+2. **Each Fix is a Markdown Task**
+   - Every fix section starts with `- [ ]` checkbox before the heading
+   - Checkbox allows agents to track completion per fix
+   - Format: `- [ ] ## Fix N: Description`
+
+3. **Flowing Narrative, No Subtasks**
+   - Each fix section is a complete, self-contained task prompt
+   - Plain prose instructions (no numbered subtasks like 1.1, 1.2, 1.3)
+   - No checkbox lists for agents to follow
+   - Structured with: Issue → Current State → What to fix → After fix, verify
+
+4. **Verification at Each Step**
+   - Explicit verification commands after each fix
+   - Expected results clearly stated
+   - Tests to run, build to check
+
+### Document Organization by Severity
+
+- **CRITICAL:** Blocking deployment, runtime failures (1-1.5 hrs, 5 fixes)
+- **HIGH:** Functionality broken, must fix before merge (1.5-2 hrs, 6 fixes)
+- **MEDIUM:** UX/maintainability issues, before release (30-45 min, 3 fixes)
+
+### Execution Flow
+
+1. Agent reads entire markdown file
+2. Works through each `- [ ]` fix sequentially
+3. Auto Run checks off checkbox on completion
+4. Moves to next file (next session) after all fixes complete
+5. No dependencies between files (each is independent)
+
+### Key Success Factors
+
+- **Clear problem statements:** What's broken and why
+- **Current state documentation:** How to identify the issue
+- **Actionable instructions:** What code changes to make
+- **Explicit verification:** How to prove the fix works
+- **Git commits:** Clear commit messages per fix for tracking
+- **No ambiguity:** Agents should never guess what to do
+
+### Anti-Patterns to Avoid
+
+- ❌ Checkbox lists for agents (they don't check boxes, they execute)
+- ❌ Numbered subtasks (1.1, 1.2, 1.3) - too granular for agent sessions
+- ❌ Vague instructions ("fix this" without specifics)
+- ❌ Multiple independent fixes in one task (merge them into flowing narrative)
+- ❌ Missing verification steps (always provide test commands)
+- ❌ Hardcoded versions or file paths (use variables or search instructions)
+
+### PR #15 Results
+
+**Second Review Cycle (13 issues discovered):**
+- Phase 5 (CRITICAL): 5 fixes → 0 failures ✅
+- Phase 6 (HIGH): 6 fixes → 0 failures ✅
+- Phase 7 (MEDIUM): 3 fixes → 0 failures ✅
+- All 14 Markdown Tasks executed successfully
+- 11 commits pushed to origin
+- 100% issue resolution rate
+
+**Total Session Duration:** ~4 hours from issue discovery to full resolution and push
+

@@ -23,7 +23,6 @@ import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHis
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
-import { formatRaidNotesEmbed } from '../utils/notesFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
 
 /**
@@ -301,21 +300,10 @@ const command: Command = {
              .setDescription('New raid title (optional, defaults to original)')
              .setRequired(false)
          )
-      )
-       .addSubcommand((subcommand) =>
-         subcommand
-           .setName('open')
-           .setDescription('Reopen a closed raid to allow changes again')
-           .addStringOption((option) =>
-             option
-               .setName('raid_id')
-               .setDescription('The ID of the raid to open')
-               .setRequired(true)
-           )
-        )
-       .addSubcommand((subcommand) =>
-         subcommand
-           .setName('stats')
+       )
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName('stats')
           .setDescription('View attendance statistics')
       )
       .addSubcommand((subcommand) =>
@@ -352,21 +340,10 @@ const command: Command = {
           .addStringOption((option) =>
             option
               .setName('raid_id')
-              .setDescription('The ID of the raid to analyze')
-              .setRequired(true)
-          )
-      )
-      .addSubcommand((subcommand) =>
-        subcommand
-          .setName('notes')
-          .setDescription('View raid notes and opt-out reasons')
-          .addStringOption((option) =>
-            option
-              .setName('raid_id')
-              .setDescription('The ID of the raid to view notes for')
-              .setRequired(true)
-          )
-      )
+               .setDescription('The ID of the raid to analyze')
+               .setRequired(true)
+           )
+       )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
@@ -390,11 +367,9 @@ const command: Command = {
         await handleRefreshRaid(interaction);
     } else if (subcommand === 'edit') {
         await handleEditRaid(interaction);
-    } else if (subcommand === 'clone') {
-        await handleCloneRaid(interaction);
-     } else if (subcommand === 'open') {
-        await handleOpenRaid(interaction);
-     } else if (subcommand === 'stats') {
+     } else if (subcommand === 'clone') {
+         await handleCloneRaid(interaction);
+      } else if (subcommand === 'stats') {
       await handleRaidStats(interaction);
     } else if (subcommand === 'status') {
       await handleRaidStatus(interaction);
@@ -402,8 +377,6 @@ const command: Command = {
       await handleRaidAttendance(interaction);
     } else if (subcommand === 'suggest') {
       await handleRaidSuggest(interaction);
-    } else if (subcommand === 'notes') {
-      await handleRaidNotes(interaction);
     }
   }
 };
@@ -1399,116 +1372,6 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
 
 
-async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to open raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  if (raid.isPinned) {
-    await interaction.editReply({
-      content: '❌ This raid is archived and cannot be opened.',
-    });
-    return;
-  }
-
-  if (raid.status !== 'closed') {
-    await interaction.editReply({
-      content: '❌ This raid is not closed.',
-    });
-    return;
-  }
-
-  // Update raid status to open
-  await prisma.raid.update({
-    where: { id: raidId },
-    data: { status: 'open' },
-  });
-
-  // Update the raid message
-  if (raid.messageId && raid.channelId) {
-    try {
-      const channel = await interaction.client.channels.fetch(raid.channelId);
-      if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId!);
-        const embed = await createRaidEmbed(raidId, raid.guild.language);
-
-        // Get translations for buttons
-        const trans = getTranslations(raid.guild.language || 'en');
-
-        // Create buttons (2 rows due to Discord limit of 5 buttons per row)
-        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_optin_${raid.id}`)
-            .setLabel(trans.optIn)
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`raid_late_${raid.id}`)
-            .setLabel(trans.runningLateButton)
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId(`raid_optout_${raid.id}`)
-            .setLabel(trans.optOut)
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_class_${raid.id}`)
-            .setLabel(trans.setClassSpec)
-            .setStyle(ButtonStyle.Primary)
-        );
-
-        // Restore buttons when opened
-        await message.edit({
-          embeds: [embed],
-          components: [row1, row2],
-        });
-      }
-    } catch (error) {
-      console.error('Error updating raid message:', error as Error);
-    }
-  }
-
-  await interaction.editReply({
-    content: `✅ Raid "${raid.description || 'Raid'}" has been opened.`,
-  });
-}
 
 async function handleRaidStats(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
@@ -1680,61 +1543,6 @@ async function handleRaidSuggest(interaction: ChatInputCommandInteraction) {
   });
 
   const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, guildData?.language || 'en');
-
-  await interaction.editReply({ embeds: [embed] });
-}
-
-async function handleRaidNotes(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { attendance: true, guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  const noteEntries: Array<{
-    username: string;
-    playerNote?: string;
-    optoutReason?: string;
-    status: string;
-    notedAt?: Date;
-  }> = raid.attendance.map(att => ({
-    username: att.username,
-    playerNote: att.playerNote || undefined,
-    optoutReason: att.optoutReason || undefined,
-    status: att.status,
-    notedAt: att.notedAt || undefined,
-  }));
-
-  const embed = formatRaidNotesEmbed(raid.description || 'Raid', raid.raidDate, noteEntries, guildData?.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }

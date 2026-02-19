@@ -33,17 +33,6 @@ const command: Command = {
             .setDescription('The ID of the raid')
             .setRequired(true)
         )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period: week, month, all')
-            .addChoices(
-              { name: 'Last 7 days', value: 'week' },
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -279,6 +268,8 @@ function getStartDate(period: string): Date {
       return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     case 'month':
       return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case 'quarter':
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     case 'all':
       return new Date(0);
     default:
@@ -349,7 +340,6 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
     return;
   }
 
-  const startDate = getStartDate(period);
   const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
   const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
   const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
@@ -481,8 +471,6 @@ async function handleArchiveCommand(interaction: ChatInputCommandInteraction) {
   }
 
   const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const trans = getTranslations('en'); // or from guild
 
   try {
     await archiveRaid(raidId, interaction.guild!.id, interaction.client);

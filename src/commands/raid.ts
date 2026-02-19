@@ -756,7 +756,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   }
 
    const participantsLabel = lang === 'de' ? 'Teilnehmer' : 'Participants';
-   const metaValue = `${raidStatusText}\n📅 **<t:${timestamp}:F>** (**<t:${timestamp}:R>**)\n👥 **${totalParticipants} ${participantsLabel}**`;
+    const metaValue = `${raidStatusText}\n📅 <t:${timestamp}:F> (<t:${timestamp}:R>)\n👥 ${totalParticipants} ${participantsLabel}`;
 
    const baseFields: { name: string; value: string; inline: boolean }[] = [
      { name: trans.raidStatus, value: metaValue, inline: false },

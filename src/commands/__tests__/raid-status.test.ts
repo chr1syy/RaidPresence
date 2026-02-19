@@ -51,6 +51,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
     status: 'open',
     createdBy: 'user-leader',
     messageId: 'msg-1',
+    guild: { id: 'guild-123', language: 'en' },
     attendance: [
       { id: 'a1', raidId: 'raid-1', userId: 'u1', guildId: 'guild-123', username: 'Player1', status: 'attending', wowClass: 'Warrior', wowSpec: 'Protection' },
       { id: 'a2', raidId: 'raid-1', userId: 'u2', guildId: 'guild-123', username: 'Player2', status: 'attending', wowClass: 'Priest', wowSpec: 'Holy' },

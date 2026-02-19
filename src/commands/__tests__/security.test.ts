@@ -34,6 +34,13 @@ class MockCollection<K, V> extends Map<K, V> {
     }
     return result;
   }
+
+  find(fn: (value: V, key: K, map: this) => boolean): V | undefined {
+    for (const [key, value] of this) {
+      if (fn(value, key, this)) return value;
+    }
+    return undefined;
+  }
 }
 
 // Helper: future date string

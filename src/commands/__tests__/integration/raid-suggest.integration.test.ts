@@ -293,7 +293,7 @@ describe('Integration: /raid suggest', () => {
 
       const reply = interaction.editReply.mock.calls[0][0];
       expect(reply.content).toContain('❌');
-      expect(reply.content).toContain('does not belong to your guild');
+      expect(reply.content).toContain('does not belong to this server');
     });
   });
 

@@ -57,10 +57,10 @@ describe('handleCreateRaid()', () => {
     jest.clearAllMocks();
 
     const rolesCache = new MockCollection<string, any>();
-    rolesCache.set('role-raider', { id: 'role-raider', name: 'Raider' });
+    rolesCache.set('role-raider', { id: 'role-raider', name: 'role-raider' });
 
     const memberRolesCache = new MockCollection<string, any>();
-    memberRolesCache.set('role-raider', { id: 'role-raider', name: 'Raider' });
+    memberRolesCache.set('role-raider', { id: 'role-raider', name: 'role-raider' });
 
     mockMember = {
       user: { bot: false, id: 'user-123' },
@@ -223,9 +223,19 @@ describe('handleCreateRaid()', () => {
       language: 'en',
       timezoneOffset: 0,
     });
+    // Override to provide no roles
+    mockInteraction.options.get = jest.fn((key: string, required?: boolean) => {
+      const values: Record<string, any> = {
+        date: { value: futureDateStr() },
+        time: { value: '20:00' },
+        title: { value: 'Weekly Raid' },
+        ping_roles: { value: false },
+      };
+      return values[key] !== undefined ? values[key] : (required ? { value: null } : undefined);
+    });
     await command.execute(mockInteraction);
     expect(mockInteraction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('No raid roles') })
+      expect.objectContaining({ content: expect.stringContaining('Raid roles must be specified') })
     );
   });
 
@@ -235,8 +245,8 @@ describe('handleCreateRaid()', () => {
         date: { value: 'not-a-date' },
         time: { value: '20:00' },
         title: { value: 'Test Raid' },
-        roles: null,
-        ping_roles: null,
+        roles: { value: 'role-raider' },
+        ping_roles: { value: false },
       };
       return values[key] !== undefined ? values[key] : undefined;
     });
@@ -252,8 +262,8 @@ describe('handleCreateRaid()', () => {
         date: { value: '2020-01-01' },
         time: { value: '10:00' },
         title: { value: 'Test Raid' },
-        roles: null,
-        ping_roles: null,
+        roles: { value: 'role-raider' },
+        ping_roles: { value: false },
       };
       return values[key] !== undefined ? values[key] : undefined;
     });
@@ -343,7 +353,7 @@ describe('handleCreateRaid()', () => {
     await command.execute(mockInteraction);
 
     expect(mockInteraction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('No eligible members') })
+      expect.objectContaining({ content: expect.stringContaining('No valid roles provided') })
     );
   });
 

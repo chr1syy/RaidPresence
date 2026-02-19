@@ -65,13 +65,13 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
       expect(searchSubcommand?.description).toContain('Search');
     });
 
-    it('should accept optional query and period parameters', () => {
+    it('should accept required query and optional period parameters', () => {
       const searchSubcommand = (command.data.options as any)?.find((opt: any) => opt.name === 'search');
       const queryOption = searchSubcommand?.options?.find((opt: any) => opt.name === 'query');
       const periodOption = searchSubcommand?.options?.find((opt: any) => opt.name === 'period');
       
       expect(queryOption).toBeDefined();
-      expect(queryOption?.required).toBe(false);
+      expect(queryOption?.required).toBe(true);
       expect(periodOption).toBeDefined();
       expect(periodOption?.required).toBe(false);
     });
@@ -83,9 +83,8 @@ describe('Archive Commands Integration (pin/unpin/search)', () => {
       
       expect(choices).toBeDefined();
       expect(choices?.length).toBeGreaterThan(0);
-      expect(choices?.some((c: any) => c.value === '7')).toBe(true);
-      expect(choices?.some((c: any) => c.value === '30')).toBe(true);
-      expect(choices?.some((c: any) => c.value === '90')).toBe(true);
+      expect(choices?.some((c: any) => c.value === 'month')).toBe(true);
+      expect(choices?.some((c: any) => c.value === 'quarter')).toBe(true);
       expect(choices?.some((c: any) => c.value === 'all')).toBe(true);
     });
   });

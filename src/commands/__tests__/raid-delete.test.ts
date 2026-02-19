@@ -98,6 +98,7 @@ describe('handleDeleteRaid()', () => {
       description: 'Weekly Raid',
       messageId: 'msg-123',
       channelId: 'channel-123',
+      guild: { language: 'en' },
     });
     (prisma.raid.delete as jest.Mock).mockResolvedValue({});
 
@@ -122,6 +123,7 @@ describe('handleDeleteRaid()', () => {
       description: 'Weekly Raid',
       messageId: 'msg-123',
       channelId: 'channel-123',
+      guild: { language: 'en' },
     });
     mockChannel.messages.fetch.mockRejectedValue(new Error('Message not found'));
     (prisma.raid.delete as jest.Mock).mockResolvedValue({});
@@ -142,6 +144,7 @@ describe('handleDeleteRaid()', () => {
       description: 'Weekly Raid',
       messageId: null,
       channelId: null,
+      guild: { language: 'en' },
     });
     (prisma.raid.delete as jest.Mock).mockResolvedValue({});
 

@@ -14,7 +14,7 @@ import prisma from '../../database/client';
 import command from '../raid';
 
 /**
- * Minimal Collection-like Map that supports discord.js `.some()` and `.filter()`.
+ * Minimal Collection-like Map that supports discord.js `.some()`, `.filter()`, and `.find()`.
  */
 class MockCollection<K, V> extends Map<K, V> {
   some(fn: (value: V, key: K, map: this) => boolean): boolean {
@@ -30,6 +30,13 @@ class MockCollection<K, V> extends Map<K, V> {
       if (fn(value, key, this)) result.set(key, value);
     }
     return result;
+  }
+
+  find(fn: (value: V, key: K, map: this) => boolean): V | undefined {
+    for (const [key, value] of this) {
+      if (fn(value, key, this)) return value;
+    }
+    return undefined;
   }
 }
 
@@ -115,8 +122,8 @@ describe('handleCreateRaid()', () => {
             date: { value: futureDate },
             time: { value: '20:00' },
             title: { value: 'Weekly Raid' },
-            roles: null,
-            ping_roles: null,
+            roles: { value: 'role-raider' },
+            ping_roles: { value: false },
           };
           return values[key] !== undefined ? values[key] : (required ? { value: null } : undefined);
         }),

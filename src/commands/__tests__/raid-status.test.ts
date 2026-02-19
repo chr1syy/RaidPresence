@@ -106,7 +106,8 @@ describe('/raid status command', () => {
     await command.execute(interaction);
 
     const reply = interaction.editReply.mock.calls[0][0];
-    expect(reply.content).toBe('No upcoming raids scheduled.');
+    expect(reply.embeds).toBeDefined();
+    expect(reply.embeds[0].data.description).toBe('No upcoming raids scheduled.');
   });
 
   it('should show multiple raids sorted chronologically', async () => {
@@ -214,12 +215,15 @@ describe('/raid status command', () => {
 
   it('should handle guild not found in database', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
 
     const interaction = buildMockInteraction();
     await command.execute(interaction);
 
+    // Code should still work, defaulting to English
     const reply = interaction.editReply.mock.calls[0][0];
-    expect(reply.content).toContain('Guild not found');
+    expect(reply.embeds).toBeDefined();
+    expect(reply.embeds[0].data.description).toBe('No upcoming raids scheduled.');
   });
 
   it('should use German translations', async () => {
@@ -253,7 +257,8 @@ describe('/raid status command', () => {
     await command.execute(interaction);
 
     const reply = interaction.editReply.mock.calls[0][0];
-    expect(reply.content).toBe('Keine anstehenden Raids geplant.');
+    expect(reply.embeds).toBeDefined();
+    expect(reply.embeds[0].data.description).toBe('Keine anstehenden Raids geplant.');
   });
 
   it('should include attendance data in query', async () => {

@@ -64,15 +64,23 @@ try {
   }
 
   // Replace entire datasource block
-  const newDatasource = dbEnv === 'prod' 
-    ? `datasource db {
+  // For SQLite: if DATABASE_URL is not set, use file:./dev.db as default (relative to prisma/ dir)
+  // For PostgreSQL: DATABASE_URL must be set via environment
+  let newDatasource;
+  if (dbEnv === 'prod') {
+    newDatasource = `datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}`
-    : `datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL", "file:./dev.db")
 }`;
+  } else {
+    // For SQLite dev environment, use DATABASE_URL env var or default to file path
+    // Note: Path is relative to prisma/schema.prisma location, so ./dev.db goes to prisma/dev.db
+    const databaseUrl = process.env.DATABASE_URL || 'file:./dev.db';
+    newDatasource = `datasource db {
+  provider = "sqlite"
+  url      = "${databaseUrl}"
+}`;
+  }
 
   schema = schema.replace(datasourcePattern, newDatasource);
 
@@ -83,6 +91,9 @@ try {
 
   fs.writeFileSync(schemaPath, schema);
   console.log(`✓ Switched to ${provider} successfully`);
+  if (dbEnv === 'dev') {
+    console.log(`  Using SQLite at: ${process.env.DATABASE_URL || 'file:./dev.db'}`);
+  }
 } catch (error) {
   console.error(`✗ Failed to switch database provider: ${error.message}`);
   process.exit(1);

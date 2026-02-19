@@ -24,6 +24,7 @@ import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { formatRaidNotesEmbed } from '../utils/notesFormatter';
+import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
 
 /**
  * Build role mentions from role IDs or names
@@ -505,7 +506,15 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   let eligibleMembers = new Set<string>();
 
   // Fetch all members if not cached
-  await interaction.guild.members.fetch();
+  try {
+    await interaction.guild.members.fetch();
+  } catch (error) {
+    if (isRateLimitError(error)) {
+      await handleRateLimitError(error, interaction, guildData.language || 'en');
+      return;
+    }
+    throw error;
+  }
 
   for (const [memberId, member] of interaction.guild.members.cache) {
     if (member.user.bot) continue;
@@ -1247,7 +1256,15 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   let eligibleMembers = new Set<string>();
 
   // Fetch all members if not cached
-  await interaction.guild!.members.fetch();
+  try {
+    await interaction.guild!.members.fetch();
+  } catch (error) {
+    if (isRateLimitError(error)) {
+      await handleRateLimitError(error, interaction, guildData.language || 'en');
+      return;
+    }
+    throw error;
+  }
 
   for (const [memberId, member] of interaction.guild!.members.cache) {
     if (member.user.bot) continue;
@@ -2010,7 +2027,15 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   let eligibleMembers = new Set<string>();
 
   if (roleIds.length > 0) {
-    await interaction.guild.members.fetch();
+    try {
+      await interaction.guild.members.fetch();
+    } catch (error) {
+      if (isRateLimitError(error)) {
+        await handleRateLimitError(error, interaction, raid.guild.language || 'en');
+        return;
+      }
+      throw error;
+    }
 
     for (const [memberId, guildMember] of interaction.guild.members.cache) {
       if (guildMember.user.bot) continue;
@@ -2024,7 +2049,15 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       }
     }
   } else {
-    await interaction.guild.members.fetch();
+    try {
+      await interaction.guild.members.fetch();
+    } catch (error) {
+      if (isRateLimitError(error)) {
+        await handleRateLimitError(error, interaction, raid.guild.language || 'en');
+        return;
+      }
+      throw error;
+    }
     for (const [memberId, guildMember] of interaction.guild.members.cache) {
       if (!guildMember.user.bot) {
         eligibleMembers.add(memberId);

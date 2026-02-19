@@ -1523,8 +1523,8 @@ async function handleRaidAttendance(interaction: ChatInputCommandInteraction) {
   const periodValue = interaction.options.get('period', false)?.value as string || '30';
 
   let period: string;
-  if (periodValue === '30') period = 'month';
-  else if (periodValue === '90') period = 'quarter';
+  if (periodValue === '30' || periodValue === 'month') period = 'month';
+  else if (periodValue === '90' || periodValue === 'quarter') period = 'quarter';
   else period = 'all';
 
   const guildData = await prisma.guild.findUnique({

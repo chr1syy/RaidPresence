@@ -7,7 +7,7 @@
     "switch-db": "node switch-db.js",
     "dev": "npm run switch-db && tsx watch src/index.ts",
     "build": "npm run switch-db && tsc && prisma generate",
-    "start": "npm run switch-db && node handle-migration-safety.js && prisma migrate deploy && node dist/deploy-commands.js && node dist/index.js",
+    "start": "npm run switch-db && rm -f prisma/migration_lock.toml && prisma migrate deploy && node dist/deploy-commands.js && node dist/index.js",
     "start:local": "npm run switch-db && node dist/index.js",
     "deploy": "tsx src/deploy-commands.ts",
     "deploy:commands": "node dist/deploy-commands.js",

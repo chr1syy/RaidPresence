@@ -776,8 +776,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   baseFields.push(
     { name: `🛡️ ${trans.tank} (${composition.tanks})`, value: tankText, inline: true },
     { name: `💚 ${trans.heal} (${composition.healers})`, value: healerText, inline: true },
-    { name: `⚔️ ${trans.melee} (${composition.melee})`, value: meleeDpsText, inline: true },
-    { name: `🏹 ${trans.ranged} (${composition.ranged})`, value: rangedDpsText, inline: true }
+    { name: `⚔️ ${trans.compositionMeleeDps} (${composition.melee})`, value: meleeDpsText, inline: true },
+    { name: `🏹 ${trans.compositionRangedDps} (${composition.ranged})`, value: rangedDpsText, inline: true }
   );
 
   // Add running late section below the 4-column layout

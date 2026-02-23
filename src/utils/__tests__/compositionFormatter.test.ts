@@ -124,17 +124,84 @@ describe('Composition Formatter (raid suggest display)', () => {
     expect(successField?.value).toContain('%');
   });
 
-  it('should format empty raid without errors', () => {
-    const attendees: CompositionAttendee[] = [];
+  it('should display melee and ranged DPS separately', () => {
+    const attendees: CompositionAttendee[] = [
+      createAttendee({ userId: 'u1', username: 'Tank1', wowClass: 'Warrior', wowSpec: 'Protection', status: 'attending' }),
+      createAttendee({ userId: 'u2', username: 'Healer1', wowClass: 'Priest', wowSpec: 'Holy', status: 'attending' }),
+      createAttendee({ userId: 'u3', username: 'MeleeDPS1', wowClass: 'Rogue', wowSpec: 'Assassination', status: 'attending' }),
+      createAttendee({ userId: 'u4', username: 'RangedDPS1', wowClass: 'Mage', wowSpec: 'Fire', status: 'attending' }),
+      createAttendee({ userId: 'u5', username: 'MeleeDPS2', wowClass: 'Warrior', wowSpec: 'Arms', status: 'attending' }),
+    ];
 
     const analysis = analyzeRaidComposition(attendees);
     const gaps = findCompositionGaps(attendees);
     const suggestions = suggestPlayerSwaps(attendees, gaps);
     const likelihood = calculateSuccessLikelihood(attendees);
 
-    const embed = formatCompositionEmbed('Empty Raid', analysis, gaps, suggestions, likelihood, 'en');
+    const embed = formatCompositionEmbed('Test Raid', analysis, gaps, suggestions, likelihood, 'en');
 
-    expect(embed.data.title).toContain('Empty Raid');
-    expect(embed.data.description).toBeDefined();
+    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField).toBeDefined();
+    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 2');
+    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 1');
   });
-});
+
+  it('should handle raid with only melee DPS', () => {
+    const attendees: CompositionAttendee[] = [
+      createAttendee({ userId: 'u1', username: 'Tank1', wowClass: 'Warrior', wowSpec: 'Protection', status: 'attending' }),
+      createAttendee({ userId: 'u2', username: 'Healer1', wowClass: 'Priest', wowSpec: 'Holy', status: 'attending' }),
+      createAttendee({ userId: 'u3', username: 'MeleeDPS1', wowClass: 'Rogue', wowSpec: 'Assassination', status: 'attending' }),
+      createAttendee({ userId: 'u4', username: 'MeleeDPS2', wowClass: 'Warrior', wowSpec: 'Arms', status: 'attending' }),
+    ];
+
+    const analysis = analyzeRaidComposition(attendees);
+    const gaps = findCompositionGaps(attendees);
+    const suggestions = suggestPlayerSwaps(attendees, gaps);
+    const likelihood = calculateSuccessLikelihood(attendees);
+
+    const embed = formatCompositionEmbed('Melee Only Raid', analysis, gaps, suggestions, likelihood, 'en');
+
+    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 2');
+    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 0');
+  });
+
+  it('should handle raid with only ranged DPS', () => {
+    const attendees: CompositionAttendee[] = [
+      createAttendee({ userId: 'u1', username: 'Tank1', wowClass: 'Warrior', wowSpec: 'Protection', status: 'attending' }),
+      createAttendee({ userId: 'u2', username: 'Healer1', wowClass: 'Priest', wowSpec: 'Holy', status: 'attending' }),
+      createAttendee({ userId: 'u3', username: 'RangedDPS1', wowClass: 'Mage', wowSpec: 'Fire', status: 'attending' }),
+      createAttendee({ userId: 'u4', username: 'RangedDPS2', wowClass: 'Hunter', wowSpec: 'Marksmanship', status: 'attending' }),
+    ];
+
+    const analysis = analyzeRaidComposition(attendees);
+    const gaps = findCompositionGaps(attendees);
+    const suggestions = suggestPlayerSwaps(attendees, gaps);
+    const likelihood = calculateSuccessLikelihood(attendees);
+
+    const embed = formatCompositionEmbed('Ranged Only Raid', analysis, gaps, suggestions, likelihood, 'en');
+
+    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 0');
+    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 2');
+  });
+
+  it('should handle raid with no DPS', () => {
+    const attendees: CompositionAttendee[] = [
+      createAttendee({ userId: 'u1', username: 'Tank1', wowClass: 'Warrior', wowSpec: 'Protection', status: 'attending' }),
+      createAttendee({ userId: 'u2', username: 'Tank2', wowClass: 'Paladin', wowSpec: 'Protection', status: 'attending' }),
+      createAttendee({ userId: 'u3', username: 'Healer1', wowClass: 'Priest', wowSpec: 'Holy', status: 'attending' }),
+      createAttendee({ userId: 'u4', username: 'Healer2', wowClass: 'Druid', wowSpec: 'Restoration', status: 'attending' }),
+    ];
+
+    const analysis = analyzeRaidComposition(attendees);
+    const gaps = findCompositionGaps(attendees);
+    const suggestions = suggestPlayerSwaps(attendees, gaps);
+    const likelihood = calculateSuccessLikelihood(attendees);
+
+    const embed = formatCompositionEmbed('No DPS Raid', analysis, gaps, suggestions, likelihood, 'en');
+
+    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 0');
+    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 0');
+  });

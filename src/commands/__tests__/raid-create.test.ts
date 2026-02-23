@@ -379,4 +379,68 @@ describe('handleCreateRaid()', () => {
     // Should upsert for each non-bot eligible member
     expect(prisma.userPreference.upsert).toHaveBeenCalledTimes(2);
   });
+
+  it('should separate melee and ranged DPS in raid embed display', async () => {
+    // Mock attendance with melee and ranged DPS
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue({
+      id: 'raid-new-1',
+      guildId: 'guild-123',
+      channelId: 'channel-123',
+      raidDate: new Date(),
+      description: 'Test Raid',
+      status: 'open',
+      guild: { language: 'en' },
+      attendance: [
+        {
+          userId: 'user-200',
+          username: 'WarriorPlayer',
+          status: 'attending',
+          wowClass: 'Warrior',
+          wowSpec: 'Arms', // Melee
+        },
+        {
+          userId: 'user-201',
+          username: 'MagePlayer',
+          status: 'attending',
+          wowClass: 'Mage',
+          wowSpec: 'Fire', // Ranged
+        },
+        {
+          userId: 'user-202',
+          username: 'HunterPlayer',
+          status: 'attending',
+          wowClass: 'Hunter',
+          wowSpec: 'Marksmanship', // Ranged
+        },
+      ],
+    });
+
+    await command.execute(mockInteraction);
+
+    // Check that embed was sent to channel
+    expect(mockChannel.send).toHaveBeenCalled();
+
+    // Get the embed from the send call
+    const sendCall = mockChannel.send.mock.calls[0][0];
+    expect(sendCall.embeds).toBeDefined();
+    expect(sendCall.embeds.length).toBe(1);
+
+    const embed = sendCall.embeds[0];
+
+    // Check that embed has fields for Melee and Ranged DPS
+    const fieldNames = embed.data.fields.map((field: any) => field.name);
+
+    // Should have Melee and Ranged fields (in English: 'Melee', 'Ranged')
+    expect(fieldNames).toContain('Melee');
+    expect(fieldNames).toContain('Ranged');
+
+    // Check that melee field contains WarriorPlayer (melee)
+    const meleeField = embed.data.fields.find((field: any) => field.name === 'Melee');
+    expect(meleeField.value).toContain('WarriorPlayer');
+
+    // Check that ranged field contains MagePlayer and HunterPlayer (ranged)
+    const rangedField = embed.data.fields.find((field: any) => field.name === 'Ranged');
+    expect(rangedField.value).toContain('MagePlayer');
+    expect(rangedField.value).toContain('HunterPlayer');
+  });
 });

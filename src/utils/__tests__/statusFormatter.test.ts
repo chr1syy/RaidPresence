@@ -72,10 +72,31 @@ describe('formatStatusEmbed', () => {
     const embed = formatStatusEmbed(raids, 'en');
     const desc = embed.data.description!;
 
-    // Tank: 1 (Warrior/Prot), Healer: 1 (Priest/Holy), DPS: 2 (Mage/Fire + Hunter/BM)
+    // Tank: 1 (Warrior/Prot), Healer: 1 (Priest/Holy), Melee: 0, Ranged: 2 (Mage/Fire + Hunter/BM)
     expect(desc).toContain('🛡️ 1');
     expect(desc).toContain('💚 1');
-    expect(desc).toContain('⚔️ 2');
+    expect(desc).toContain('⚔️ Melee DPS: 0');
+    expect(desc).toContain('🏹 Ranged DPS: 2');
+  });
+
+  it('should separate melee and ranged DPS counts', () => {
+    const attendance = [
+      { status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' }, // Melee
+      { status: 'attending', wowClass: 'Rogue', wowSpec: 'Assassination' }, // Melee
+      { status: 'attending', wowClass: 'Mage', wowSpec: 'Fire' }, // Ranged
+      { status: 'attending', wowClass: 'Hunter', wowSpec: 'Marksmanship' }, // Ranged
+      { status: 'attending', wowClass: 'Hunter', wowSpec: 'Survival' }, // Melee
+      { status: 'opted_out', wowClass: 'Priest', wowSpec: 'Shadow' }, // Ranged, but opted out
+    ];
+    const raids = [makeStatusRaid({ attendance })];
+    const embed = formatStatusEmbed(raids, 'en');
+    const desc = embed.data.description!;
+
+    // 3 melee (Warrior, Rogue, Hunter/Surv), 2 ranged (Mage, Hunter/MM), 0 tanks/healers in this test
+    expect(desc).toContain('🛡️ 0');
+    expect(desc).toContain('💚 0');
+    expect(desc).toContain('⚔️ Melee DPS: 3');
+    expect(desc).toContain('🏹 Ranged DPS: 2');
   });
 
   it('should display up to 7 raids with number emojis', () => {

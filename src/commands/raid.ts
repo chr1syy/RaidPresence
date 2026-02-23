@@ -716,7 +716,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   // Group attending players by role
   const tankList: string[] = [];
   const healerList: string[] = [];
-  const dpsList: string[] = [];
+  const meleeDpsList: string[] = [];
+  const rangedDpsList: string[] = [];
   const noClassList: string[] = [];
 
   sortedAttending.forEach((a: typeof raid.attendance[0]) => {
@@ -733,7 +734,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 
     if (role === 'Tank') tankList.push(line);
     else if (role === 'Healer') healerList.push(line);
-    else if (role === 'Melee' || role === 'Ranged') dpsList.push(line);
+    else if (role === 'Melee') meleeDpsList.push(line);
+    else if (role === 'Ranged') rangedDpsList.push(line);
     else noClassList.push(line);
   });
 
@@ -757,26 +759,28 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
      { name: trans.raidStatus, value: metaValue, inline: false },
    ];
 
-   // 3-column layout: Tank | Healer | DPS
-  const dpsCount = composition.melee + composition.ranged;
-  
+   // 4-column layout: Tank | Healer | Melee | Ranged
   const tankText = tankList.length > 0 
     ? tankList.join('\n') 
     : '\u200B';
   const healerText = healerList.length > 0 
     ? healerList.join('\n') 
     : '\u200B';
-  const dpsText = dpsList.length > 0 
-    ? dpsList.join('\n') 
+  const meleeDpsText = meleeDpsList.length > 0 
+    ? meleeDpsList.join('\n') 
+    : '\u200B';
+  const rangedDpsText = rangedDpsList.length > 0 
+    ? rangedDpsList.join('\n') 
     : '\u200B';
 
   baseFields.push(
     { name: `🛡️ ${trans.tank} (${composition.tanks})`, value: tankText, inline: true },
     { name: `💚 ${trans.heal} (${composition.healers})`, value: healerText, inline: true },
-    { name: `⚔️ ${trans.dps} (${dpsCount})`, value: dpsText, inline: true }
+    { name: `⚔️ ${trans.melee} (${composition.melee})`, value: meleeDpsText, inline: true },
+    { name: `🏹 ${trans.ranged} (${composition.ranged})`, value: rangedDpsText, inline: true }
   );
 
-  // Add running late section below the 3-column layout
+  // Add running late section below the 4-column layout
   if (runningLate.length > 0) {
     const lateText = runningLate.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
     baseFields.push({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: lateText, inline: false });

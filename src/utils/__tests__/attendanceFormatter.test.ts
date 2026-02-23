@@ -210,7 +210,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution({ mainRole: 'Tank' }), [], 'month', 'en');
     const field = getField(embed, 'Main Role');
     expect(field).toBeDefined();
-    expect(field.value).toBe('Tank');
+    expect(field.value).toBe('🛡️ Tank');
   });
 
   it('should not display main role field when null', () => {
@@ -223,7 +223,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution({ altRoles: ['Healer', 'Melee'] }), [], 'month', 'en');
     const field = getField(embed, 'Alt Roles');
     expect(field).toBeDefined();
-    expect(field.value).toBe('Healer, Melee');
+    expect(field.value).toBe('💚 Healer, ⚔️ Melee DPS');
   });
 
   it('should not display alt roles field when empty', () => {
@@ -424,7 +424,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), roles, [], 'month', 'en');
 
     const mainField = getField(embed, 'Main Role');
-    expect(mainField.value).toBe('Healer');
+    expect(mainField.value).toBe('💚 Healer');
 
     const fieldNames = getFieldNames(embed);
     expect(fieldNames).not.toContain('Alt Roles');

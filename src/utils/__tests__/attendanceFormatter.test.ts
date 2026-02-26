@@ -419,21 +419,6 @@ describe('formatAttendanceEmbed()', () => {
     expect(fieldNames).not.toContain('Recent Raids');
   });
 
-  it('should display role breakdown with melee/ranged DPS separation', () => {
-    const roleDistribution = makeRoleDistribution({
-      roleBreakdown: [
-        { role: 'Tank', count: 3, percentage: 50 },
-        { role: 'Healer', count: 2, percentage: 33.3 },
-        { role: 'Melee', count: 1, percentage: 16.7 },
-      ],
-    });
-    const embed = formatAttendanceEmbed('P', makeStats(), roleDistribution, [], 'month', 'en');
-
-    // Should not have role breakdown field in basic embed, but if it did, it would show separated
-    // The current embed doesn't show role breakdown directly, but the alt roles test covers it
-    expect(embed.data.title).toContain('P');
-  });
-
   it('should show alt roles with melee and ranged DPS properly formatted', () => {
     const roleDistribution = makeRoleDistribution({
       altRoles: ['Melee', 'Ranged'],
@@ -465,3 +450,4 @@ describe('formatAttendanceEmbed()', () => {
     const mainRoleField = getField(embed, 'Main Role');
     expect(mainRoleField.value).toBe('🏹 Ranged DPS');
   });
+});

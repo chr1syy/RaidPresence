@@ -205,3 +205,4 @@ describe('Composition Formatter (raid suggest display)', () => {
     expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 0');
     expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 0');
   });
+});

@@ -430,16 +430,21 @@ describe('handleCreateRaid()', () => {
     // Check that embed has fields for Melee and Ranged DPS
     const fieldNames = embed.data.fields.map((field: any) => field.name);
 
-    // Should have Melee DPS and Ranged DPS fields (in English: '⚔️ Melee DPS', '🏹 Ranged DPS')
-    expect(fieldNames).toContain('⚔️ Melee DPS');
-    expect(fieldNames).toContain('🏹 Ranged DPS');
+    // Should have Melee DPS and Ranged DPS fields (in English: '⚔️ Melee DPS', '🏹 Ranged DPS'),
+    // but the actual names may include counts, e.g. '⚔️ Melee DPS (1)'.
+    expect(fieldNames.some((name: string) => name.startsWith('⚔️ Melee DPS'))).toBe(true);
+    expect(fieldNames.some((name: string) => name.startsWith('🏹 Ranged DPS'))).toBe(true);
 
     // Check that melee field contains WarriorPlayer (melee)
-    const meleeField = embed.data.fields.find((field: any) => field.name === '⚔️ Melee DPS');
+    const meleeField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.startsWith('⚔️ Melee DPS'),
+    );
     expect(meleeField.value).toContain('WarriorPlayer');
 
     // Check that ranged field contains MagePlayer and HunterPlayer (ranged)
-    const rangedField = embed.data.fields.find((field: any) => field.name === '🏹 Ranged DPS');
+    const rangedField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.startsWith('🏹 Ranged DPS'),
+    );
     expect(rangedField.value).toContain('MagePlayer');
     expect(rangedField.value).toContain('HunterPlayer');
   });

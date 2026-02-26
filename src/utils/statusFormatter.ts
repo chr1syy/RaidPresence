@@ -75,6 +75,7 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
     let healers = 0;
     let melee = 0;
     let ranged = 0;
+    let unknown = 0;
     for (const a of raid.attendance) {
       if (a.status !== 'attending' && a.status !== 'late') continue;
       const role = getSpecRole(a.wowClass, a.wowSpec);
@@ -82,7 +83,7 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
       else if (role === 'Healer') healers++;
       else if (role === 'Melee') melee++;
       else if (role === 'Ranged') ranged++;
-      // noClass or unknown roles are ignored
+      else unknown++; // noClass or unknown roles
     }
 
     const rosterStatus = getRosterStatus(attending, total);
@@ -103,7 +104,7 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
       `<t:${timestamp}:F> (<t:${timestamp}:R>)\n` +
       `${trans.statusRoster}: ${attending}/${total} (${attendingRate}%) — ${statusIndicator}\n` +
       `${ROLE_EMOJIS.TANK} ${tanks} | ${ROLE_EMOJIS.HEALER} ${healers}\n` +
-      `⚔️ ${trans.compositionMeleeDps}: ${melee} | 🏹 ${trans.compositionRangedDps}: ${ranged}`
+      `⚔️ ${trans.compositionMeleeDps}: ${melee} | 🏹 ${trans.compositionRangedDps}: ${ranged} | ❓ ${unknown}`
     );
   }
 

@@ -15,6 +15,8 @@ function formatRoleName(role: string, language: string): string {
       return `🛡️ ${trans.tank}`;
     case 'Healer':
       return `💚 ${trans.heal}`;
+    case 'Heal':
+      return `💚 ${trans.heal}`;
     case 'Melee':
       return `⚔️ ${trans.compositionMeleeDps}`;
     case 'Ranged':

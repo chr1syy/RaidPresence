@@ -223,7 +223,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution({ altRoles: ['Healer', 'Melee'] }), [], 'month', 'en');
     const field = getField(embed, 'Alt Roles');
     expect(field).toBeDefined();
-    expect(field.value).toBe('💚 Healer, ⚔️ Melee DPS');
+    expect(field.value).toBe('💚 Heal, ⚔️ Melee DPS');
   });
 
   it('should not display alt roles field when empty', () => {

@@ -131,9 +131,9 @@ describe('Integration: /raid status', () => {
       expect(desc).toContain('🏹 Ranged DPS: 1');
       expect(desc).toContain('🛡️ 1');
       expect(desc).toContain('💚 1');
-      // 4 attending + 1 opted out = 4/5 = 80% => FULL
-      expect(desc).toContain('4/5');
-      expect(desc).toContain('80%');
+      // 5 attending + 1 opted out = 5/6 ≈83% => FULL
+      expect(desc).toContain('5/6');
+      expect(desc).toContain('83%');
       expect(desc).toContain('FULL');
     });
   });

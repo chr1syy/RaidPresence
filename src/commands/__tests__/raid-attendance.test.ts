@@ -283,10 +283,10 @@ describe('/raid attendance command', () => {
     const fields = embed.data.fields;
 
     const mainRoleField = fields.find((f: any) => f.name === 'Main Role');
-    expect(mainRoleField.value).toBe('Tank');
+    expect(mainRoleField.value).toBe('🛡️ Tank');
 
     const altRolesField = fields.find((f: any) => f.name === 'Alt Roles');
-    expect(altRolesField.value).toBe('Heal');
+    expect(altRolesField.value).toBe('💚 Heal');
   });
 
   it('should show recent raids with status icons', async () => {

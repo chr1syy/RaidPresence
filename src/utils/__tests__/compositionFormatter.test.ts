@@ -140,10 +140,11 @@ describe('Composition Formatter (raid suggest display)', () => {
 
     const embed = formatCompositionEmbed('Test Raid', analysis, gaps, suggestions, likelihood, 'en');
 
-    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
+    expect(embed.data.fields).toBeDefined();
+    const currentCompositionField = embed.data.fields!.find((f: any) => f.name === 'Current Composition');
     expect(currentCompositionField).toBeDefined();
-    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 2');
-    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 1');
+    expect(currentCompositionField!.value).toContain('⚔️ Melee DPS: 2');
+    expect(currentCompositionField!.value).toContain('🏹 Ranged DPS: 1');
   });
 
   it('should handle raid with only melee DPS', () => {
@@ -161,9 +162,11 @@ describe('Composition Formatter (raid suggest display)', () => {
 
     const embed = formatCompositionEmbed('Melee Only Raid', analysis, gaps, suggestions, likelihood, 'en');
 
-    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
-    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 2');
-    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 0');
+    expect(embed.data.fields).toBeDefined();
+    const currentCompositionField = embed.data.fields!.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField).toBeDefined();
+    expect(currentCompositionField!.value).toContain('⚔️ Melee DPS: 2');
+    expect(currentCompositionField!.value).toContain('🏹 Ranged DPS: 0');
   });
 
   it('should handle raid with only ranged DPS', () => {
@@ -181,9 +184,11 @@ describe('Composition Formatter (raid suggest display)', () => {
 
     const embed = formatCompositionEmbed('Ranged Only Raid', analysis, gaps, suggestions, likelihood, 'en');
 
-    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
-    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 0');
-    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 2');
+    expect(embed.data.fields).toBeDefined();
+    const currentCompositionField = embed.data.fields!.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField).toBeDefined();
+    expect(currentCompositionField!.value).toContain('⚔️ Melee DPS: 0');
+    expect(currentCompositionField!.value).toContain('🏹 Ranged DPS: 2');
   });
 
   it('should handle raid with no DPS', () => {
@@ -201,8 +206,10 @@ describe('Composition Formatter (raid suggest display)', () => {
 
     const embed = formatCompositionEmbed('No DPS Raid', analysis, gaps, suggestions, likelihood, 'en');
 
-    const currentCompositionField = embed.data.fields.find((f: any) => f.name === 'Current Composition');
-    expect(currentCompositionField.value).toContain('⚔️ Melee DPS: 0');
-    expect(currentCompositionField.value).toContain('🏹 Ranged DPS: 0');
+    expect(embed.data.fields).toBeDefined();
+    const currentCompositionField = embed.data.fields!.find((f: any) => f.name === 'Current Composition');
+    expect(currentCompositionField).toBeDefined();
+    expect(currentCompositionField!.value).toContain('⚔️ Melee DPS: 0');
+    expect(currentCompositionField!.value).toContain('🏹 Ranged DPS: 0');
   });
 });

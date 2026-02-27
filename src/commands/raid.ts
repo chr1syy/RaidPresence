@@ -716,7 +716,8 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
   // Group attending players by role
   const tankList: string[] = [];
   const healerList: string[] = [];
-  const dpsList: string[] = [];
+  const meleeDpsList: string[] = [];
+  const rangedDpsList: string[] = [];
   const noClassList: string[] = [];
 
   sortedAttending.forEach((a: typeof raid.attendance[0]) => {
@@ -733,9 +734,23 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 
     if (role === 'Tank') tankList.push(line);
     else if (role === 'Healer') healerList.push(line);
-    else if (role === 'Melee' || role === 'Ranged') dpsList.push(line);
+    else if (role === 'Melee') meleeDpsList.push(line);
+    else if (role === 'Ranged') rangedDpsList.push(line);
     else noClassList.push(line);
   });
+
+  const tankText = tankList.length > 0 
+    ? tankList.join('\n') 
+    : '\u200B';
+  const healerText = healerList.length > 0 
+    ? healerList.join('\n') 
+    : '\u200B';
+  const meleeDpsText = meleeDpsList.length > 0 
+    ? meleeDpsList.join('\n') 
+    : '\u200B';
+  const rangedDpsText = rangedDpsList.length > 0 
+    ? rangedDpsList.join('\n') 
+    : '\u200B';
 
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
 
@@ -753,61 +768,75 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
    const participantsLabel = lang === 'de' ? 'Teilnehmer' : 'Participants';
     const metaValue = `${raidStatusText}\n📅 <t:${timestamp}:F> (<t:${timestamp}:R>)\n👥 ${totalParticipants} ${participantsLabel}`;
 
-   const baseFields: { name: string; value: string; inline: boolean }[] = [
-     { name: trans.raidStatus, value: metaValue, inline: false },
-   ];
+    const baseFields: { name: string; value: string; inline: boolean }[] = [
+      { name: trans.raidStatus, value: metaValue, inline: false },
+    ];
 
-   // 3-column layout: Tank | Healer | DPS
-  const dpsCount = composition.melee + composition.ranged;
-  
-  const tankText = tankList.length > 0 
-    ? tankList.join('\n') 
-    : '\u200B';
-  const healerText = healerList.length > 0 
-    ? healerList.join('\n') 
-    : '\u200B';
-  const dpsText = dpsList.length > 0 
-    ? dpsList.join('\n') 
-    : '\u200B';
+    const embed = new EmbedBuilder()
+      .setTitle(`${raid.description || trans.raidEvent}`)
+      .setColor(embedColor)
+      .addFields(...baseFields);
 
-  baseFields.push(
-    { name: `🛡️ ${trans.tank} (${composition.tanks})`, value: tankText, inline: true },
-    { name: `💚 ${trans.heal} (${composition.healers})`, value: healerText, inline: true },
-    { name: `⚔️ ${trans.dps} (${dpsCount})`, value: dpsText, inline: true }
-  );
-
-  // Add running late section below the 3-column layout
-  if (runningLate.length > 0) {
-    const lateText = runningLate.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
-    baseFields.push({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: lateText, inline: false });
-  }
-
-  // Add opted out section
-  if (optedOut.length > 0) {
-    const optedOutText = optedOut.map((a: typeof raid.attendance[0]) => {
-      if (a.optoutReason) {
-        return `${a.username} (${a.optoutReason})`;
+    // 2x2 grid layout: Tank | Heal
+    //                      Melee | Ranged
+    embed.addFields(
+      {
+        name: `🛡️ ${trans.tank} (${composition.tanks})`,
+        value: tankText,
+        inline: true,
+      },
+      {
+        name: `💚 ${trans.heal} (${composition.healers})`,
+        value: healerText,
+        inline: true,
       }
-      return a.username;
-    }).join('\n');
-    baseFields.push({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: optedOutText, inline: false });
-  }
+    );
 
-  // Add no class section
-  if (noClassList.length > 0) {
-    const noClassText = noClassList.join('\n');
-    baseFields.push({ name: `❓ ${trans.noClass} (${composition.noClass})`, value: noClassText, inline: false });
-  }
+    // Force row break for next fields
+    embed.addFields({ name: '\u200B', value: '\u200B', inline: false });
 
-  const embed = new EmbedBuilder()
-    .setTitle(`${raid.description || trans.raidEvent}`)
-    .setColor(embedColor)
-    .addFields(...baseFields)
-    .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
-    .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
-    .setTimestamp();
+    embed.addFields(
+      {
+        name: `⚔️ ${trans.compositionMeleeDps} (${composition.melee})`,
+        value: meleeDpsText,
+        inline: true,
+      },
+      {
+        name: `🏹 ${trans.compositionRangedDps} (${composition.ranged})`,
+        value: rangedDpsText,
+        inline: true,
+      }
+    );
 
-  return embed;
+    // Add running late section below the 4-column layout
+    if (runningLate.length > 0) {
+      const lateText = runningLate.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
+      embed.addFields({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: lateText, inline: false });
+    }
+
+    // Add opted out section
+    if (optedOut.length > 0) {
+      const optedOutText = optedOut.map((a: typeof raid.attendance[0]) => {
+        if (a.optoutReason) {
+          return `${a.username} (${a.optoutReason})`;
+        }
+        return a.username;
+      }).join('\n');
+      embed.addFields({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: optedOutText, inline: false });
+    }
+
+    // Add no class section
+    if (noClassList.length > 0) {
+      const noClassText = noClassList.join('\n');
+      embed.addFields({ name: `❓ ${trans.noClass} (${composition.noClass})`, value: noClassText, inline: false });
+    }
+
+    embed
+      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
+      .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
+      .setTimestamp();
+
+    return embed;
 }
 
 async function handleListRaids(interaction: ChatInputCommandInteraction) {

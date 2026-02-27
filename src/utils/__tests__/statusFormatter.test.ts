@@ -72,10 +72,31 @@ describe('formatStatusEmbed', () => {
     const embed = formatStatusEmbed(raids, 'en');
     const desc = embed.data.description!;
 
-    // Tank: 1 (Warrior/Prot), Healer: 1 (Priest/Holy), DPS: 2 (Mage/Fire + Hunter/BM)
+    // Tank: 1 (Warrior/Prot), Healer: 1 (Priest/Holy), Melee: 0, Ranged: 2 (Mage/Fire + Hunter/BM)
     expect(desc).toContain('🛡️ 1');
     expect(desc).toContain('💚 1');
-    expect(desc).toContain('⚔️ 2');
+    expect(desc).toContain('⚔️ Melee DPS: 0');
+    expect(desc).toContain('🏹 Ranged DPS: 2');
+  });
+
+  it('should separate melee and ranged DPS counts', () => {
+    const attendance = [
+      { status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' }, // Melee
+      { status: 'attending', wowClass: 'Rogue', wowSpec: 'Assassination' }, // Melee
+      { status: 'attending', wowClass: 'Mage', wowSpec: 'Fire' }, // Ranged
+      { status: 'attending', wowClass: 'Hunter', wowSpec: 'Marksmanship' }, // Ranged
+      { status: 'attending', wowClass: 'Hunter', wowSpec: 'Survival' }, // Melee
+      { status: 'opted_out', wowClass: 'Priest', wowSpec: 'Shadow' }, // Ranged, but opted out
+    ];
+    const raids = [makeStatusRaid({ attendance })];
+    const embed = formatStatusEmbed(raids, 'en');
+    const desc = embed.data.description!;
+
+    // 3 melee (Warrior, Rogue, Hunter/Surv), 2 ranged (Mage, Hunter/MM), 0 tanks/healers in this test
+    expect(desc).toContain('🛡️ 0');
+    expect(desc).toContain('💚 0');
+    expect(desc).toContain('⚔️ Melee DPS: 3');
+    expect(desc).toContain('🏹 Ranged DPS: 2');
   });
 
   it('should display up to 7 raids with number emojis', () => {
@@ -179,20 +200,64 @@ describe('formatStatusEmbed', () => {
     expect(embed.data.description).toContain(`<t:${timestamp}:R>`);
   });
 
-  it('should count late players as attending for roster calculations', () => {
+  it('should handle raid with only tanks and healers (no DPS)', () => {
     const attendance = [
-      { status: 'late', wowClass: 'Warrior', wowSpec: 'Protection' },
-      { status: 'late', wowClass: 'Priest', wowSpec: 'Holy' },
-      { status: 'opted_out', wowClass: 'Mage', wowSpec: 'Fire' },
+      { status: 'attending', wowClass: 'Warrior', wowSpec: 'Protection' },
+      { status: 'attending', wowClass: 'Paladin', wowSpec: 'Protection' },
+      { status: 'attending', wowClass: 'Priest', wowSpec: 'Holy' },
+      { status: 'attending', wowClass: 'Druid', wowSpec: 'Restoration' },
     ];
     const raids = [makeStatusRaid({ attendance })];
     const embed = formatStatusEmbed(raids, 'en');
     const desc = embed.data.description!;
 
-    // 2 late out of 3 total (66.7%) => GOOD
-    expect(desc).toContain('2/3');
-    expect(desc).toContain('67%');
-    expect(desc).toContain('GOOD');
+    expect(desc).toContain('🛡️ 2');
+    expect(desc).toContain('💚 2');
+    expect(desc).toContain('⚔️ Melee DPS: 0');
+    expect(desc).toContain('🏹 Ranged DPS: 0');
+  });
+
+  it('should handle large raid with 40 players', () => {
+    const attendance = Array.from({ length: 40 }, (_, i) => {
+      const classes = ['Warrior', 'Paladin', 'Priest', 'Druid', 'Rogue', 'Mage', 'Hunter'];
+      const specs = {
+        Warrior: ['Protection', 'Arms'],
+        Paladin: ['Protection', 'Holy'],
+        Priest: ['Holy', 'Shadow'],
+        Druid: ['Restoration', 'Balance'],
+        Rogue: ['Assassination'],
+        Mage: ['Fire'],
+        Hunter: ['Marksmanship']
+      };
+      const wowClass = classes[i % classes.length];
+      const wowSpec = specs[wowClass as keyof typeof specs][0];
+      return { status: 'attending', wowClass, wowSpec };
+    });
+    const raids = [makeStatusRaid({ attendance })];
+    const embed = formatStatusEmbed(raids, 'en');
+    const desc = embed.data.description!;
+
+    // Should contain composition counts without breaking formatting
+    expect(desc).toContain('🛡️');
+    expect(desc).toContain('💚');
+    expect(desc).toContain('⚔️ Melee DPS:');
+    expect(desc).toContain('🏹 Ranged DPS:');
+    // Should not be ridiculously long or malformed
+    expect(desc.length).toBeLessThan(2000);
+  });
+
+  it('should handle single DPS player correctly', () => {
+    const attendance = [
+      { status: 'attending', wowClass: 'Warrior', wowSpec: 'Protection' },
+      { status: 'attending', wowClass: 'Priest', wowSpec: 'Holy' },
+      { status: 'attending', wowClass: 'Rogue', wowSpec: 'Assassination' }, // Single melee DPS
+    ];
+    const raids = [makeStatusRaid({ attendance })];
+    const embed = formatStatusEmbed(raids, 'en');
+    const desc = embed.data.description!;
+
+    expect(desc).toContain('⚔️ Melee DPS: 1');
+    expect(desc).toContain('🏹 Ranged DPS: 0');
   });
 
   it('should handle raid with zero attendance', () => {

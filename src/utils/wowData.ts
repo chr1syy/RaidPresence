@@ -47,7 +47,10 @@ export const WOW_SPECS: Record<string, string[]> = {
 export const ROLE_EMOJIS = {
   TANK: '🛡️',
   HEALER: '💚',
-  DPS: '⚔️',
+  HEAL: '💚', // Alias for Healer
+  MELEE: '⚔️',
+  RANGED: '🏹',
+  DPS: '⚔️', // Keep for backward compatibility
 };
 
 export type WoWRole = 'Tank' | 'Healer' | 'Melee' | 'Ranged';

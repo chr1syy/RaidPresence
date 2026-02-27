@@ -5,6 +5,28 @@ import type { PlayerStats, PlayerRoleDistribution, AttendanceHistoryEntry } from
 import { VERSION } from './version';
 
 /**
+ * Format a role name with emoji and localized label.
+ */
+function formatRoleName(role: string, language: string): string {
+  const trans = getTranslations(language);
+
+  switch (role) {
+    case 'Tank':
+      return `🛡️ ${trans.tank}`;
+    case 'Healer':
+      return `💚 ${trans.heal}`;
+    case 'Heal':
+      return `💚 ${trans.heal}`;
+    case 'Melee':
+      return `⚔️ ${trans.compositionMeleeDps}`;
+    case 'Ranged':
+      return `🏹 ${trans.compositionRangedDps}`;
+    default:
+      return role;
+  }
+}
+
+/**
  * Format an attendance stats embed for a player.
  *
  * @param playerName - Display name of the player
@@ -78,7 +100,7 @@ export function formatAttendanceEmbed(
   if (roleDistribution.mainRole) {
     embed.addFields({
       name: trans.attendanceMainRole,
-      value: roleDistribution.mainRole,
+      value: formatRoleName(roleDistribution.mainRole, language),
       inline: true,
     });
   }
@@ -86,7 +108,7 @@ export function formatAttendanceEmbed(
   if (roleDistribution.altRoles.length > 0) {
     embed.addFields({
       name: trans.attendanceAltRoles,
-      value: roleDistribution.altRoles.join(', '),
+      value: roleDistribution.altRoles.map(role => formatRoleName(role, language)).join(', '),
       inline: true,
     });
   }

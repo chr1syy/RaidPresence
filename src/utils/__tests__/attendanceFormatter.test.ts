@@ -210,7 +210,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution({ mainRole: 'Tank' }), [], 'month', 'en');
     const field = getField(embed, 'Main Role');
     expect(field).toBeDefined();
-    expect(field.value).toBe('Tank');
+    expect(field.value).toBe('🛡️ Tank');
   });
 
   it('should not display main role field when null', () => {
@@ -223,7 +223,7 @@ describe('formatAttendanceEmbed()', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution({ altRoles: ['Healer', 'Melee'] }), [], 'month', 'en');
     const field = getField(embed, 'Alt Roles');
     expect(field).toBeDefined();
-    expect(field.value).toBe('Healer, Melee');
+    expect(field.value).toBe('💚 Heal, ⚔️ Melee DPS');
   });
 
   it('should not display alt roles field when empty', () => {
@@ -419,14 +419,35 @@ describe('formatAttendanceEmbed()', () => {
     expect(fieldNames).not.toContain('Recent Raids');
   });
 
-  it('should handle player with only main role and no alt roles', () => {
-    const roles = makeRoleDistribution({ mainRole: 'Healer', altRoles: [] });
-    const embed = formatAttendanceEmbed('P', makeStats(), roles, [], 'month', 'en');
+  it('should show alt roles with melee and ranged DPS properly formatted', () => {
+    const roleDistribution = makeRoleDistribution({
+      altRoles: ['Melee', 'Ranged'],
+    });
+    const embed = formatAttendanceEmbed('P', makeStats(), roleDistribution, [], 'month', 'en');
 
-    const mainField = getField(embed, 'Main Role');
-    expect(mainField.value).toBe('Healer');
+    const altRolesField = getField(embed, 'Alt Roles');
+    expect(altRolesField.value).toBe('⚔️ Melee DPS, 🏹 Ranged DPS');
+  });
 
-    const fieldNames = getFieldNames(embed);
-    expect(fieldNames).not.toContain('Alt Roles');
+  it('should handle player with only melee DPS role', () => {
+    const roleDistribution = makeRoleDistribution({
+      mainRole: 'Melee',
+      altRoles: [],
+    });
+    const embed = formatAttendanceEmbed('MeleePlayer', makeStats(), roleDistribution, [], 'month', 'en');
+
+    const mainRoleField = getField(embed, 'Main Role');
+    expect(mainRoleField.value).toBe('⚔️ Melee DPS');
+  });
+
+  it('should handle player with only ranged DPS role', () => {
+    const roleDistribution = makeRoleDistribution({
+      mainRole: 'Ranged',
+      altRoles: [],
+    });
+    const embed = formatAttendanceEmbed('RangedPlayer', makeStats(), roleDistribution, [], 'month', 'en');
+
+    const mainRoleField = getField(embed, 'Main Role');
+    expect(mainRoleField.value).toBe('🏹 Ranged DPS');
   });
 });

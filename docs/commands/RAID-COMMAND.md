@@ -144,7 +144,7 @@ RaidPresence uses a **reverse sign-up system** where all eligible guild members 
 
 ### `suggest` - Composition Analysis
 **Permission:** Any guild member
-**Description:** Analyzes raid composition and provides recommendations for optimal player swaps.
+**Description:** Analyzes raid composition and provides recommendations for optimal player swaps. DPS roles are separated into melee (⚔️) and ranged (🏹) for detailed composition analysis.
 
 **Usage:**
 ```

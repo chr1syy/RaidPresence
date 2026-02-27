@@ -193,32 +193,32 @@ To change your class/spec:
 
 ---
 
-## Raid Composition Analysis
+## DPS Display
 
-### `/raid suggest [raid_id]` - Composition Recommendations
+The bot now separates DPS into Melee and Ranged for better raid composition visibility:
 
-Raid leaders analyze raid composition and identify:
-
-- **Gaps:** Missing roles
-- **Excess:** Over-staffed positions
-- **Recommendations:** Who should swap roles to balance
-
-**Example:**
+**Before:**
 ```
-Current Composition: 2T / 2H / 6D
-Optimal for 10-man: 2T / 2-3H / 5-6D
-
-Analysis:
-✓ Tank count is GOOD (2/2)
-✗ Healer count is LOW (need 1 more)
-✓ DPS is balanced
-
-Recommendation:
-Ask Mike (Warrior Tank) to swap to Protection and join as Tank
-Ask Sarah (Paladin Healer) to help as healer instead of DPS
+⚔️ DPS (8)
+Player1, Player2, ...
 ```
 
-**Note:** Raid leaders can only see recommendations; participants follow leader guidance.
+**After:**
+```
+⚔️ Melee DPS (3)
+Player1 (Rogue), Player2 (Warrior)
+
+🏹 Ranged DPS (5)
+Player3 (Mage), Player4 (Hunter), ...
+```
+
+This separation helps leaders understand class distribution and make informed decisions about recruitment and composition optimization.
+
+**Emoji Meanings:**
+- ⚔️ Melee DPS (physical damage dealers)
+- 🏹 Ranged DPS (spellcasters and hunters)
+
+---
 
 ---
 
@@ -237,8 +237,17 @@ Ask Sarah (Paladin Healer) to help as healer instead of DPS
 
 **Example:**
 ```
-Raid 1: Karazhan (3 Tanks, 5 Healers, 12 DPS)
-Raid 2: World Bosses (2 Tanks, 2 Healers, 16 DPS)
+Current Composition: 2T / 2H / 3 ⚔️ Melee DPS / 3 🏹 Ranged DPS
+Optimal for 10-man: 2T / 2-3H / 3-4 ⚔️ Melee DPS / 3-4 🏹 Ranged DPS
+
+Analysis:
+✓ Tank count is GOOD (2/2)
+✗ Healer count is LOW (need 1 more)
+✓ DPS is balanced (melee and ranged properly distributed)
+
+Recommendation:
+Ask Mike (Warrior Tank) to swap to Protection and join as Tank
+Ask Sarah (Paladin Healer) to help as healer instead of DPS
 ```
 
 ### Archive System

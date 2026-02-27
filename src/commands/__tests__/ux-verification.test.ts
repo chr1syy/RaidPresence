@@ -269,7 +269,7 @@ describe('UX: Embed Formatting', () => {
       expect(compositionField!.value).toContain('🛡️');
       expect(compositionField!.value).toContain('💚');
       expect(compositionField!.value).toContain('⚔️');
-      expect(compositionField!.value).toContain('🎯');
+      expect(compositionField!.value).toContain('🏹');
     });
 
     it('has footer with raid ID', () => {

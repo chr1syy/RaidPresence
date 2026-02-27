@@ -172,7 +172,8 @@ describe('/raid status command', () => {
     // Tank: 1 (Warrior/Prot), Healer: 1 (Priest/Holy), DPS: 2 (Mage/Fire + Hunter/BM)
     expect(desc).toContain('🛡️ 1');
     expect(desc).toContain('💚 1');
-    expect(desc).toContain('⚔️ 2');
+    expect(desc).toContain('⚔️ Melee DPS: 0');
+    expect(desc).toContain('🏹 Ranged DPS: 2');
   });
 
   it('should show correct status indicators', async () => {

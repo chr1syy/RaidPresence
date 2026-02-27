@@ -166,7 +166,7 @@ describe('Integration: /raid attendance', () => {
 
       // All records are Warrior/Protection → main role should be Tank
       const mainRoleField = fields.find((f: any) => f.name === 'Main Role');
-      expect(mainRoleField.value).toBe('Tank');
+      expect(mainRoleField.value).toBe('🛡️ Tank');
 
       // Recent raids field should be present (5 raids, limited to 5)
       const recentField = fields.find((f: any) => f.name === 'Recent Raids');
@@ -462,12 +462,12 @@ describe('Integration: /raid attendance', () => {
       // Main role should be Tank (3 out of 4)
       const mainRoleField = fields.find((f: any) => f.name === 'Main Role');
       expect(mainRoleField).toBeDefined();
-      expect(mainRoleField.value).toBe('Tank');
+      expect(mainRoleField.value).toBe('🛡️ Tank');
 
       // Alt roles should include Heal
       const altRolesField = fields.find((f: any) => f.name === 'Alt Roles');
       expect(altRolesField).toBeDefined();
-      expect(altRolesField.value).toContain('Heal');
+      expect(altRolesField.value).toContain('💚 Heal');
     });
   });
 });

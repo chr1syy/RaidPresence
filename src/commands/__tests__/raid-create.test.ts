@@ -72,12 +72,27 @@ describe('handleCreateRaid()', () => {
     membersCache.set('user-200', {
       user: { bot: false, id: 'user-200' },
       roles: { cache: memberRolesCache },
-      displayName: 'Player1',
+      displayName: 'TankPlayer',
     });
     membersCache.set('user-201', {
       user: { bot: false, id: 'user-201' },
       roles: { cache: memberRolesCache },
-      displayName: 'Player2',
+      displayName: 'HealerPlayer',
+    });
+    membersCache.set('user-202', {
+      user: { bot: false, id: 'user-202' },
+      roles: { cache: memberRolesCache },
+      displayName: 'WarriorPlayer',
+    });
+    membersCache.set('user-203', {
+      user: { bot: false, id: 'user-203' },
+      roles: { cache: memberRolesCache },
+      displayName: 'MagePlayer',
+    });
+    membersCache.set('user-204', {
+      user: { bot: false, id: 'user-204' },
+      roles: { cache: memberRolesCache },
+      displayName: 'HunterPlayer',
     });
     membersCache.set('bot-user', {
       user: { bot: true, id: 'bot-user' },
@@ -146,6 +161,9 @@ describe('handleCreateRaid()', () => {
     (prisma.userPreference.findMany as jest.Mock).mockResolvedValue([
       { userId: 'user-200', guildId: 'guild-123', wowClass: 'Warrior', wowSpec: 'Protection' },
       { userId: 'user-201', guildId: 'guild-123', wowClass: 'Priest', wowSpec: 'Holy' },
+      { userId: 'user-202', guildId: 'guild-123', wowClass: 'Warrior', wowSpec: 'Arms' },
+      { userId: 'user-203', guildId: 'guild-123', wowClass: 'Mage', wowSpec: 'Frost' },
+      { userId: 'user-204', guildId: 'guild-123', wowClass: 'Hunter', wowSpec: 'Marksmanship' },
     ]);
 
     (prisma.raid.create as jest.Mock).mockResolvedValue({
@@ -158,7 +176,7 @@ describe('handleCreateRaid()', () => {
       createdBy: 'user-123',
     });
 
-    (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 2 });
+    (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 5 });
     (prisma.raid.update as jest.Mock).mockResolvedValue({});
 
     // Mock createRaidEmbed dependency (raid.findUnique with include)
@@ -170,7 +188,13 @@ describe('handleCreateRaid()', () => {
       description: 'Weekly Raid',
       status: 'open',
       guild: { language: 'en' },
-      attendance: [],
+      attendance: [
+        { userId: 'user-200', username: 'TankPlayer', status: 'attending', wowClass: 'Warrior', wowSpec: 'Protection' },
+        { userId: 'user-201', username: 'HealerPlayer', status: 'attending', wowClass: 'Priest', wowSpec: 'Holy' },
+        { userId: 'user-202', username: 'WarriorPlayer', status: 'attending', wowClass: 'Warrior', wowSpec: 'Arms' },
+        { userId: 'user-203', username: 'MagePlayer', status: 'attending', wowClass: 'Mage', wowSpec: 'Frost' },
+        { userId: 'user-204', username: 'HunterPlayer', status: 'attending', wowClass: 'Hunter', wowSpec: 'Marksmanship' },
+      ],
     });
   });
 
@@ -325,6 +349,9 @@ describe('handleCreateRaid()', () => {
     expect(userIds).not.toContain('bot-user');
     expect(userIds).toContain('user-200');
     expect(userIds).toContain('user-201');
+    expect(userIds).toContain('user-202');
+    expect(userIds).toContain('user-203');
+    expect(userIds).toContain('user-204');
   });
 
   it('should use custom roles when provided', async () => {
@@ -377,6 +404,54 @@ describe('handleCreateRaid()', () => {
   it('should upsert UserPreference for each eligible member', async () => {
     await command.execute(mockInteraction);
     // Should upsert for each non-bot eligible member
-    expect(prisma.userPreference.upsert).toHaveBeenCalledTimes(2);
+    expect(prisma.userPreference.upsert).toHaveBeenCalledTimes(5);
+  });
+
+  it('should separate melee and ranged DPS in raid embed display', async () => {
+    await command.execute(mockInteraction);
+
+    // Check that embed was sent to channel
+    expect(mockChannel.send).toHaveBeenCalled();
+
+    // Get the embed from the send call
+    const sendCall = mockChannel.send.mock.calls[0][0];
+    expect(sendCall.embeds).toBeDefined();
+    expect(sendCall.embeds.length).toBe(1);
+
+    const embed = sendCall.embeds[0];
+
+    // Check that embed has separate fields for Tank, Heal, Melee, and Ranged DPS
+    const fieldNames = embed.data.fields.map((field: any) => field.name);
+
+    // Should have separate fields for each role
+    expect(fieldNames.some((name: string) => name.includes('🛡️ Tank') && !name.includes('💚 Heal'))).toBe(true);
+    expect(fieldNames.some((name: string) => name.includes('💚 Heal') && !name.includes('🛡️ Tank'))).toBe(true);
+    expect(fieldNames.some((name: string) => name.includes('⚔️ Melee DPS') && !name.includes('🏹 Ranged DPS'))).toBe(true);
+    expect(fieldNames.some((name: string) => name.includes('🏹 Ranged DPS') && !name.includes('⚔️ Melee DPS'))).toBe(true);
+
+    // Check that tank field contains TankPlayer
+    const tankField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.includes('🛡️ Tank') && !field.name.includes('💚 Heal'),
+    );
+    expect(tankField.value).toContain('TankPlayer');
+
+    // Check that heal field contains HealerPlayer
+    const healField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.includes('💚 Heal') && !field.name.includes('🛡️ Tank'),
+    );
+    expect(healField.value).toContain('HealerPlayer');
+
+    // Check that melee field contains WarriorPlayer
+    const meleeField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.includes('⚔️ Melee DPS') && !field.name.includes('🏹 Ranged DPS'),
+    );
+    expect(meleeField.value).toContain('WarriorPlayer');
+
+    // Check that ranged field contains MagePlayer and HunterPlayer
+    const rangedField = embed.data.fields.find(
+      (field: any) => typeof field.name === 'string' && field.name.includes('🏹 Ranged DPS') && !field.name.includes('⚔️ Melee DPS'),
+    );
+    expect(rangedField.value).toContain('MagePlayer');
+    expect(rangedField.value).toContain('HunterPlayer');
   });
 });

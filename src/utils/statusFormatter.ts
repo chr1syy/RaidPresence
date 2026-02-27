@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
 import { getTranslations } from './localization';
-import { getSpecRole } from './wowData';
+import { getSpecRole, ROLE_EMOJIS } from './wowData';
 import { VERSION } from './version';
 
 /**
@@ -73,13 +73,17 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
     // Role composition
     let tanks = 0;
     let healers = 0;
-    let dps = 0;
+    let melee = 0;
+    let ranged = 0;
+    let unknown = 0;
     for (const a of raid.attendance) {
       if (a.status !== 'attending' && a.status !== 'late') continue;
       const role = getSpecRole(a.wowClass, a.wowSpec);
       if (role === 'Tank') tanks++;
       else if (role === 'Healer') healers++;
-      else dps++; // Melee + Ranged + noClass all count as DPS slot
+      else if (role === 'Melee') melee++;
+      else if (role === 'Ranged') ranged++;
+      else unknown++; // noClass or unknown roles
     }
 
     const rosterStatus = getRosterStatus(attending, total);
@@ -99,7 +103,8 @@ export function formatStatusEmbed(raids: StatusRaid[], language: string): EmbedB
       `${emoji} **${title}**\n` +
       `<t:${timestamp}:F> (<t:${timestamp}:R>)\n` +
       `${trans.statusRoster}: ${attending}/${total} (${attendingRate}%) — ${statusIndicator}\n` +
-      `🛡️ ${tanks} | 💚 ${healers} | ⚔️ ${dps}`
+      `${ROLE_EMOJIS.TANK} ${tanks} | ${ROLE_EMOJIS.HEALER} ${healers}\n` +
+      `⚔️ ${trans.compositionMeleeDps}: ${melee} | 🏹 ${trans.compositionRangedDps}: ${ranged} | ❓ ${unknown}`
     );
   }
 

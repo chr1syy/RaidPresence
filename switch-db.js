@@ -35,11 +35,15 @@ const migrationsDev = path.join(__dirname, 'prisma', 'migrations-dev');
 const migrationsProd = path.join(__dirname, 'prisma', 'migrations-prod');
 const targetMigrationsDir = dbEnv === 'prod' ? migrationsProd : migrationsDev;
 
+// In CI we only need prisma generate (for types). Skip migration directory
+// setup entirely — symlinks to non-existent paths cause ENOENT failures.
+const isCI = process.env.CI === 'true' || process.env.CI === '1';
+
 try {
   // 1. Switch schema provider
   let schema = fs.readFileSync(schemaPath, 'utf-8');
   const datasourcePattern = /datasource\s+db\s*\{[^}]*provider\s*=\s*"[^"]*"[^}]*\}/s;
-  
+
   if (!datasourcePattern.test(schema)) {
     throw new Error('Could not find datasource block in schema.prisma');
   }
@@ -59,7 +63,7 @@ try {
   }
 
   schema = schema.replace(datasourcePattern, newDatasource);
-  
+
   if (!schema.includes(`provider = "${provider}"`)) {
     throw new Error(`Failed to set database provider to ${provider}`);
   }
@@ -68,44 +72,47 @@ try {
   console.log(`Switching database provider to ${provider} for ${dbEnv}`);
   console.log(`✓ Switched to ${provider} successfully`);
 
+  if (isCI) {
+    console.log(`  CI environment — skipping migration directory setup`);
+    process.exit(0);
+  }
+
   // 2. Ensure target migrations directory exists
   if (!fs.existsSync(targetMigrationsDir)) {
     fs.mkdirSync(targetMigrationsDir, { recursive: true });
     console.log(`✓ Created ${dbEnv} migrations directory`);
   }
 
-  // 3. Switch migrations symlink
-  // Remove old symlink if it exists
-  if (fs.existsSync(migrationsPath)) {
-    try {
+  // 3. Switch migrations symlink/directory
+  // Use lstatSync (does NOT follow symlinks) so we correctly detect and remove
+  // broken symlinks (e.g. leftover absolute paths from other machines).
+  try {
+    const stat = fs.lstatSync(migrationsPath);
+    if (stat.isSymbolicLink()) {
       fs.unlinkSync(migrationsPath);
-    } catch (err) {
-      // If it's a directory (not a symlink), remove it completely
-      fs.rmSync(migrationsPath, { recursive: true, force: true });
+    } else if (stat.isDirectory()) {
+      fs.rmSync(migrationsPath, { recursive: true });
     }
+  } catch (e) {
+    // Path does not exist — nothing to remove
   }
 
-  // Create symlink to active migrations directory
-  // Note: On Windows, this requires admin privileges or developer mode
-  // Fallback: if symlink fails, try copying directories instead
+  // Use a relative symlink so it works across machines and in any checkout
+  const relativeTarget = path.relative(path.dirname(migrationsPath), targetMigrationsDir);
+
   try {
     const isWin = process.platform === 'win32';
     if (isWin) {
-      // Windows: use junction (directory symlink) which doesn't need admin
       fs.symlinkSync(targetMigrationsDir, migrationsPath, 'junction');
     } else {
-      // Unix: use regular symlink
-      fs.symlinkSync(targetMigrationsDir, migrationsPath);
+      fs.symlinkSync(relativeTarget, migrationsPath);
     }
-    console.log(`✓ Linked migrations/ → migrations-${dbEnv}/`);
+    console.log(`✓ Linked migrations/ → ${relativeTarget}`);
   } catch (symlinkErr) {
-    // Fallback: if symlink fails, just copy the directory content
-    console.log(`⚠ Symlink failed, copying migration files instead`);
-    if (!fs.existsSync(migrationsPath)) {
-      fs.mkdirSync(migrationsPath, { recursive: true });
-    }
-    const migrationFiles = fs.readdirSync(targetMigrationsDir);
-    for (const file of migrationFiles) {
+    // Fallback: copy directory contents
+    console.log(`⚠ Symlink failed (${symlinkErr.code}), copying migration files instead`);
+    fs.mkdirSync(migrationsPath, { recursive: true });
+    for (const file of fs.readdirSync(targetMigrationsDir)) {
       const source = path.join(targetMigrationsDir, file);
       const dest = path.join(migrationsPath, file);
       if (!fs.existsSync(dest)) {

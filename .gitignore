@@ -10,7 +10,9 @@ dist/
 # Database
 *.db
 *.db-journal
-# Note: Keep prisma/migrations/ for Railway deployment
+
+# Prisma migrations symlink (created at runtime by switch-db.js)
+prisma/migrations
 
 # IDE
 .vscode/

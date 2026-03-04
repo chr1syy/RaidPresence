@@ -811,7 +811,10 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     // Add running late section below the 4-column layout
     if (runningLate.length > 0) {
       const lateText = runningLate.map((a: typeof raid.attendance[0]) => `${a.username}`).join('\n');
-      embed.addFields({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: lateText, inline: false });
+      const truncatedLate = lateText.length > 1024
+        ? lateText.substring(0, 1021) + '...'
+        : lateText;
+      embed.addFields({ name: `⏰ ${trans.runningLate} (${runningLate.length})`, value: truncatedLate, inline: false });
     }
 
     // Add opted out section
@@ -822,13 +825,19 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
         }
         return a.username;
       }).join('\n');
-      embed.addFields({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: optedOutText, inline: false });
+      const truncatedOptedOut = optedOutText.length > 1024
+        ? optedOutText.substring(0, 1021) + '...'
+        : optedOutText;
+      embed.addFields({ name: `❌ ${trans.optedOut} (${optedOut.length})`, value: truncatedOptedOut, inline: false });
     }
 
     // Add no class section
     if (noClassList.length > 0) {
       const noClassText = noClassList.join('\n');
-      embed.addFields({ name: `❓ ${trans.noClass} (${composition.noClass})`, value: noClassText, inline: false });
+      const truncatedNoClass = noClassText.length > 1024
+        ? noClassText.substring(0, 1021) + '...'
+        : noClassText;
+      embed.addFields({ name: `❓ ${trans.noClass} (${composition.noClass})`, value: truncatedNoClass, inline: false });
     }
 
     embed
@@ -1991,9 +2000,14 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   }
 
   if (optedOut.length > 0) {
+    // Truncate opted-out list to 1024 chars if needed (Discord embed field limit)
+    const optedOutText = optedOut.map(a => `${a.username}${a.optoutReason ? ` (${a.optoutReason})` : ''}`).join('\n');
+    const truncatedOptedOut = optedOutText.length > 1024
+      ? optedOutText.substring(0, 1021) + '...'
+      : optedOutText;
     fields.push({
       name: `${trans.optedOutPlayers} (${optedOut.length})`,
-      value: optedOut.map(a => `${a.username}${a.optoutReason ? ` (${a.optoutReason})` : ''}`).join('\n'),
+      value: truncatedOptedOut,
       inline: false,
     });
   }

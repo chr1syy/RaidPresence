@@ -95,8 +95,17 @@ export async function checkAndCloseExpiredRaids(client: Client) {
 
               console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
             }
-          } catch (error) {
-            console.error(`Error updating message for raid ${raid.id}:`, error);
+          } catch (error: any) {
+            if (error?.code === 10008) {
+              // Message was deleted from Discord — clear stale reference
+              await prisma.raid.update({
+                where: { id: raid.id },
+                data: { messageId: null },
+              });
+              console.warn(`⚠️ Raid ${raid.id} message was deleted from Discord — cleared stale reference`);
+            } else {
+              console.error(`Error updating message for raid ${raid.id}:`, error);
+            }
           }
         } else if (archivedSuccessfully) {
           console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})`);

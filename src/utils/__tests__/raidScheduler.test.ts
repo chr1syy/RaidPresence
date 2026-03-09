@@ -1,5 +1,9 @@
 // Mock dependencies BEFORE imports
-jest.mock('../../database/client');
+jest.mock('../../database/client', () => ({
+  __esModule: true,
+  default: { raid: { findMany: jest.fn(), update: jest.fn() } },
+  withRetry: <T>(fn: () => Promise<T>) => fn(),
+}));
 jest.mock('../archiveManager');
 jest.mock('../../commands/raid', () => ({
   createRaidEmbed: jest.fn(),

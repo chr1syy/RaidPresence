@@ -1,5 +1,5 @@
 import { Client } from 'discord.js';
-import prisma from '../database/client';
+import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 
@@ -39,17 +39,19 @@ export async function checkAndCloseExpiredRaids(client: Client) {
   const now = new Date();
 
   // Find all open raids that have expired
-  const expiredRaids = await prisma.raid.findMany({
-    where: {
-      status: 'open',
-      raidDate: {
-        lt: now,
+  const expiredRaids = await withRetry(() =>
+    prisma.raid.findMany({
+      where: {
+        status: 'open',
+        raidDate: {
+          lt: now,
+        },
       },
-    },
-    include: {
-      guild: true,
-    },
-  });
+      include: {
+        guild: true,
+      },
+    }),
+  );
 
   if (expiredRaids.length === 0) return;
 
@@ -58,10 +60,12 @@ export async function checkAndCloseExpiredRaids(client: Client) {
    for (const raid of expiredRaids) {
      try {
        // Update raid status to closed
-       await prisma.raid.update({
-         where: { id: raid.id },
-         data: { status: 'closed' },
-       });
+       await withRetry(() =>
+         prisma.raid.update({
+           where: { id: raid.id },
+           data: { status: 'closed' },
+         }),
+       );
 
          // Check if auto-archive is enabled for this guild
          const shouldAutoArchive = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);

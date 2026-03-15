@@ -27,7 +27,6 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?Set DISCORD_CLIENT_ID in .env}
       GUILD_ID: ${GUILD_ID:-}
       RAID_LEADER_ROLES: ${RAID_LEADER_ROLES:-}
-      DB_ENV: prod
 
 volumes:
   pgdata:

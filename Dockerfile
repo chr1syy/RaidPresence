@@ -3,8 +3,6 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-ENV CI=true
-
 COPY package.json package-lock.json ./
 COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci
@@ -20,14 +18,9 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-ENV CI=true
-
 COPY package.json package-lock.json ./
 COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci --omit=dev
-
-# Remove CI so the entrypoint runs migrations normally
-ENV CI=
 
 COPY --from=builder /app/dist/ dist/
 COPY --from=builder /app/prisma/migrations/ prisma/migrations/

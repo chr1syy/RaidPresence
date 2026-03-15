@@ -3,30 +3,35 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+ENV DB_ENV=prod
+ENV CI=true
+
+COPY package.json package-lock.json switch-db.js ./
+COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci
 
 COPY . .
-
-ENV DB_ENV=prod
-ENV CI=true
 
 RUN npm run build
 
 # Production stage
 FROM node:18-alpine
 
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+ENV DB_ENV=prod
+ENV CI=true
+
+COPY package.json package-lock.json switch-db.js ./
+COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci --omit=dev
 
-COPY prisma/schema.prisma prisma/schema.prisma
-RUN npx prisma generate
+# Remove CI so the entrypoint runs migrations normally
+ENV CI=
 
 COPY --from=builder /app/dist/ dist/
-COPY --from=builder /app/switch-db.js switch-db.js
-COPY --from=builder /app/prisma/schema.prisma prisma/schema.prisma
 COPY --from=builder /app/prisma/migrations-prod/ prisma/migrations-prod/
 
 COPY docker-entrypoint.sh ./

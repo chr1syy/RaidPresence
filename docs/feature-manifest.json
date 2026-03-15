@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "0.1.1",
   "updated_at": "2026-03-08",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
@@ -7,7 +6,7 @@
   "supported_languages": ["en", "de"],
   "license": "CBSL-1.1",
   "links": {
-    "invite": "https://discord.com/oauth2/authorize?client_id=1305228012080279686",
+    "invite": "https://discord.com/oauth2/authorize?client_id=1305228012080279686&scope=bot+applications.commands&permissions=117760",
     "support_discord": "https://discord.gg/raidpresence",
     "github": "https://github.com/Cjones4004/RaidPresence",
     "changelog": "CHANGELOG.md",
@@ -166,22 +165,22 @@
   "commands_summary": [
     {
       "name": "/raid",
-      "subcommand_count": 15,
-      "description": "Raid lifecycle management — create, edit, delete, clone, close, cancel, refresh, list, status, remind, stats, attendance, suggest, notes, search",
+      "subcommand_count": 14,
+      "description": "Raid lifecycle management — create, list, delete, close, open, cancel, remind, refresh, edit, clone, stats, status, attendance, suggest",
       "status": "live",
       "docs_url": "docs/commands/RAID-COMMAND.md"
     },
     {
       "name": "/config",
-      "subcommand_count": 5,
-      "description": "Server configuration — leader roles, timezone, language, archive channel, auto-archive",
+      "subcommand_count": 6,
+      "description": "Server configuration — view, leader roles, timezone, language, archive channel, auto-archive",
       "status": "live",
       "docs_url": "docs/commands/CONFIG-COMMAND.md"
     },
     {
       "name": "/stats",
-      "subcommand_count": 3,
-      "description": "Archive operations — archive, unarchive, search",
+      "subcommand_count": 9,
+      "description": "Statistics and archive — raid, guild, status, attendance, suggest, notes, archive, unarchive, search",
       "status": "live",
       "docs_url": "docs/commands/RAID-COMMAND.md"
     },

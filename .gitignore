@@ -11,8 +11,8 @@ dist/
 *.db
 *.db-journal
 
-# Prisma migrations symlink (created at runtime by switch-db.js)
-prisma/migrations
+# SQLite dev database (no longer used)
+# prisma/migrations is now tracked as a real directory (PostgreSQL only)
 
 # IDE
 .vscode/

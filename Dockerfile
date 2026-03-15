@@ -3,10 +3,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-ENV DB_ENV=prod
 ENV CI=true
 
-COPY package.json package-lock.json switch-db.js ./
+COPY package.json package-lock.json ./
 COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci
 
@@ -21,10 +20,9 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-ENV DB_ENV=prod
 ENV CI=true
 
-COPY package.json package-lock.json switch-db.js ./
+COPY package.json package-lock.json ./
 COPY prisma/schema.prisma prisma/schema.prisma
 RUN npm ci --omit=dev
 
@@ -32,7 +30,7 @@ RUN npm ci --omit=dev
 ENV CI=
 
 COPY --from=builder /app/dist/ dist/
-COPY --from=builder /app/prisma/migrations-prod/ prisma/migrations-prod/
+COPY --from=builder /app/prisma/migrations/ prisma/migrations/
 
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh

@@ -1,9 +1,6 @@
 #!/bin/sh
 set -e
 
-# Configure Prisma for PostgreSQL
-DB_ENV=prod node switch-db.js
-
 # Apply pending database migrations
 npx prisma migrate deploy
 

@@ -72,13 +72,9 @@ RaidPresence/
 ## Database Configuration
 
 ### Provider Setup
-- **Development:** SQLite (file-based, zero setup) via `prisma/dev.db`
-- **Production:** PostgreSQL (cloud-hosted, managed) via `DATABASE_URL` env var
-- **Switching:** Use `DB_ENV` variable (dev/prod) with `npm run switch-db`
-  - `DB_ENV=dev` → SQLite provider for local development
-  - `DB_ENV=prod` → PostgreSQL provider for production
-  - Runs automatically on `npm install` (postinstall) and before each npm command
-- **Migration Path:** See `docs/guides/DATABASE-MIGRATION-GUIDE.md` for PostgreSQL ↔ SQLite migration instructions
+- **Provider:** PostgreSQL (hardcoded in `prisma/schema.prisma`)
+- **Connection:** Via `DATABASE_URL` environment variable
+- **Local Development:** Use `docker compose up` for a local PostgreSQL instance
 
 ---
 
@@ -347,9 +343,8 @@ Version is automatically displayed in embed footers. See `docs/VERSION.md` for d
 Copy `.env.example` to `.env` and configure:
 - `DISCORD_TOKEN` - Bot token
 - `CLIENT_ID` - Application client ID
-- `DATABASE_URL` - PostgreSQL connection string (prod) or leave empty for SQLite (dev)
+- `DATABASE_URL` - PostgreSQL connection string (required)
 - `GUILD_ID` - (optional) Guild ID for guild-specific command deployment
-- `DB_ENV` - Database environment: `dev` (SQLite) or `prod` (PostgreSQL)
 
 ---
 

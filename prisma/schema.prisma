@@ -76,6 +76,19 @@ model Raid {
   @@index([guildId, archivedAt])
 }
 
+model UserRolePreference {
+  id        String   @id @default(cuid())
+  userId    String // Discord user ID
+  guildId   String
+  roleId    String // Discord role ID from the raid's roles
+  wowClass  String? // e.g., "Warrior", "Mage", etc.
+  wowSpec   String? // e.g., "Protection", "Fire", etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, guildId, roleId])
+}
+
 model RaidAttendance {
   id          String    @id @default(cuid())
   raidId      String

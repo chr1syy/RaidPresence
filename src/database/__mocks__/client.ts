@@ -30,6 +30,14 @@ const prisma = {
     update: jest.fn(),
     upsert: jest.fn(),
   },
+  userRolePreference: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findUnique: jest.fn(),
+    upsert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
 };
 
 export default prisma;

@@ -6,6 +6,7 @@ import {
 import prisma from '../database/client';
 import { getSpecsForClass } from '../utils/wowData';
 import { createRaidEmbed } from '../commands/raid';
+import { resolveUserRoleId } from '../utils/rolePreference';
 
 export async function handleSelectMenu(interaction: StringSelectMenuInteraction) {
   const [action, subAction, raidId] = interaction.customId.split('_');
@@ -61,13 +62,19 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
   // Get member to access displayName
   const member = await interaction.guild.members.fetch(interaction.user.id);
 
-  // Update user preference
+  const userId = interaction.user.id;
+  const guildId = interaction.guild.id;
+
+  // Fetch raid early so we can use it for role-specific preference and embed update
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  // Update global user preference
   await prisma.userPreference.upsert({
     where: {
-      userId_guildId: {
-        userId: interaction.user.id,
-        guildId: interaction.guild.id,
-      },
+      userId_guildId: { userId, guildId },
     },
     update: {
       wowClass: selectedClass,
@@ -75,21 +82,47 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
       username: member.displayName,
     },
     create: {
-      userId: interaction.user.id,
-      guildId: interaction.guild.id,
+      userId,
+      guildId,
       username: member.displayName,
       wowClass: selectedClass,
       wowSpec: selectedSpec,
     },
   });
 
+  // Save role-specific preference if the user matches a raid role
+  if (raid?.roles) {
+    const raidRoleIds = raid.roles
+      .split(',')
+      .map((r: string) => r.trim())
+      .filter(Boolean);
+    const userRoleIds = member.roles.cache.map((r: { id: string }) => r.id);
+    const matchedRoleId = resolveUserRoleId(userRoleIds, raidRoleIds);
+
+    if (matchedRoleId) {
+      await prisma.userRolePreference.upsert({
+        where: {
+          userId_guildId_roleId: { userId, guildId, roleId: matchedRoleId },
+        },
+        update: {
+          wowClass: selectedClass,
+          wowSpec: selectedSpec,
+        },
+        create: {
+          userId,
+          guildId,
+          roleId: matchedRoleId,
+          wowClass: selectedClass,
+          wowSpec: selectedSpec,
+        },
+      });
+    }
+  }
+
   // Update raid attendance
   await prisma.raidAttendance.update({
     where: {
-      raidId_userId: {
-        raidId,
-        userId: interaction.user.id,
-      },
+      raidId_userId: { raidId, userId },
     },
     data: {
       wowClass: selectedClass,
@@ -104,11 +137,6 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
 
   // Update the raid message
   try {
-    const raid = await prisma.raid.findUnique({
-      where: { id: raidId },
-      include: { guild: true },
-    });
-
     if (raid && raid.messageId) {
       const channel = await interaction.client.channels.fetch(raid.channelId);
 

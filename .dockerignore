@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env*
+.git/
+prisma/migrations-dev/
+prisma/migrations/
+*.db
+*.db-journal
+.vscode/
+.idea/
+ralph*
+plans/
+prompts/
+.ralph*
+Auto Run Docs/
+*.log
+.DS_Store
+Thumbs.db
+progress.txt

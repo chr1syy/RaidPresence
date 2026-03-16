@@ -231,7 +231,6 @@ Before releasing a new version:
 - Class/spec selection
 - Phase 1 features (stats, status, clone)
 - Phase 2 features (attendance, composition, notes, archive)
-- SQLite/PostgreSQL database switching
 - Multi-language support (EN/DE)
 
 ---

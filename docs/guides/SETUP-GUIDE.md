@@ -13,7 +13,7 @@ related:
 
 # RaidPresence Setup Guide
 
-Complete guide for installing and configuring RaidPresence Discord bot for local development and production deployment.
+Guide for installing and configuring RaidPresence Discord bot.
 
 ---
 
@@ -26,7 +26,7 @@ Before you begin, ensure you have:
 - **Git** for cloning the repository
 - **Discord Server** (for testing)
 - **Discord Bot Application** (created at https://discord.dev/applications)
-- **PostgreSQL** 12+ (for production) OR SQLite 3+ (for development - built in)
+- **PostgreSQL** 12+
 
 ### Check Your Versions
 
@@ -54,12 +54,8 @@ git checkout -b my-feature
 ## Step 2: Install Dependencies
 
 ```bash
-# Install all dependencies (also runs postinstall setup)
+# Install all dependencies
 npm install
-
-# The postinstall script will automatically:
-# 1. Run switch-db (sets up SQLite for development)
-# 2. Generate Prisma client
 ```
 
 ---
@@ -84,9 +80,8 @@ DISCORD_TOKEN=your_bot_token_here
 CLIENT_ID=your_client_id_here
 GUILD_ID=optional_guild_id_for_dev  # Optional: for faster command deployment in dev
 
-# Database Configuration (for development)
-DB_ENV=dev
-DATABASE_URL=""  # Empty for SQLite (uses ./prisma/dev.db)
+# Database Configuration
+DATABASE_URL="postgresql://user:password@host:port/dbname"
 ```
 
 ### Getting Discord Bot Token
@@ -115,42 +110,15 @@ For faster command deployment during development:
 
 ## Step 4: Database Setup
 
-### For Development (SQLite - Default)
-
-SQLite is automatically configured by npm install. No extra setup needed!
-
 ```bash
-# Verify SQLite is configured
-echo $DB_ENV  # Should output: dev
-grep "provider =" prisma/schema.prisma  # Should show: provider = "sqlite"
+# Set DATABASE_URL in your .env file, then:
 
-# Initialize database with migrations
-npm run db:migrate dev --name init
-
-# Verify database created
-ls -la prisma/dev.db
-```
-
-### For Production (PostgreSQL)
-
-If deploying to production:
-
-```bash
-# Set environment variables
-export DB_ENV=prod
-export DATABASE_URL="postgresql://user:password@host:port/dbname"
-
-# Rebuild for PostgreSQL
+# Build the project (generates Prisma client)
 npm run build
 
 # Run migrations
 npm run db:migrate:deploy
 ```
-
-**Common PostgreSQL Hosts:**
-- Railway.app: `postgresql://user:pass@container.railway.app:5432/railway`
-- AWS RDS: `postgresql://user:pass@raidpresence.xxxx.us-east-1.rds.amazonaws.com:5432/raidpresence`
-- Heroku: Already configured via `DATABASE_URL` config var
 
 ---
 
@@ -208,20 +176,12 @@ npm run deploy:commands
 
 ```bash
 npm run dev
-
-# Output should show:
-# ✓ Switched to sqlite successfully
-# ✓ Switched to sqlite successfully
-# 0 | Bot is ready! Logged in as YourBotName#1234
-# 0 | Successfully registered X commands
 ```
 
 ### Production Mode
 
 ```bash
 npm start
-
-# Runs: npm run switch-db && prisma migrate deploy && deploy-commands && node dist/index.js
 ```
 
 ---
@@ -258,53 +218,6 @@ Bot logs appear in your terminal:
 
 ---
 
-## Database Configuration Details
-
-### SQLite (Development)
-
-**File Location:** `./prisma/dev.db`
-
-**Configuration:**
-```
-DB_ENV=dev
-DATABASE_URL=""  # Leave empty - defaults to ./prisma/dev.db
-```
-
-**Advantages:**
-- Zero setup needed
-- Perfect for local development
-- File-based (backup via `cp`)
-
-**Disadvantages:**
-- No concurrent access (single file lock)
-- Not suitable for production
-
-### PostgreSQL (Production)
-
-**Configuration:**
-```
-DB_ENV=prod
-DATABASE_URL="postgresql://user:password@host:port/dbname"
-```
-
-**Connection String Format:**
-```
-postgresql://[user[:password]@][host][:port][/database][?param=value]
-
-Examples:
-postgresql://postgres:password@localhost:5432/raidpresence  # Local
-postgresql://user:pass@db.railway.app:5432/railway          # Railway
-postgresql://user:pass@raidpresence.xxxxx.rds.amazonaws.com:5432/raidpresence  # AWS RDS
-```
-
-**Setup on Railway.app (Recommended for Developers):**
-1. Create Railway account: https://railway.app
-2. Create new PostgreSQL database
-3. Copy connection string from dashboard
-4. Set as `DATABASE_URL` environment variable
-
----
-
 ## Troubleshooting
 
 ### Issue: "Cannot find module '@prisma/client'"
@@ -316,19 +229,6 @@ npm run build
 
 See [[DATABASE-TROUBLESHOOTING]] for detailed solutions.
 
-### Issue: "Database file not found"
-
-```bash
-npm run db:migrate dev --name init
-```
-
-### Issue: "Provider mismatch error"
-
-```bash
-npm run switch-db
-npm run build
-```
-
 ### Issue: "Bot won't start"
 
 1. Check DISCORD_TOKEN is correct
@@ -336,29 +236,6 @@ npm run build
 3. Check logs: `npm run dev` shows errors
 
 Full troubleshooting: [[DATABASE-TROUBLESHOOTING]]
-
----
-
-## Directory Structure After Setup
-
-```
-RaidPresence/
-├── .env                   # Your configuration (git-ignored)
-├── .env.example          # Example template
-├── prisma/
-│   ├── dev.db            # SQLite database (after first run)
-│   ├── schema.prisma     # Database schema (auto-updated by switch-db)
-│   └── migrations/       # Database migrations
-├── src/
-│   ├── index.ts          # Bot entry point
-│   ├── commands/         # Slash commands
-│   ├── events/           # Discord event handlers
-│   ├── utils/            # Utility functions
-│   └── database/
-│       └── client.ts     # Prisma client
-├── dist/                 # Compiled JavaScript (after npm build)
-└── node_modules/         # Dependencies
-```
 
 ---
 
@@ -385,26 +262,6 @@ npm run version:patch   # 1.0.0 → 1.0.1
 npm run version:minor   # 1.0.0 → 1.1.0
 npm run version:major   # 1.0.0 → 2.0.0
 ```
-
----
-
-## Migrating from PostgreSQL to SQLite
-
-If you have existing PostgreSQL data:
-
-```bash
-# Export from PostgreSQL
-export DATABASE_URL="postgresql://..."
-export DB_ENV=prod
-
-# Run export script
-npx tsx scripts/export-postgres-to-sqlite.ts
-
-# Your data is now in SQLite at ./prisma/dev.db
-npm run dev
-```
-
-See [[DATABASE-MIGRATION-GUIDE]] for complete migration instructions.
 
 ---
 
@@ -436,6 +293,7 @@ Before running, verify:
 - [ ] Node.js 18+ installed
 - [ ] .env file created with DISCORD_TOKEN and CLIENT_ID
 - [ ] npm install completed successfully
+- [ ] DATABASE_URL configured
 - [ ] npm run db:migrate completed
 - [ ] npm run deploy completed (commands registered)
 - [ ] Bot added to Discord server

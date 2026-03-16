@@ -1,126 +1,27 @@
-# Database Migration Guide - PostgreSQL & SQLite
+# Database Migration Guide - PostgreSQL
 
 ## Overview
 
-RaidPresence supports two database configurations:
-- **Development:** SQLite (file-based, zero setup)
-- **Production:** PostgreSQL (managed database, scalable)
-
-This guide covers migrating data between them.
+RaidPresence uses PostgreSQL as its database. This guide covers running and managing database migrations.
 
 ---
 
-## For Development (SQLite)
+## Setup
 
-### Setup SQLite Dev Environment
-
-```bash
-# 1. Set environment
-export DB_ENV=dev
-
-# 2. Generate Prisma client for SQLite
-npm run build
-
-# 3. Create/initialize database
-npx prisma migrate dev --name init
-
-# 4. Start development
-npm run dev
-```
-
-### Backup SQLite Database
-
-```bash
-# Backup entire database file
-cp prisma/dev.db prisma/dev.db.backup.$(date +%Y%m%d_%H%M%S)
-
-# Export to JSON for analysis
-npx prisma db pull --output-file schema-snapshot.json
-```
-
----
-
-## For Production (PostgreSQL)
-
-### Setup PostgreSQL Production Environment
-
-**Prerequisites:**
+### Prerequisites
 - PostgreSQL server running (e.g., Railway, AWS RDS)
 - Connection string format: `postgresql://user:password@host:port/dbname`
 
-**Setup steps:**
+### Apply Migrations
 
 ```bash
-# 1. Set environment variables
-export DB_ENV=prod
-export DATABASE_URL="postgresql://user:pass@host:5432/raidpresence"
+# 1. Set DATABASE_URL in your .env file
 
-# 2. Generate Prisma client for PostgreSQL
+# 2. Generate Prisma client
 npm run build
 
 # 3. Run migrations
 npx prisma migrate deploy
-
-# 4. Deploy bot
-npm start
-```
-
----
-
-## Migrating SQLite → PostgreSQL
-
-### Option A: Export/Import with Prisma (Recommended)
-
-```bash
-# Step 1: Backup SQLite
-cp prisma/dev.db prisma/dev.db.backup
-
-# Step 2: Export from SQLite
-DB_ENV=dev npx prisma db pull
-
-# Step 3: Switch to PostgreSQL
-export DB_ENV=prod
-export DATABASE_URL="postgresql://..."
-
-# Step 4: Generate schema for PostgreSQL
-npm run build
-
-# Step 5: Apply schema
-npx prisma db push
-
-# Step 6: Verify migration
-npx prisma studio  # Web UI to inspect data
-```
-
-### Option B: Manual Export/Import
-
-```bash
-# Export SQLite to SQL dump
-sqlite3 prisma/dev.db ".dump" > dump.sql
-
-# Import to PostgreSQL
-psql -h host -U user -d dbname -f dump.sql
-```
-
----
-
-## Migrating PostgreSQL → SQLite (Downgrade)
-
-```bash
-# Step 1: Backup PostgreSQL
-pg_dump postgresql://user:pass@host/dbname > backup.sql
-
-# Step 2: Switch to SQLite
-export DB_ENV=dev
-unset DATABASE_URL
-
-# Step 3: Build for SQLite
-npm run build
-
-# Step 4: Create new SQLite database
-npx prisma migrate dev --name restore
-
-# Step 5: Import data manually or use third-party tools
 ```
 
 ---
@@ -129,10 +30,10 @@ npx prisma migrate dev --name restore
 
 ### "Cannot find database"
 ```bash
-# Verify DATABASE_URL is set for production
+# Verify DATABASE_URL is set
 echo $DATABASE_URL
 
-# For PostgreSQL, test connection
+# Test connection
 psql $DATABASE_URL -c "SELECT 1"
 ```
 
@@ -141,18 +42,12 @@ psql $DATABASE_URL -c "SELECT 1"
 # Check pending migrations
 npx prisma migrate status
 
-# Reset database (DEV ONLY - loses all data)
-DB_ENV=dev npx prisma migrate reset
-
 # For production, always backup first
 pg_dump $DATABASE_URL > backup.sql
 ```
 
 ### "Provider mismatch error"
 ```bash
-# Verify correct environment is set
-echo $DB_ENV
-
 # Rebuild Prisma client
 npm run build
 
@@ -163,29 +58,20 @@ npm run build
 
 ---
 
-## Database Switching in CI/CD
+## CI/CD
 
 ### GitHub Actions
 
 ```yaml
 env:
-  DB_ENV: prod
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 steps:
   - name: Generate Prisma client
     run: npm run build
-    
+
   - name: Run migrations
     run: npx prisma migrate deploy
-```
-
-### Railway.app
-
-Set environment variables in Railway dashboard:
-```
-DB_ENV=prod
-DATABASE_URL=<your-postgresql-url>
 ```
 
 ---
@@ -194,10 +80,6 @@ DATABASE_URL=<your-postgresql-url>
 
 1. **Always backup before migrating**
    ```bash
-   # SQLite
-   cp prisma/dev.db prisma/dev.db.backup
-   
-   # PostgreSQL
    pg_dump $DATABASE_URL > backup.sql
    ```
 

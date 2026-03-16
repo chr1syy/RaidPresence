@@ -44,17 +44,12 @@ Common issues and solutions for RaidPresence bot.
 1. **Generate Prisma Client**: Run `npm run db:generate` after any schema changes
 2. **Apply Migrations**: Run `npm run db:migrate` to update database structure
 3. **Check DATABASE_URL**: Verify the connection string in `.env` is correct
-4. **File Permissions**: For SQLite (`file:./dev.db`), ensure the file is writable
-5. **PostgreSQL Connection**: For production databases, verify:
+4. **PostgreSQL Connection**: Verify:
    - Database server is running
    - Credentials are correct
    - Network/firewall allows connection
    - Database exists
-6. **Reset Development Database**:
-   ```bash
-   rm dev.db
-   npm run db:migrate
-   ```
+6. **Reset Development Database**: Run `npm run db:migrate` to reapply migrations
 
 ## Permission Errors
 

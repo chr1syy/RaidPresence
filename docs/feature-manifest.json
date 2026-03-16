@@ -1,6 +1,6 @@
 {
-  "version": "0.1.1",
-  "updated_at": "2026-03-08",
+  "version": "0.2.0",
+  "updated_at": "2026-03-16",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": ["en", "de"],
@@ -150,6 +150,16 @@
       "landing_copy": "Set your comp targets — 2 tanks, 4 healers, 14 DPS — and track against them.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
       "since": "0.0.1"
+    },
+    {
+      "id": "role-based-preferences",
+      "name": "Role-Based Character Preferences",
+      "category": "core",
+      "status": "live",
+      "summary": "Players in multiple raid groups can maintain different class/spec preferences per Discord role, with automatic fallback to global preferences.",
+      "landing_copy": "Run two raid groups? Your main can be a healer in one and DPS in the other — preferences follow the role, not the player.",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "since": "0.2.0"
     },
     {
       "id": "server-setup-wizard",

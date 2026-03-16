@@ -7,7 +7,7 @@
 - **Language:** TypeScript
 - **Runtime:** Node.js 18+
 - **Framework:** discord.js v14
-- **Database:** PostgreSQL (production) / SQLite (local dev) via Prisma ORM
+- **Database:** PostgreSQL via Prisma ORM
 - **Testing:** Jest 30 with ts-jest
 - **License:** Custom Business Source License (CBSL)
 

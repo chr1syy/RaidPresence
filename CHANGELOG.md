@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+---
+
+## [0.2.0] - 2026-03-16
+
+### Added
+- Role-based character preferences for multi-raid-group members — players in multiple raid groups can now maintain different class/spec preferences per Discord role, with automatic fallback to global preferences
+- CI/CD pipeline with automated testing and containerized deployments on version tags
+
+### Changed
+- Database provider hardcoded to PostgreSQL — removed SQLite switching infrastructure
+- Simplified `.env.example` with explicit `DATABASE_URL` configuration
+- CI/CD triggers restricted to version tag pushes only
+
+### Removed
+- `switch-db.js` script and `scripts/` directory
+- `DB_ENV` environment variable and all dual-database provider logic
+- SQLite development workflow
+
+---
+
 ## [0.1.0] - 2026-02-18
 
 ### Added
@@ -45,19 +79,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - DATABASE_URL secrets no longer stored in schema.prisma (environment-based)
 - DB_ENV validation prevents accidental database provider mismatches
-
----
-
-## [Unreleased]
-
-### Added
-
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security

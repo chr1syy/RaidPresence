@@ -23,10 +23,25 @@ class MockCollection<K, V> extends Map<K, V> {
     return false;
   }
 
+  find(fn: (value: V, key: K, map: this) => boolean): V | undefined {
+    for (const [key, value] of this) {
+      if (fn(value, key, this)) return value;
+    }
+    return undefined;
+  }
+
   filter(fn: (value: V, key: K, map: this) => boolean): MockCollection<K, V> {
     const result = new MockCollection<K, V>();
     for (const [key, value] of this) {
       if (fn(value, key, this)) result.set(key, value);
+    }
+    return result;
+  }
+
+  map<T>(fn: (value: V, key: K, map: this) => T): T[] {
+    const result: T[] = [];
+    for (const [key, value] of this) {
+      result.push(fn(value, key, this));
     }
     return result;
   }
@@ -81,7 +96,7 @@ describe('handleRefreshRaid()', () => {
           cache: membersCache,
           fetch: jest.fn().mockResolvedValue(undefined),
         },
-        roles: { cache: new MockCollection() },
+        roles: { cache: makeRoleCache('Raider') },
       },
       channel: { id: 'channel-123' },
       member: { user: { id: 'user-123' } },

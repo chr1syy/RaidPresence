@@ -24,6 +24,7 @@ import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
+import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
  * Build role mentions from role IDs or names
@@ -544,15 +545,20 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
-  // Get user preferences for class/spec
-  const userPrefs = await prisma.userPreference.findMany({
-    where: {
-      guildId: interaction.guild.id,
-      userId: { in: Array.from(eligibleMembers) },
-    },
-  });
-
-  const prefsMap = new Map<string, typeof userPrefs[0]>(userPrefs.map((p: typeof userPrefs[0]) => [p.userId, p]));
+  // Get user preferences for class/spec (role-specific preferred over global)
+  const memberRolesMap = new Map<string, string[]>();
+  for (const userId of eligibleMembers) {
+    const member = interaction.guild.members.cache.get(userId);
+    if (member) {
+      memberRolesMap.set(userId, Array.from(member.roles.cache.values()).map(r => r.id));
+    }
+  }
+  const prefsMap = await getEffectivePrefsMap(
+    Array.from(eligibleMembers),
+    interaction.guild.id,
+    roleIds,
+    memberRolesMap,
+  );
 
   // Create raid in database
   const raid = await prisma.raid.create({
@@ -1332,15 +1338,20 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
-  // Get user preferences for class/spec
-  const userPrefs = await prisma.userPreference.findMany({
-    where: {
-      guildId: interaction.guild!.id,
-      userId: { in: Array.from(eligibleMembers) },
-    },
-  });
-
-  const prefsMap = new Map(userPrefs.map((p) => [p.userId, p]));
+  // Get user preferences for class/spec (role-specific preferred over global)
+  const memberRolesMap = new Map<string, string[]>();
+  for (const userId of eligibleMembers) {
+    const member = interaction.guild!.members.cache.get(userId);
+    if (member) {
+      memberRolesMap.set(userId, Array.from(member.roles.cache.values()).map(r => r.id));
+    }
+  }
+  const prefsMap = await getEffectivePrefsMap(
+    Array.from(eligibleMembers),
+    interaction.guild!.id,
+    roleIds,
+    memberRolesMap,
+  );
 
   // Determine description
   const description = customTitle || sourceRaid.description || 'Cloned Raid';
@@ -2158,14 +2169,22 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       }
     }
 
-    const userPrefs = await prisma.userPreference.findMany({
-      where: {
-        guildId: interaction.guild.id,
-        userId: { in: newMembers },
-      },
-    });
-
-    const prefsMap = new Map(userPrefs.map(p => [p.userId, p]));
+    // Get user preferences for class/spec (role-specific preferred over global)
+    const memberRolesMap = new Map<string, string[]>();
+    for (const userId of newMembers) {
+      const member = interaction.guild.members.cache.get(userId);
+      if (member) {
+        memberRolesMap.set(userId, Array.from(member.roles.cache.values()).map(r => r.id));
+      }
+    }
+    const rawRoles = raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
+    const raidRoleIds = normalizeRoleIds(rawRoles, interaction.guild);
+    const prefsMap = await getEffectivePrefsMap(
+      newMembers,
+      interaction.guild.id,
+      raidRoleIds,
+      memberRolesMap,
+    );
 
     const attendanceData = newMembers.map(userId => {
       const member = interaction.guild!.members.cache.get(userId);

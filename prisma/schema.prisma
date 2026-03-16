@@ -23,6 +23,7 @@ model Guild {
 
   raids Raid[]
   users UserPreference[]
+  rolePreferences UserRolePreference[]
 }
 
 model UserPreference {
@@ -85,6 +86,8 @@ model UserRolePreference {
   wowSpec   String? // e.g., "Protection", "Fire", etc.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
 
   @@unique([userId, guildId, roleId])
 }

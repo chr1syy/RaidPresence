@@ -1,4 +1,18 @@
+import { Guild } from 'discord.js';
 import prisma from '../database/client';
+
+/**
+ * Normalize raid role strings (which may be IDs or names) to actual role IDs
+ * by looking them up in the guild's role cache.
+ */
+export function normalizeRoleIds(rawRoles: string[], guild: Guild): string[] {
+  return rawRoles
+    .map((r) => {
+      const role = guild.roles.cache.get(r) || guild.roles.cache.find((gr) => gr.name === r);
+      return role?.id ?? null;
+    })
+    .filter((id): id is string => id !== null);
+}
 
 /**
  * Given the user's Discord role IDs and the raid's role IDs,
@@ -8,8 +22,9 @@ export function resolveUserRoleId(
   userRoleIds: string[],
   raidRoleIds: string[],
 ): string | null {
+  const userRoleSet = new Set(userRoleIds);
   for (const raidRole of raidRoleIds) {
-    if (userRoleIds.includes(raidRole)) {
+    if (userRoleSet.has(raidRole)) {
       return raidRole;
     }
   }

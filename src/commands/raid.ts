@@ -24,7 +24,7 @@ import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
-import { getEffectivePrefsMap } from '../utils/rolePreference';
+import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
  * Build role mentions from role IDs or names
@@ -2177,7 +2177,8 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         memberRolesMap.set(userId, Array.from(member.roles.cache.values()).map(r => r.id));
       }
     }
-    const raidRoleIds = raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
+    const rawRoles = raid.roles.split(',').map((r: string) => r.trim()).filter(Boolean);
+    const raidRoleIds = normalizeRoleIds(rawRoles, interaction.guild);
     const prefsMap = await getEffectivePrefsMap(
       newMembers,
       interaction.guild.id,

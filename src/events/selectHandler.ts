@@ -6,7 +6,7 @@ import {
 import prisma from '../database/client';
 import { getSpecsForClass } from '../utils/wowData';
 import { createRaidEmbed } from '../commands/raid';
-import { resolveUserRoleId } from '../utils/rolePreference';
+import { resolveUserRoleId, normalizeRoleIds } from '../utils/rolePreference';
 
 export async function handleSelectMenu(interaction: StringSelectMenuInteraction) {
   const [action, subAction, raidId] = interaction.customId.split('_');
@@ -91,11 +91,12 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
   });
 
   // Save role-specific preference if the user matches a raid role
-  if (raid?.roles) {
-    const raidRoleIds = raid.roles
+  if (raid?.roles && interaction.guild) {
+    const rawRoles = raid.roles
       .split(',')
       .map((r: string) => r.trim())
       .filter(Boolean);
+    const raidRoleIds = normalizeRoleIds(rawRoles, interaction.guild);
     const userRoleIds = member.roles.cache.map((r: { id: string }) => r.id);
     const matchedRoleId = resolveUserRoleId(userRoleIds, raidRoleIds);
 

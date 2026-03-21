@@ -1,6 +1,6 @@
 {
   "version": "0.2.0",
-  "updated_at": "2026-03-16",
+  "updated_at": "2026-03-21",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": ["en", "de"],
@@ -41,8 +41,9 @@
       "status": "live",
       "summary": "Track player attendance history, reliability metrics, and opt-out patterns across raids.",
       "landing_copy": "Know who shows up. Attendance history and reliability scores help you plan with confidence.",
-      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "docs_url": "docs/commands/STATS-COMMAND.md",
       "commands": ["attendance"],
+      "command_prefix": "/stats",
       "since": "0.0.1"
     },
     {
@@ -52,19 +53,9 @@
       "status": "live",
       "summary": "Analyze raid composition by role (tank, healer, melee DPS, ranged DPS) with optimization suggestions.",
       "landing_copy": "See your comp at a glance — tanks, healers, melee, and ranged with smart suggestions.",
-      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "docs_url": "docs/commands/STATS-COMMAND.md",
       "commands": ["suggest"],
-      "since": "0.0.1"
-    },
-    {
-      "id": "opt-out-notes",
-      "name": "Opt-out Tracking with Notes",
-      "category": "core",
-      "status": "partial",
-      "summary": "Players can opt out of raids with a reason. The /raid notes subcommand to view opt-out reasons is not yet wired up.",
-      "landing_copy": "Players explain why they can't make it. Leaders see every note at a glance.",
-      "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": [],
+      "command_prefix": "/stats",
       "since": "0.0.1"
     },
     {
@@ -82,11 +73,11 @@
       "id": "archive-system",
       "name": "Raid Archiving",
       "category": "commands",
-      "status": "partial",
-      "summary": "Archive completed raids to a dedicated channel. The archive, unarchive, and search subcommands exist as dead code but are not registered under any live command.",
+      "status": "live",
+      "summary": "Archive completed raids to a dedicated channel, with search across archived raids by name, player, or date.",
       "landing_copy": "Completed raids move to your archive channel automatically. Search past raids anytime.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": [],
+      "commands": ["archive", "unarchive", "search"],
       "since": "0.1.0"
     },
     {
@@ -106,8 +97,9 @@
       "status": "live",
       "summary": "View a dashboard of all upcoming raids with roster counts and status.",
       "landing_copy": "See every upcoming raid, who's in, and who's out — all in one view.",
-      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "docs_url": "docs/commands/STATS-COMMAND.md",
       "commands": ["status"],
+      "command_prefix": "/stats",
       "since": "0.0.1"
     },
     {
@@ -175,10 +167,17 @@
   "commands_summary": [
     {
       "name": "/raid",
-      "subcommand_count": 14,
-      "description": "Raid lifecycle and analytics — create, list, delete, close, open, cancel, remind, refresh, edit, clone, stats, status, attendance, suggest",
+      "subcommand_count": 13,
+      "description": "Raid lifecycle and archiving — create, list, delete, close, open, cancel, remind, refresh, edit, clone, archive, unarchive, search",
       "status": "live",
       "docs_url": "docs/commands/RAID-COMMAND.md"
+    },
+    {
+      "name": "/stats",
+      "subcommand_count": 5,
+      "description": "Statistics and analytics — raid, guild, status, attendance, suggest",
+      "status": "live",
+      "docs_url": "docs/commands/STATS-COMMAND.md"
     },
     {
       "name": "/config",
@@ -206,14 +205,14 @@
     {
       "id": "raid-pin",
       "name": "/raid pin",
-      "replaced_by": "Archive subcommand (not yet wired up under /raid)",
+      "replaced_by": "/raid archive",
       "deprecated_in": "0.1.0",
       "removal_target": "1.0.0"
     },
     {
       "id": "raid-unpin",
       "name": "/raid unpin",
-      "replaced_by": "Unarchive subcommand (not yet wired up under /raid)",
+      "replaced_by": "/raid unarchive",
       "deprecated_in": "0.1.0",
       "removal_target": "1.0.0"
     }

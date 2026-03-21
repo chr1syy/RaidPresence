@@ -323,7 +323,7 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
   });
 
   await interaction.editReply({
-    content: `✅ Archive channel set to <#${channel.id}>.\n\nClosed raids can now be archived to this channel using \`/stats archive\`.`,
+    content: `✅ Archive channel set to <#${channel.id}>.\n\nClosed raids can now be archived to this channel using \`/raid archive\`.`,
   });
 }
 

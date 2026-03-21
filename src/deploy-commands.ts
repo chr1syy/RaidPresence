@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import raidCommand from './commands/raid';
 import configCommand from './commands/config';
 import setupCommand from './commands/setup';
+import statsCommand from './commands/stats';
 
 config();
 
@@ -10,6 +11,7 @@ const commands = [
   raidCommand.data.toJSON(),
   configCommand.data.toJSON(),
   setupCommand.data.toJSON(),
+  statsCommand.data.toJSON(),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN!);

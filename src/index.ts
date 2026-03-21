@@ -21,9 +21,11 @@ client.commands = new Collection<string, Command>();
 import raidCommand from './commands/raid';
 import configCommand from './commands/config';
 import setupCommand from './commands/setup';
+import statsCommand from './commands/stats';
 client.commands.set(raidCommand.data.name, raidCommand);
 client.commands.set(configCommand.data.name, configCommand);
 client.commands.set(setupCommand.data.name, setupCommand);
+client.commands.set(statsCommand.data.name, statsCommand);
 
 // Ready event
 client.once(Events.ClientReady, async (c) => {

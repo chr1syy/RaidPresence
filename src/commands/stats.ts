@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   CommandInteraction,
   ChatInputCommandInteraction,
+  PermissionFlagsBits,
 } from 'discord.js';
 import prisma from '../database/client';
 import { Command } from '../types';
@@ -81,7 +82,8 @@ const command: Command = {
             .setDescription('The raid to analyze')
             .setRequired(true)
         )
-    ) as SlashCommandBuilder,
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;

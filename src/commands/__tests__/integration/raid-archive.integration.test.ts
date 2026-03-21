@@ -18,7 +18,7 @@ jest.mock('discord.js', () => {
   };
 });
 
-import command from '../../stats';
+import command from '../../raid';
 
 // ─── Tests ────────────────────────────────────────────────────────
 

@@ -41,7 +41,7 @@
       "status": "live",
       "summary": "Track player attendance history, reliability metrics, and opt-out patterns across raids.",
       "landing_copy": "Know who shows up. Attendance history and reliability scores help you plan with confidence.",
-      "docs_url": "docs/commands/STATS-COMMAND.md",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
       "commands": ["attendance"],
       "command_prefix": "/stats",
       "since": "0.0.1"
@@ -53,7 +53,7 @@
       "status": "live",
       "summary": "Analyze raid composition by role (tank, healer, melee DPS, ranged DPS) with optimization suggestions.",
       "landing_copy": "See your comp at a glance — tanks, healers, melee, and ranged with smart suggestions.",
-      "docs_url": "docs/commands/STATS-COMMAND.md",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
       "commands": ["suggest"],
       "command_prefix": "/stats",
       "since": "0.0.1"
@@ -97,7 +97,7 @@
       "status": "live",
       "summary": "View a dashboard of all upcoming raids with roster counts and status.",
       "landing_copy": "See every upcoming raid, who's in, and who's out — all in one view.",
-      "docs_url": "docs/commands/STATS-COMMAND.md",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
       "commands": ["status"],
       "command_prefix": "/stats",
       "since": "0.0.1"
@@ -177,7 +177,7 @@
       "subcommand_count": 5,
       "description": "Statistics and analytics — raid, guild, status, attendance, suggest",
       "status": "live",
-      "docs_url": "docs/commands/STATS-COMMAND.md"
+      "docs_url": "docs/commands/RAID-COMMAND.md"
     },
     {
       "name": "/config",

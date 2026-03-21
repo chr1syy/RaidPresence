@@ -10,7 +10,7 @@ jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
 
 import prisma from '../../database/client';
-import command from '../raid';
+import command from '../stats';
 
 // Build a mock interaction for the stats subcommand
 function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras: Record<string, any> = {}) {
@@ -19,6 +19,9 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
     period: undefined,
     ...optionOverrides,
   };
+
+  // Determine subcommand: 'raid' if raid_id is provided, 'guild' otherwise
+  const subcommand = options.raid_id ? 'raid' : 'guild';
 
   const mockInteraction: any = {
     isChatInputCommand: jest.fn().mockReturnValue(true),
@@ -38,7 +41,7 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
     editReply: jest.fn().mockResolvedValue(undefined),
     reply: jest.fn().mockResolvedValue(undefined),
     options: {
-      getSubcommand: jest.fn().mockReturnValue('stats'),
+      getSubcommand: jest.fn().mockReturnValue(subcommand),
       get: jest.fn((key: string, required?: boolean) => {
         return options[key] || (required ? { value: null } : undefined);
       }),
@@ -92,7 +95,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
   };
 }
 
-describe('/raid stats command', () => {
+describe('/stats command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (canManageRaids as jest.Mock).mockResolvedValue(true);
@@ -119,7 +122,7 @@ describe('/raid stats command', () => {
       expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(prisma.raid.findUnique).toHaveBeenCalledWith({
         where: { id: 'raid-1' },
-        include: { attendance: true },
+        include: { attendance: true, guild: true },
       });
 
       // Should editReply with an embed

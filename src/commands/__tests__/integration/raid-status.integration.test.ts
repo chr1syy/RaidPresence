@@ -12,7 +12,7 @@ jest.mock('../../../database/client');
 jest.mock('../../../utils/permissions');
 
 import prisma from '../../../database/client';
-import command from '../../raid';
+import command from '../../stats';
 
 // ─── Helpers ──────────────────────────────────────────────────────
 

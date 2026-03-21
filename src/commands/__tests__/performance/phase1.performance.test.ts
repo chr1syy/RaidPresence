@@ -15,6 +15,7 @@ jest.mock('../../../utils/permissions');
 
 import prisma from '../../../database/client';
 import command from '../../raid';
+import statsCommand from '../../stats';
 import { calculateRaidStats, calculateGuildStats } from '../../../utils/statsCalculator';
 import { formatStatusEmbed, StatusRaid } from '../../../utils/statusFormatter';
 import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../../../utils/statsFormatter';
@@ -276,7 +277,7 @@ describe('Phase 1 Performance Tests', () => {
         editReply: jest.fn().mockResolvedValue(undefined),
         reply: jest.fn().mockResolvedValue(undefined),
         options: {
-          getSubcommand: jest.fn().mockReturnValue('stats'),
+          getSubcommand: jest.fn().mockReturnValue('guild'),
           get: jest.fn((key: string) => {
             if (key === 'period') return { value: 'month' };
             return undefined;
@@ -285,7 +286,7 @@ describe('Phase 1 Performance Tests', () => {
       };
 
       const elapsed = await measureTime(async () => {
-        await command.execute(interaction);
+        await statsCommand.execute(interaction);
       });
 
       expect(elapsed).toBeLessThan(200);
@@ -530,7 +531,7 @@ describe('Phase 1 Performance Tests', () => {
       };
 
       const elapsed = await measureTime(async () => {
-        await command.execute(interaction);
+        await statsCommand.execute(interaction);
       });
 
       expect(elapsed).toBeLessThan(500);

@@ -13,6 +13,7 @@ import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../../utils/statsFo
 import { formatStatusEmbed, getRosterStatus } from '../../utils/statusFormatter';
 import { calculateRaidStats, calculateGuildStats, getReliabilityScore } from '../../utils/statsCalculator';
 import command from '../raid';
+import statsCommand from '../stats';
 
 // ============================================================
 // 1. Error Messages: Clear and Helpful
@@ -124,12 +125,12 @@ describe('UX: Slash Command Registration', () => {
     const subcommands = (commandJson.options || []).filter(
       (opt: any) => opt.type === 1 // SUB_COMMAND type
     );
-    expect(subcommands.length).toBe(14);
+    expect(subcommands.length).toBe(13);
 
     const names = subcommands.map((s: any) => s.name).sort();
     expect(names).toEqual([
-      'attendance', 'cancel', 'clone', 'close', 'create', 'delete',
-      'edit', 'list', 'open', 'refresh', 'remind', 'stats', 'status', 'suggest',
+      'archive', 'cancel', 'clone', 'close', 'create', 'delete',
+      'edit', 'list', 'open', 'refresh', 'remind', 'search', 'unarchive',
     ]);
   });
 
@@ -157,14 +158,22 @@ describe('UX: Slash Command Registration', () => {
     }
   });
 
-  it('Phase 1 subcommands are present: clone, stats, status', () => {
+  it('Phase 1 subcommands are present: clone on /raid, stats/status on /stats', () => {
     const subcommands = (commandJson.options || []).filter(
       (opt: any) => opt.type === 1
     );
     const names = subcommands.map((s: any) => s.name);
     expect(names).toContain('clone');
-    expect(names).toContain('stats');
-    expect(names).toContain('status');
+
+    // stats and status now live on /stats command
+    const statsJson = statsCommand.data.toJSON() as any;
+    const statsSubcommands = (statsJson.options || []).filter(
+      (opt: any) => opt.type === 1
+    );
+    const statsNames = statsSubcommands.map((s: any) => s.name);
+    expect(statsNames).toContain('raid');
+    expect(statsNames).toContain('guild');
+    expect(statsNames).toContain('status');
   });
 
   it('clone subcommand has correct options', () => {
@@ -185,7 +194,8 @@ describe('UX: Slash Command Registration', () => {
   });
 
   it('attendance subcommand has period option with correct choices', () => {
-    const attendanceSub = (commandJson.options || []).find(
+    const statsJson = statsCommand.data.toJSON() as any;
+    const attendanceSub = (statsJson.options || []).find(
       (opt: any) => opt.name === 'attendance'
     );
     expect(attendanceSub).toBeDefined();
@@ -193,13 +203,14 @@ describe('UX: Slash Command Registration', () => {
     expect(periodOpt).toBeDefined();
     expect(periodOpt.choices).toHaveLength(3);
     const choiceValues = periodOpt.choices.map((c: any) => c.value);
-    expect(choiceValues).toContain('30');
-    expect(choiceValues).toContain('90');
+    expect(choiceValues).toContain('month');
+    expect(choiceValues).toContain('quarter');
     expect(choiceValues).toContain('all');
   });
 
   it('status subcommand has no required options', () => {
-    const statusSub = (commandJson.options || []).find(
+    const statsJson = statsCommand.data.toJSON() as any;
+    const statusSub = (statsJson.options || []).find(
       (opt: any) => opt.name === 'status'
     );
     expect(statusSub).toBeDefined();

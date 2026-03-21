@@ -17,6 +17,7 @@ jest.mock('../../utils/permissions');
 
 import prisma from '../../database/client';
 import command from '../raid';
+import statsCommand from '../stats';
 
 // Minimal Collection-like Map supporting discord.js `.some()` and `.filter()`
 class MockCollection<K, V> extends Map<K, V> {
@@ -176,8 +177,6 @@ describe('Security & Data Integrity', () => {
     );
 
     const readOnlyCommands = [
-      { subcommand: 'stats', options: {} },
-      { subcommand: 'status', options: {} },
       { subcommand: 'list', options: {} },
     ];
 
@@ -248,7 +247,7 @@ describe('Security & Data Integrity', () => {
       }
     );
 
-    it('should reject /raid stats with raid_id from another guild', async () => {
+    it('should reject /stats raid with raid_id from another guild', async () => {
       const otherGuildRaid = makeRaid({
         id: 'raid-other',
         guildId: 'other-guild-999',
@@ -260,19 +259,19 @@ describe('Security & Data Integrity', () => {
       });
       (prisma.raid.findUnique as jest.Mock).mockResolvedValue(otherGuildRaid);
 
-      const interaction = buildInteraction('stats', {
+      const interaction = buildInteraction('raid', {
         raid_id: { value: 'raid-other' },
         period: undefined,
       });
 
-      await command.execute(interaction);
+      await statsCommand.execute(interaction);
 
       const editReplyCall = interaction.editReply.mock.calls[0]?.[0];
       const content = editReplyCall?.content || '';
       expect(content).toMatch(/does not belong|not.*server|not found/i);
     });
 
-    it('should scope /raid status query to requesting guild only', async () => {
+    it('should scope /stats status query to requesting guild only', async () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-123',
         language: 'en',
@@ -280,7 +279,7 @@ describe('Security & Data Integrity', () => {
       (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
 
       const interaction = buildInteraction('status', {});
-      await command.execute(interaction);
+      await statsCommand.execute(interaction);
 
       expect(prisma.raid.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -306,18 +305,18 @@ describe('Security & Data Integrity', () => {
       );
     });
 
-    it('should scope /raid stats guild-wide query to requesting guild only', async () => {
+    it('should scope /stats guild query to requesting guild only', async () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-123',
         language: 'en',
       });
       (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
 
-      const interaction = buildInteraction('stats', {
+      const interaction = buildInteraction('guild', {
         raid_id: undefined,
         period: { value: 'month' },
       });
-      await command.execute(interaction);
+      await statsCommand.execute(interaction);
 
       expect(prisma.raid.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -494,7 +493,7 @@ describe('Security & Data Integrity', () => {
   describe('Guild context required', () => {
     const allCommands = [
       'clone', 'remind', 'delete', 'close', 'cancel', 'refresh',
-      'edit', 'stats', 'status', 'list', 'create',
+      'edit', 'list', 'create',
     ];
 
     it.each(allCommands)(

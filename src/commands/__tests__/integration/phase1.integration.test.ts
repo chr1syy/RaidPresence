@@ -470,7 +470,7 @@ describe('Phase 1 Integration Tests', () => {
         editReply: jest.fn().mockResolvedValue(undefined),
         reply: jest.fn().mockResolvedValue(undefined),
         options: {
-          getSubcommand: jest.fn().mockReturnValue('stats'),
+          getSubcommand: jest.fn().mockReturnValue('guild'),
           get: jest.fn((key: string, required?: boolean) => {
             const opts: Record<string, any> = {
               raid_id: undefined,
@@ -481,7 +481,7 @@ describe('Phase 1 Integration Tests', () => {
         },
       };
 
-      await command.execute(guildStatsInteraction);
+      await statsCommand.execute(guildStatsInteraction);
 
       // ── Step 3: Verify guild stats ──────────────────────────────
       const replyArg = guildStatsInteraction.editReply.mock.calls[0][0];
@@ -759,7 +759,7 @@ describe('Phase 1 Integration Tests', () => {
         },
       };
 
-      await command.execute(statusInteraction);
+      await statsCommand.execute(statusInteraction);
 
       // ── Step 3: Verify status dashboard ─────────────────────────
       // 3a: Correct DB query

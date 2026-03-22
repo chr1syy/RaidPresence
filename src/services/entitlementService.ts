@@ -96,57 +96,54 @@ export function hasFeature(tier: PremiumTier, feature: PremiumFeature): boolean 
 }
 
 /**
- * Checks whether a guild can create another raid this week.
+ * Atomically checks and consumes a weekly raid slot for a guild.
  * Free tier: 5 raids/week. Premium/Pro: unlimited.
  * Auto-resets the counter when the 7-day window expires.
+ *
+ * Returns { allowed, remaining } — if allowed, the count has already been incremented.
+ * This prevents race conditions where two concurrent creates both pass the check.
  */
-export async function checkWeeklyLimit(guildId: string): Promise<{ allowed: boolean; remaining: number }> {
-  const guild = await prisma.guild.findUnique({
-    where: { id: guildId },
-    select: { premiumTier: true, premiumExpiresAt: true, weeklyRaidCount: true, weeklyRaidCountResetAt: true },
-  });
-
-  if (!guild) return { allowed: true, remaining: FREE_WEEKLY_RAID_LIMIT };
-
-  const effectiveTier =
-    guild.premiumExpiresAt && guild.premiumExpiresAt < new Date() ? 'FREE' : guild.premiumTier;
-
-  if (effectiveTier !== 'FREE') {
-    return { allowed: true, remaining: Infinity };
-  }
-
-  const now = new Date();
-  const resetAt = guild.weeklyRaidCountResetAt;
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-  // Reset window if expired or never set
-  if (!resetAt || now.getTime() - resetAt.getTime() >= sevenDaysMs) {
-    await prisma.guild.update({
+export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: boolean; remaining: number }> {
+  return prisma.$transaction(async (tx) => {
+    const guild = await tx.guild.findUnique({
       where: { id: guildId },
-      data: { weeklyRaidCount: 0, weeklyRaidCountResetAt: now },
+      select: { premiumTier: true, premiumExpiresAt: true, weeklyRaidCount: true, weeklyRaidCountResetAt: true },
     });
-    return { allowed: true, remaining: FREE_WEEKLY_RAID_LIMIT };
-  }
 
-  const remaining = Math.max(0, FREE_WEEKLY_RAID_LIMIT - guild.weeklyRaidCount);
-  return { allowed: remaining > 0, remaining };
-}
+    if (!guild) return { allowed: true, remaining: FREE_WEEKLY_RAID_LIMIT };
 
-/**
- * Increments the weekly raid count after a successful raid creation.
- * Initializes the reset window if not already set.
- */
-export async function incrementWeeklyRaidCount(guildId: string): Promise<void> {
-  const guild = await prisma.guild.findUnique({
-    where: { id: guildId },
-    select: { weeklyRaidCountResetAt: true },
-  });
+    const effectiveTier =
+      guild.premiumExpiresAt && guild.premiumExpiresAt < new Date() ? 'FREE' : guild.premiumTier;
 
-  await prisma.guild.update({
-    where: { id: guildId },
-    data: {
-      weeklyRaidCount: { increment: 1 },
-      weeklyRaidCountResetAt: guild?.weeklyRaidCountResetAt ?? new Date(),
-    },
+    if (effectiveTier !== 'FREE') {
+      return { allowed: true, remaining: Infinity };
+    }
+
+    const now = new Date();
+    const resetAt = guild.weeklyRaidCountResetAt;
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    let currentCount = guild.weeklyRaidCount;
+
+    // Reset window if expired or never set
+    if (!resetAt || now.getTime() - resetAt.getTime() >= sevenDaysMs) {
+      currentCount = 0;
+    }
+
+    if (currentCount >= FREE_WEEKLY_RAID_LIMIT) {
+      return { allowed: false, remaining: 0 };
+    }
+
+    // Atomically increment and (re)set the window
+    await tx.guild.update({
+      where: { id: guildId },
+      data: {
+        weeklyRaidCount: currentCount + 1,
+        weeklyRaidCountResetAt: !resetAt || now.getTime() - resetAt.getTime() >= sevenDaysMs ? now : resetAt,
+      },
+    });
+
+    const remaining = FREE_WEEKLY_RAID_LIMIT - (currentCount + 1);
+    return { allowed: true, remaining };
   });
 }

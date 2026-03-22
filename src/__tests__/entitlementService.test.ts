@@ -5,8 +5,7 @@ import {
   getTier,
   syncEntitlement,
   hasFeature,
-  checkWeeklyLimit,
-  incrementWeeklyRaidCount,
+  tryConsumeWeeklyRaid,
   PremiumTier,
   PremiumFeature,
 } from '../services/entitlementService';
@@ -120,14 +119,14 @@ describe('hasFeature()', () => {
   });
 });
 
-describe('checkWeeklyLimit()', () => {
+describe('tryConsumeWeeklyRaid()', () => {
   it('returns full limit for unknown guild', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
-    const result = await checkWeeklyLimit('unknown');
+    const result = await tryConsumeWeeklyRaid('unknown');
     expect(result).toEqual({ allowed: true, remaining: 5 });
   });
 
-  it('returns unlimited for PREMIUM tier', async () => {
+  it('returns unlimited for PREMIUM tier without incrementing', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       premiumTier: 'PREMIUM',
       premiumExpiresAt: null,
@@ -135,8 +134,9 @@ describe('checkWeeklyLimit()', () => {
       weeklyRaidCountResetAt: new Date(),
     } as any);
 
-    const result = await checkWeeklyLimit('guild1');
+    const result = await tryConsumeWeeklyRaid('guild1');
     expect(result).toEqual({ allowed: true, remaining: Infinity });
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
   });
 
   it('returns unlimited for PRO tier', async () => {
@@ -147,23 +147,29 @@ describe('checkWeeklyLimit()', () => {
       weeklyRaidCountResetAt: new Date(),
     } as any);
 
-    const result = await checkWeeklyLimit('guild1');
+    const result = await tryConsumeWeeklyRaid('guild1');
     expect(result).toEqual({ allowed: true, remaining: Infinity });
   });
 
-  it('counts correctly for FREE tier within window', async () => {
+  it('consumes a slot and returns remaining for FREE tier', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       premiumTier: 'FREE',
       premiumExpiresAt: null,
       weeklyRaidCount: 3,
-      weeklyRaidCountResetAt: new Date(), // within window
+      weeklyRaidCountResetAt: new Date(),
     } as any);
+    (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
-    const result = await checkWeeklyLimit('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 2 });
+    const result = await tryConsumeWeeklyRaid('guild1');
+    expect(result).toEqual({ allowed: true, remaining: 1 });
+    expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ weeklyRaidCount: 4 }),
+      }),
+    );
   });
 
-  it('blocks when limit reached', async () => {
+  it('blocks when limit already reached', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       premiumTier: 'FREE',
       premiumExpiresAt: null,
@@ -171,11 +177,12 @@ describe('checkWeeklyLimit()', () => {
       weeklyRaidCountResetAt: new Date(),
     } as any);
 
-    const result = await checkWeeklyLimit('guild1');
+    const result = await tryConsumeWeeklyRaid('guild1');
     expect(result).toEqual({ allowed: false, remaining: 0 });
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
   });
 
-  it('resets counter when window expired', async () => {
+  it('resets counter and consumes when window expired', async () => {
     const eightDaysAgo = new Date();
     eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
 
@@ -187,11 +194,11 @@ describe('checkWeeklyLimit()', () => {
     } as any);
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
-    const result = await checkWeeklyLimit('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 5 });
+    const result = await tryConsumeWeeklyRaid('guild1');
+    expect(result).toEqual({ allowed: true, remaining: 4 });
     expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ weeklyRaidCount: 0 }),
+        data: expect.objectContaining({ weeklyRaidCount: 1 }),
       }),
     );
   });
@@ -205,8 +212,8 @@ describe('checkWeeklyLimit()', () => {
     } as any);
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
-    const result = await checkWeeklyLimit('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 5 });
+    const result = await tryConsumeWeeklyRaid('guild1');
+    expect(result).toEqual({ allowed: true, remaining: 4 });
   });
 
   it('treats expired premium as FREE tier', async () => {
@@ -217,41 +224,20 @@ describe('checkWeeklyLimit()', () => {
       weeklyRaidCountResetAt: new Date(),
     } as any);
 
-    const result = await checkWeeklyLimit('guild1');
+    const result = await tryConsumeWeeklyRaid('guild1');
     expect(result).toEqual({ allowed: false, remaining: 0 });
   });
-});
 
-describe('incrementWeeklyRaidCount()', () => {
-  it('increments the count', async () => {
+  it('runs inside a transaction', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE',
+      premiumExpiresAt: null,
+      weeklyRaidCount: 0,
       weeklyRaidCountResetAt: new Date(),
     } as any);
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
-    await incrementWeeklyRaidCount('guild1');
-
-    expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith({
-      where: { id: 'guild1' },
-      data: expect.objectContaining({
-        weeklyRaidCount: { increment: 1 },
-      }),
-    });
-  });
-
-  it('initializes resetAt if null', async () => {
-    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
-      weeklyRaidCountResetAt: null,
-    } as any);
-    (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
-
-    await incrementWeeklyRaidCount('guild1');
-
-    expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith({
-      where: { id: 'guild1' },
-      data: expect.objectContaining({
-        weeklyRaidCountResetAt: expect.any(Date),
-      }),
-    });
+    await tryConsumeWeeklyRaid('guild1');
+    expect((prisma.$transaction as jest.Mock)).toHaveBeenCalled();
   });
 });

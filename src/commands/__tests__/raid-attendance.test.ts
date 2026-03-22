@@ -19,7 +19,7 @@ jest.mock('../../utils/attendanceAnalytics', () => {
 });
 
 import prisma from '../../database/client';
-import command from '../raid';
+import command from '../stats';
 import {
   calculatePlayerStats,
   getPlayerRoleDistribution,

@@ -11,18 +11,13 @@ import { formatRaidStatsEmbed, formatGuildStatsEmbed } from '../utils/statsForma
 import { formatStatusEmbed } from '../utils/statusFormatter';
 import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHistory } from '../utils/attendanceAnalytics';
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
-import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood, CompositionAttendee } from '../utils/compositionAnalyzer';
+import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
-import { formatRaidNotesEmbed } from '../utils/notesFormatter';
-import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
-import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
-import { canManageRaids } from '../utils/permissions';
-import { getTranslations } from '../utils/localization';
 
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName('stats')
-    .setDescription('Manage raid statistics, attendance, and archives')
+    .setDescription('View raid statistics, attendance, and composition analysis')
     .addSubcommand((subcommand) =>
       subcommand
         .setName('raid')
@@ -88,78 +83,12 @@ const command: Command = {
             .setRequired(true)
         )
     )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('notes')
-        .setDescription('View raid notes and opt-out reasons')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The ID of the raid')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('archive')
-        .setDescription('Archive a raid to keep history clean')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to archive')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('unarchive')
-        .setDescription('Restore an archived raid')
-        .addStringOption((option) =>
-          option
-            .setName('raid_id')
-            .setDescription('The raid to restore')
-            .setRequired(true)
-        )
-    )
-    .addSubcommand((subcommand) =>
-      subcommand
-        .setName('search')
-        .setDescription('Search archived raids')
-        .addStringOption((option) =>
-          option
-            .setName('query')
-            .setDescription('Search query (raid name, player, date)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('period')
-            .setDescription('Time period to search')
-            .addChoices(
-              { name: 'Last 30 days', value: 'month' },
-              { name: 'Last 90 days', value: 'quarter' },
-              { name: 'All time', value: 'all' }
-            )
-            .setRequired(false)
-        )
-     ),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
 
     const subcommand = interaction.options.getSubcommand();
-
-    // Check permissions for leader-only subcommands
-    const isLeaderOnly = ['archive', 'unarchive'].includes(subcommand);
-    if (isLeaderOnly) {
-      if (!(await canManageRaids(interaction.member as any))) {
-        await interaction.reply({
-          content: 'You do not have permission to use this subcommand.',
-          ephemeral: true,
-        });
-        return;
-      }
-    }
 
     if (subcommand === 'raid') {
       await handleRaidStats(interaction);
@@ -171,14 +100,6 @@ const command: Command = {
       await handleAttendanceCommand(interaction);
     } else if (subcommand === 'suggest') {
       await handleSuggestCommand(interaction);
-    } else if (subcommand === 'notes') {
-      await handleNotesCommand(interaction);
-    } else if (subcommand === 'archive') {
-      await handleArchiveCommand(interaction);
-    } else if (subcommand === 'unarchive') {
-      await handleUnarchiveCommand(interaction);
-    } else if (subcommand === 'search') {
-      await handleSearchCommand(interaction);
     }
   },
 };
@@ -391,162 +312,6 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   });
 
   const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, guildData?.language || 'en');
-
-  await interaction.editReply({ embeds: [embed] });
-}
-
-async function handleNotesCommand(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  const raid = await prisma.raid.findUnique({
-    where: { id: raidId },
-    include: { attendance: true, guild: true },
-  });
-
-  if (!raid) {
-    await interaction.editReply({
-      content: '❌ Raid not found.',
-    });
-    return;
-  }
-
-  if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
-      content: '❌ This raid does not belong to this server.',
-    });
-    return;
-  }
-
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  const noteEntries: Array<{
-    username: string;
-    playerNote?: string;
-    optoutReason?: string;
-    status: string;
-    notedAt?: Date;
-  }> = raid.attendance.map(att => ({
-    username: att.username,
-    playerNote: att.playerNote || undefined,
-    optoutReason: att.optoutReason || undefined,
-    status: att.status,
-    notedAt: att.notedAt || undefined,
-  }));
-
-  const embed = formatRaidNotesEmbed(raid.description || 'Raid', raid.raidDate, noteEntries, guildData?.language || 'en');
-
-  await interaction.editReply({ embeds: [embed] });
-}
-
-async function handleArchiveCommand(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to archive raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  try {
-    await archiveRaid(raidId, interaction.guild!.id, interaction.client);
-    await interaction.editReply({
-      content: '✅ Raid archived successfully.',
-    });
-  } catch (error) {
-    console.error('Error archiving raid:', error);
-    await interaction.editReply({
-      content: '❌ Failed to archive raid.',
-    });
-  }
-}
-
-async function handleUnarchiveCommand(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  // Check permissions
-  const member = interaction.member;
-  if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
-      content: '❌ You do not have permission to restore raids. Ask your server admin to configure raid leader roles.',
-    });
-    return;
-  }
-
-  const raidId = interaction.options.get('raid_id', true).value as string;
-
-  try {
-    await unarchiveRaid(raidId, interaction.guild!.id, interaction.client);
-    await interaction.editReply({
-      content: '✅ Raid restored successfully.',
-    });
-  } catch (error) {
-    console.error('Error restoring raid:', error);
-    await interaction.editReply({
-      content: '❌ Failed to restore raid.',
-    });
-  }
-}
-
-async function handleSearchCommand(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guild) {
-    await interaction.reply({
-      content: '❌ This command can only be used in a server!',
-      ephemeral: true,
-    });
-    return;
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const query = interaction.options.get('query', true).value as string;
-  const period = interaction.options.get('period', false)?.value as string || 'month';
-
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  const startDate = getStartDate(period);
-
-  const results = await searchArchive({
-    guildId: interaction.guild.id,
-    query,
-    startDate,
-  });
-
-  const embed = formatArchiveSearchEmbed(results, query, period, guildData?.language || 'en');
 
   await interaction.editReply({ embeds: [embed] });
 }

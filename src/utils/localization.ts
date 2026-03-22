@@ -208,6 +208,17 @@ interface Translations {
     archiveNotConfigured: string;
     raidAlreadyArchived: string;
     raidNotArchived: string;
+
+    // Premium system (Phase 1.4)
+    premiumRequired: string;
+    premiumUpsell: string;
+    premiumWeeklyLimitReached: string;
+    premiumWeeklyLimitInfo: string;
+    premiumTierFree: string;
+    premiumTierPremium: string;
+    premiumTierPro: string;
+    premiumExpired: string;
+    premiumAttendanceCapped: string;
 }
 
 /**
@@ -430,6 +441,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archive channel not configured. Use `/config archive-channel` first.',
         raidAlreadyArchived: 'This raid is already archived.',
         raidNotArchived: 'This raid is not archived.',
+
+        // Premium system (Phase 1.4)
+        premiumRequired: 'This feature requires {tier}.',
+        premiumUpsell: 'Upgrade to {tier} to unlock {feature}. Use `/premium` to learn more.',
+        premiumWeeklyLimitReached: 'Weekly raid limit reached ({count}/{max}). Resets {resetDate}.',
+        premiumWeeklyLimitInfo: 'You have {remaining} raids left this week.',
+        premiumTierFree: 'Free',
+        premiumTierPremium: 'Premium',
+        premiumTierPro: 'Pro',
+        premiumExpired: 'Your {tier} subscription has expired.',
+        premiumAttendanceCapped: 'Showing last {count} raids. Upgrade to Premium for full history.',
     },
 
   de: {
@@ -640,6 +662,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         archiveNotConfigured: 'Archiv-Kanal nicht konfiguriert. Verwende zuerst `/config archive-channel`.',
         raidAlreadyArchived: 'Dieser Raid ist bereits archiviert.',
         raidNotArchived: 'Dieser Raid ist nicht archiviert.',
+
+        // Premium system (Phase 1.4)
+        premiumRequired: 'Diese Funktion erfordert {tier}.',
+        premiumUpsell: 'Upgrade auf {tier}, um {feature} freizuschalten. Verwende `/premium` für mehr Infos.',
+        premiumWeeklyLimitReached: 'Wöchentliches Raid-Limit erreicht ({count}/{max}). Setzt zurück am {resetDate}.',
+        premiumWeeklyLimitInfo: 'Du hast noch {remaining} Raids diese Woche übrig.',
+        premiumTierFree: 'Free',
+        premiumTierPremium: 'Premium',
+        premiumTierPro: 'Pro',
+        premiumExpired: 'Dein {tier}-Abonnement ist abgelaufen.',
+        premiumAttendanceCapped: 'Zeige die letzten {count} Raids. Upgrade auf Premium für die vollständige Historie.',
     },
 };
 

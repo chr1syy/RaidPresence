@@ -4,6 +4,7 @@ import { BotClient, Command } from './types';
 import prisma from './database/client';
 import { startRaidScheduler } from './utils/raidScheduler';
 import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
+import { registerEntitlementHandlers } from './events/entitlementHandler';
 
 config();
 
@@ -84,6 +85,9 @@ client.once(Events.ClientReady, async (c) => {
 
   // Start the raid scheduler for auto-closing expired raids
   startRaidScheduler(c);
+
+  // Register entitlement handlers (Premium system)
+  registerEntitlementHandlers(c);
 });
 
 // Interaction handler

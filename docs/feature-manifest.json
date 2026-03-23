@@ -194,6 +194,377 @@
       "docs_url": "docs/guides/SETUP-GUIDE.md"
     }
   ],
+  "commands_docs": [
+    {
+      "id": "raid",
+      "name": "/raid",
+      "path": "/docs/raid",
+      "summary": "Raid lifecycle and archiving — create, list, delete, close, open, cancel, remind, refresh, edit, clone, archive, unarchive, search",
+      "highlights": [
+        "13 subcommands available",
+        "Interactive attendance buttons",
+        "Role and class-based roster sorting",
+        "Reverse sign-up — all eligible members auto-added"
+      ],
+      "syntax": "/raid <subcommand> [options]",
+      "parameters": [
+        {
+          "name": "create",
+          "required": false,
+          "format": "date:<YYYY-MM-DD> time:<HH:MM> title:<text> roles:<role1,role2> [ping_roles:true|false]",
+          "description": "Create a new raid event with date, time, title, and eligible roles"
+        },
+        {
+          "name": "list",
+          "required": false,
+          "format": "(no options)",
+          "description": "Show all upcoming raids with attendance counts"
+        },
+        {
+          "name": "edit",
+          "required": false,
+          "format": "raid_id:<id> [date:<YYYY-MM-DD>] [time:<HH:MM>] [title:<text>] [status:open|closed|cancelled]",
+          "description": "Modify an existing raid's date, time, title, or status"
+        },
+        {
+          "name": "delete",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Permanently remove a raid and its Discord message"
+        },
+        {
+          "name": "clone",
+          "required": false,
+          "format": "raid_id:<id> date:<YYYY-MM-DD> [time:<HH:MM>] [title:<text>]",
+          "description": "Copy a raid's configuration to a new date"
+        },
+        {
+          "name": "close",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Lock the raid roster and prevent further changes"
+        },
+        {
+          "name": "open",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Reopen a closed raid to allow changes"
+        },
+        {
+          "name": "cancel",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Cancel a raid event and remove attendance records"
+        },
+        {
+          "name": "remind",
+          "required": false,
+          "format": "raid_id:<id> [message:<text>]",
+          "description": "Send a reminder to all signed-up players"
+        },
+        {
+          "name": "refresh",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Update roster to reflect current guild membership and role changes"
+        },
+        {
+          "name": "archive",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Move a raid to the archive channel"
+        },
+        {
+          "name": "unarchive",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Restore an archived raid to its original channel"
+        },
+        {
+          "name": "search",
+          "required": false,
+          "format": "query:<text> [period:month|quarter|all]",
+          "description": "Search archived raids by name, player, or date"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Create a heroic raid",
+          "command": "/raid create date:2026-03-28 time:19:30 title:Heroic Raid Night roles:Raider,Member",
+          "description": "Creates a raid for March 28 at 19:30 with Raider and Member roles auto-signed-up"
+        },
+        {
+          "title": "Clone with role ping",
+          "command": "/raid clone raid_id:abc123 date:2026-04-04 ping_roles:true",
+          "description": "Clones a previous raid to a new date and pings eligible roles"
+        },
+        {
+          "title": "Search the archive",
+          "command": "/raid search query:Mythic period:quarter",
+          "description": "Searches archived raids containing 'Mythic' from the last 90 days"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Attendance Buttons",
+          "body": "Every raid embed includes interactive buttons for players to manage their attendance.",
+          "bullets": [
+            "Attending — confirm your spot (default for eligible members)",
+            "Opt Out — remove yourself from the roster",
+            "Running Late — mark yourself as attending but late",
+            "Set Class/Spec — choose your character for this raid"
+          ]
+        },
+        {
+          "title": "Roster Behavior",
+          "body": "Rosters are grouped and sorted for readability.",
+          "bullets": [
+            "Tank → Healer → DPS role order",
+            "Class and spec shown for each participant",
+            "Live updates when members respond",
+            "Per-role character preferences supported"
+          ]
+        }
+      ],
+      "permissions": [
+        "Configured raid leader role (via /config leader-roles)",
+        "Or Discord ManageEvents permission",
+        "Server administrators can always manage raids"
+      ],
+      "troubleshooting": [
+        "If /raid is missing, re-invite the bot with applications.commands scope.",
+        "If permission errors occur, verify leader roles via /config leader-roles.",
+        "If the roster looks stale, run /raid refresh to sync guild membership.",
+        "Role names are case-sensitive — use exact names or role IDs."
+      ]
+    },
+    {
+      "id": "stats",
+      "name": "/stats",
+      "path": "/docs/stats",
+      "summary": "Statistics and analytics — raid, guild, status, attendance, suggest",
+      "highlights": [
+        "5 subcommands available",
+        "Per-raid and guild-wide analytics",
+        "Player attendance history and reliability scores",
+        "Composition analysis with optimization suggestions"
+      ],
+      "syntax": "/stats <subcommand> [options]",
+      "parameters": [
+        {
+          "name": "raid",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "View sign-up, opt-out, and late counts for a specific raid"
+        },
+        {
+          "name": "guild",
+          "required": false,
+          "format": "[period:week|month|all]",
+          "description": "View guild-wide attendance statistics over a time period (default: month)"
+        },
+        {
+          "name": "status",
+          "required": false,
+          "format": "(no options)",
+          "description": "Dashboard of the next 7 upcoming open raids with roster counts"
+        },
+        {
+          "name": "attendance",
+          "required": false,
+          "format": "player:<@user> [period:month|quarter|all]",
+          "description": "View a player's attendance history, reliability score, and role distribution"
+        },
+        {
+          "name": "suggest",
+          "required": false,
+          "format": "raid_id:<id>",
+          "description": "Analyze raid composition and get role gap warnings, swap suggestions, and success likelihood"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Check a player's reliability",
+          "command": "/stats attendance player:@Healbot period:quarter",
+          "description": "Shows Healbot's attendance rate, opt-out patterns, and role distribution over the last 90 days"
+        },
+        {
+          "title": "Guild overview",
+          "command": "/stats guild period:month",
+          "description": "Shows total raids, average attendance, and top attendees for the last 30 days"
+        },
+        {
+          "title": "Composition check",
+          "command": "/stats suggest raid_id:abc123",
+          "description": "Analyzes the raid's tank/healer/DPS balance and suggests swaps to fill gaps"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Subcommands",
+          "body": "Each subcommand focuses on a different analytics view.",
+          "bullets": [
+            "raid — per-raid breakdown of attending, opted-out, and late counts",
+            "guild — aggregate stats across all raids in a time window",
+            "status — quick dashboard of upcoming raids and their fill status",
+            "attendance — individual player history with reliability scoring",
+            "suggest — composition analysis with role gap detection and swap recommendations"
+          ]
+        },
+        {
+          "title": "Time Periods",
+          "body": "Several subcommands accept a period option to scope the analysis.",
+          "bullets": [
+            "week — last 7 days (guild only)",
+            "month — last 30 days (default for guild and attendance)",
+            "quarter — last 90 days (attendance only)",
+            "all — all recorded history"
+          ]
+        }
+      ],
+      "permissions": [
+        "Discord ManageEvents permission required"
+      ],
+      "troubleshooting": [
+        "If stats show zero data, ensure raids have been created and members have responded.",
+        "The status dashboard only shows open raids with future dates — closed or past raids are excluded.",
+        "Attendance data is based on final roster state — opt-outs that later re-join are counted as attending.",
+        "Suggest works best when raids have a roles composition set (e.g., '2T 4H 14D' on creation)."
+      ]
+    },
+    {
+      "id": "config",
+      "name": "/config",
+      "path": "/docs/config",
+      "summary": "Server configuration — view, leader-roles, timezone, language, archive-channel, auto-archive",
+      "highlights": [
+        "6 subcommands available",
+        "Administrator-only modifications",
+        "Per-server language and timezone",
+        "Archive channel and auto-archive controls"
+      ],
+      "syntax": "/config <subcommand> [options]",
+      "parameters": [
+        {
+          "name": "view",
+          "required": false,
+          "format": "(no options)",
+          "description": "Display current leader roles, language, timezone, archive channel, and auto-archive status"
+        },
+        {
+          "name": "leader-roles",
+          "required": false,
+          "format": "roles:<role1,role2>",
+          "description": "Set which Discord roles can create and manage raids (comma-separated names or IDs)"
+        },
+        {
+          "name": "language",
+          "required": false,
+          "format": "lang:<en|de>",
+          "description": "Set the bot's response language — English or German"
+        },
+        {
+          "name": "timezone",
+          "required": false,
+          "format": "offset:<-12 to +14>",
+          "description": "Set the timezone offset in hours (e.g., 1 for GMT+1, -5 for EST)"
+        },
+        {
+          "name": "archive-channel",
+          "required": false,
+          "format": "channel:<#channel>",
+          "description": "Set the text channel where archived raids are stored"
+        },
+        {
+          "name": "auto-archive",
+          "required": false,
+          "format": "enabled:<true|false>",
+          "description": "Automatically archive closed raids 2 hours after their scheduled time"
+        }
+      ],
+      "examples": [
+        {
+          "title": "View current settings",
+          "command": "/config view",
+          "description": "Shows all current server configuration in an embed"
+        },
+        {
+          "title": "Set leader roles",
+          "command": "/config leader-roles roles:Officer,Raid Leader",
+          "description": "Allows members with Officer or Raid Leader roles to manage raids"
+        },
+        {
+          "title": "Enable auto-archive",
+          "command": "/config auto-archive enabled:true",
+          "description": "Closed raids will be automatically moved to the archive channel after 2 hours"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Configuration Options",
+          "body": "All settings are stored independently per Discord server.",
+          "bullets": [
+            "leader-roles — controls who can create, edit, and delete raids",
+            "language — localizes all bot responses (en or de)",
+            "timezone — offsets raid times for display purposes",
+            "archive-channel — destination for archived raids",
+            "auto-archive — requires archive-channel to be configured first"
+          ]
+        }
+      ],
+      "permissions": [
+        "Administrator permission required for all modifications",
+        "Anyone can run /config view"
+      ],
+      "troubleshooting": [
+        "Role names are case-sensitive — use exact Discord role names or role IDs.",
+        "Use /config view before and after updates to verify changes took effect.",
+        "Auto-archive requires an archive channel to be set first — configure archive-channel before enabling.",
+        "Timezone offset is in whole hours only (e.g., 1, -5, 0) — no half-hour offsets."
+      ]
+    },
+    {
+      "id": "setup",
+      "name": "/setup",
+      "path": "/docs/setup",
+      "summary": "Interactive server setup wizard",
+      "highlights": [
+        "Guided first-time configuration",
+        "Shows current settings and next steps",
+        "Can be re-run anytime to review setup"
+      ],
+      "syntax": "/setup",
+      "parameters": [],
+      "examples": [
+        {
+          "title": "Run the setup wizard",
+          "command": "/setup",
+          "description": "Launches the interactive guide that walks through leader roles, first raid creation, and useful commands"
+        }
+      ],
+      "sections": [
+        {
+          "title": "What the Wizard Covers",
+          "body": "The setup wizard displays an embed with step-by-step instructions for new servers.",
+          "bullets": [
+            "Current configuration status (leader roles)",
+            "How to set raid leader roles with /config leader-roles",
+            "How to create your first raid with /raid create",
+            "Tips for Discord role names (case-sensitive, use IDs for reliability)",
+            "Player actions — opt out, opt in, set class/spec"
+          ]
+        }
+      ],
+      "permissions": [
+        "Administrator permission required"
+      ],
+      "troubleshooting": [
+        "If /setup is missing, re-invite the bot with applications.commands scope.",
+        "You can re-run /setup at any time — it always shows current settings.",
+        "Individual settings can be changed with /config subcommands without re-running setup."
+      ]
+    }
+  ],
   "deprecated": [
     {
       "id": "config-raid-roles",

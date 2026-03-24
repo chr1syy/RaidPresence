@@ -1,5 +1,5 @@
 import { PremiumTier } from '@prisma/client';
-import { Client, Entitlement } from 'discord.js';
+import { Client } from 'discord.js';
 import prisma from '../database/client';
 
 export { PremiumTier };
@@ -168,19 +168,22 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<void> {
   }
 
   try {
-    const entitlements = await client.application!.entitlements.fetch({ excludeEnded: true });
+    // Use REST API directly — discord.js fetch() may filter out test entitlements
+    const entitlements = await client.rest.get(
+      `/applications/${appId}/entitlements?exclude_ended=true`,
+    ) as Array<{ id: string; sku_id: string; guild_id?: string; ends_at?: string }>;
 
     let synced = 0;
     let skipped = 0;
 
-    for (const entitlement of entitlements.values()) {
-      const tier = skuToTier(entitlement.skuId);
+    for (const entitlement of entitlements) {
+      const tier = skuToTier(entitlement.sku_id);
       if (!tier) {
         skipped++;
         continue;
       }
 
-      const guildId = entitlement.guildId;
+      const guildId = entitlement.guild_id;
       if (!guildId) {
         skipped++;
         continue;
@@ -189,7 +192,7 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<void> {
       await syncEntitlement({
         guildId,
         tier,
-        expiresAt: entitlement.endsAt ?? undefined,
+        expiresAt: entitlement.ends_at ? new Date(entitlement.ends_at) : undefined,
         entitlementId: entitlement.id,
         source: 'discord',
       });

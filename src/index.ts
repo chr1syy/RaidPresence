@@ -5,6 +5,7 @@ import prisma from './database/client';
 import { startRaidScheduler } from './utils/raidScheduler';
 import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
+import { syncEntitlementsOnStartup } from './services/entitlementService';
 
 config();
 
@@ -88,6 +89,9 @@ client.once(Events.ClientReady, async (c) => {
 
   // Register entitlement handlers (Premium system)
   registerEntitlementHandlers(c);
+
+  // Sync existing entitlements from Discord
+  await syncEntitlementsOnStartup(c);
 });
 
 // Interaction handler

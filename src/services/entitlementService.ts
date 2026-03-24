@@ -1,4 +1,5 @@
 import { PremiumTier } from '@prisma/client';
+import { Client, Entitlement } from 'discord.js';
 import prisma from '../database/client';
 
 export { PremiumTier };
@@ -22,6 +23,13 @@ export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
   'stats.export': 'PRO',
   'raid.integrations': 'PRO',
 };
+
+/** Maps a Discord SKU ID to its premium tier. */
+export function skuToTier(skuId: string): PremiumTier | null {
+  if (skuId === process.env.DISCORD_SKU_PRO) return 'PRO';
+  if (skuId === process.env.DISCORD_SKU_PREMIUM) return 'PREMIUM';
+  return null;
+}
 
 const TIER_RANK: Record<PremiumTier, number> = {
   FREE: 0,
@@ -146,4 +154,50 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
     const remaining = FREE_WEEKLY_RAID_LIMIT - (currentCount + 1);
     return { allowed: true, remaining };
   });
+}
+
+/**
+ * Syncs all active entitlements from Discord on startup.
+ * Ensures the DB reflects current subscription state even after restarts.
+ */
+export async function syncEntitlementsOnStartup(client: Client): Promise<void> {
+  const appId = client.application?.id;
+  if (!appId) {
+    console.warn('⚠️ Could not sync entitlements: application ID not available');
+    return;
+  }
+
+  try {
+    const entitlements = await client.application!.entitlements.fetch({ excludeEnded: true });
+
+    let synced = 0;
+    let skipped = 0;
+
+    for (const entitlement of entitlements.values()) {
+      const tier = skuToTier(entitlement.skuId);
+      if (!tier) {
+        skipped++;
+        continue;
+      }
+
+      const guildId = entitlement.guildId;
+      if (!guildId) {
+        skipped++;
+        continue;
+      }
+
+      await syncEntitlement({
+        guildId,
+        tier,
+        expiresAt: entitlement.endsAt ?? undefined,
+        entitlementId: entitlement.id,
+        source: 'discord',
+      });
+      synced++;
+    }
+
+    console.log(`💎 Startup entitlement sync: ${synced} synced, ${skipped} skipped`);
+  } catch (error) {
+    console.error('❌ Failed to sync entitlements on startup:', error);
+  }
 }

@@ -8,17 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.2] - 2026-03-24
+
 ### Added
+- Premium infrastructure — `PremiumTier` enum (`FREE`, `PREMIUM`, `PRO`), premium fields on Guild model, and database migration
+- Entitlement service for managing premium tier lookups, weekly raid limit enforcement, and Discord SKU entitlement sync
+- Startup entitlement sync — fetches all active entitlements from Discord API on bot startup to ensure DB stays in sync after restarts
+- Premium gate middleware for feature access control based on guild tier
+- Discord entitlement event handlers (`entitlementCreate`, `entitlementUpdate`, `entitlementDelete`) for automatic subscription sync
+- `DISCORD_SKU_PREMIUM` and `DISCORD_SKU_PRO` environment variables for Discord Store SKU configuration
 
 ### Changed
-
-### Deprecated
-
-### Removed
+- Command restructure — `/stats` now handles analytics (player stats, raid summaries), `/raid` now owns archive operations (`archive`, `unarchive`, `search`)
+- Weekly raid limit check refactored to use atomic `$transaction` to prevent race conditions
+- `skuToTier()` moved to `entitlementService.ts` as shared export (used by both handler and startup sync)
+- Added `ManageEvents` permission requirement to `/stats` command
 
 ### Fixed
-
-### Security
+- Race condition in weekly raid limit enforcement where concurrent requests could bypass the limit
+- Entitlements not restored after bot restart (now synced from Discord API on startup)
 
 ---
 

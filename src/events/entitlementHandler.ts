@@ -1,13 +1,6 @@
 import { Client, Events, Entitlement } from 'discord.js';
 import { PremiumTier } from '@prisma/client';
-import { syncEntitlement } from '../services/entitlementService';
-
-/** Maps a Discord SKU ID to its premium tier. */
-function skuToTier(skuId: string): PremiumTier | null {
-  if (skuId === process.env.DISCORD_SKU_PRO) return 'PRO';
-  if (skuId === process.env.DISCORD_SKU_PREMIUM) return 'PREMIUM';
-  return null;
-}
+import { syncEntitlement, skuToTier } from '../services/entitlementService';
 
 async function handleEntitlement(entitlement: Entitlement, tier: PremiumTier): Promise<void> {
   const guildId = entitlement.guildId;

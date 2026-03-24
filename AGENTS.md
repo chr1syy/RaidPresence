@@ -31,7 +31,12 @@ RaidPresence/
 │   │   └── client.ts              # Prisma client singleton
 │   ├── events/
 │   │   ├── buttonHandler.ts       # Button interactions (attendance, notes modal)
+│   │   ├── entitlementHandler.ts  # Discord entitlement event handlers (premium sync)
 │   │   └── selectHandler.ts       # Select menu interactions (class/spec)
+│   ├── middleware/
+│   │   └── premiumGate.ts         # Feature gating by premium tier
+│   ├── services/
+│   │   └── entitlementService.ts  # Premium tier management, SKU mapping, startup sync
 │   ├── types/
 │   │   └── index.ts               # TypeScript type definitions
 │   └── utils/
@@ -80,10 +85,10 @@ RaidPresence/
 
 ## Database Schema
 
-Four Prisma models in `prisma/schema.prisma`:
+Five Prisma models in `prisma/schema.prisma`:
 
 ### Guild
-Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`.
+Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezoneOffset`, `archiveChannelId`, `autoArchive`, `premiumTier` (FREE/PREMIUM/PRO), `premiumExpiresAt`, `entitlementId`, `weeklyRaidCount`, `weeklyRaidCountResetAt`.
 
 **Note:** `raidRoles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 
@@ -157,6 +162,16 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - Auto-archive integrated into `raidScheduler.ts` `checkAndCloseExpiredRaids()`
 - Guild isolation enforced on all archive operations
 - Database migration: `20260210150000_add_archive_fields`
+
+### Premium Infrastructure (v0.3.2)
+- **Premium tiers:** `FREE`, `PREMIUM`, `PRO` — stored on Guild model
+- **Entitlement service** (`entitlementService.ts`): `getTier()`, `hasFeature()`, `tryConsumeWeeklyRaid()`, `syncEntitlement()`, `syncEntitlementsOnStartup()`
+- **Premium gate** (`premiumGate.ts`): `gateFeature()` — checks tier access and sends ephemeral upsell if blocked
+- **Entitlement handler** (`entitlementHandler.ts`): Listens to Discord `EntitlementCreate`, `EntitlementUpdate`, `EntitlementDelete` events
+- **Startup sync**: Fetches all active entitlements from Discord API on bot ready to ensure DB reflects current state
+- **Feature tier map**: `raid.notes`, `raid.archive`, `raid.recurring`, `stats.full_history` → PREMIUM; `raid.template`, `stats.export`, `raid.integrations` → PRO
+- **Weekly raid limit**: Free tier = 5/week (atomic via `$transaction`), Premium/Pro = unlimited
+- **SKU config**: `DISCORD_SKU_PREMIUM`, `DISCORD_SKU_PRO` env vars mapped via `skuToTier()`
 
 ---
 
@@ -246,6 +261,9 @@ Uses `canManageRaids(interaction)` from `src/utils/permissions.ts` which checks 
 ### Test Structure
 ```
 src/
+├── __tests__/
+│   ├── entitlementService.test.ts   # Entitlement service tests
+│   └── premiumGate.test.ts          # Premium gate middleware tests
 ├── commands/__tests__/
 │   ├── raid-create.test.ts        # Raid creation tests
 │   ├── raid-clone.test.ts         # Clone command tests
@@ -293,7 +311,7 @@ npm run test               # TypeScript type checking only (tsc --noEmit)
 ```
 
 ### Coverage
-- 632+ tests total
+- 681+ tests total
 - Overall coverage: ~78%
 - Phase 2 critical modules: >85%
 
@@ -345,6 +363,8 @@ Copy `.env.example` to `.env` and configure:
 - `CLIENT_ID` - Application client ID
 - `DATABASE_URL` - PostgreSQL connection string (required)
 - `GUILD_ID` - (optional) Guild ID for guild-specific command deployment
+- `DISCORD_SKU_PREMIUM` - Discord Store SKU ID for Premium tier
+- `DISCORD_SKU_PRO` - Discord Store SKU ID for Pro tier
 
 ---
 

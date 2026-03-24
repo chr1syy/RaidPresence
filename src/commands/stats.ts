@@ -13,6 +13,9 @@ import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHis
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
+import { gateFeature } from '../middleware/premiumGate';
+import { getTier, hasFeature } from '../services/entitlementService';
+import { t } from '../utils/localization';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -167,6 +170,9 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: analytics
+  if (!(await gateFeature(interaction, 'stats.analytics', guildData.language || 'en'))) return;
+
   const startDate = getStartDate(period);
   const raids = await prisma.raid.findMany({
     where: {
@@ -261,11 +267,27 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
     return;
   }
 
+  const lang = guildData.language || 'en';
+  const tier = await getTier(interaction.guild.id);
+  const hasFullHistory = hasFeature(tier, 'stats.full_history');
+
   const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
   const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
-  const history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
+  let history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
 
-  const embed = formatAttendanceEmbed(player.displayName || player.username || 'Unknown', playerStats, roleDistribution, history, period, guildData.language || 'en');
+  // Cap history for free tier
+  const FREE_HISTORY_LIMIT = 10;
+  const wasCapped = !hasFullHistory && history.length > FREE_HISTORY_LIMIT;
+  if (wasCapped) {
+    history = history.slice(0, FREE_HISTORY_LIMIT);
+  }
+
+  const embed = formatAttendanceEmbed(player.displayName || player.username || 'Unknown', playerStats, roleDistribution, history, period, lang);
+
+  if (wasCapped) {
+    const upsell = t(lang, 'premiumAttendanceCapped', { count: FREE_HISTORY_LIMIT });
+    embed.setFooter({ text: upsell });
+  }
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -301,6 +323,9 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
+
+  // Premium gate: analytics
+  if (!(await gateFeature(interaction, 'stats.analytics', raid.guild.language || 'en'))) return;
 
   const composition = await analyzeRaidComposition(raid.attendance);
   const gaps = findCompositionGaps(raid.attendance);

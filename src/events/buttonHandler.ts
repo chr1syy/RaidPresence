@@ -13,6 +13,7 @@ import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { getClassList } from '../utils/wowData';
 import { getTranslations } from '../utils/localization';
+import { getTier, hasFeature } from '../services/entitlementService';
 
 export async function handleButton(interaction: ButtonInteraction) {
   const [action, subAction, raidId] = interaction.customId.split('_');
@@ -41,23 +42,78 @@ export async function handleButton(interaction: ButtonInteraction) {
 }
 
 async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
-  // Show modal immediately for opt-out reason (<100ms response)
-  // All validations will be done in the modal submit handler
-  const modal = new ModalBuilder()
-    .setCustomId(`optout_reason_${raidId}_${interaction.user.id}`)
-    .setTitle('Opt-Out Reason')
-    .addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder()
-          .setCustomId('reason')
-          .setLabel('Why are you opting out? (optional)')
-          .setStyle(TextInputStyle.Short)
-          .setMaxLength(100)
-          .setRequired(false)
-      )
-    );
+  const guildId = interaction.guildId;
+  const tier = guildId ? await getTier(guildId) : 'FREE';
+  const canUseReason = hasFeature(tier, 'raid.optout_reason');
 
-  await interaction.showModal(modal);
+  if (canUseReason) {
+    // Premium: show modal with opt-out reason field
+    const modal = new ModalBuilder()
+      .setCustomId(`optout_reason_${raidId}_${interaction.user.id}`)
+      .setTitle('Opt-Out Reason')
+      .addComponents(
+        new ActionRowBuilder<TextInputBuilder>().addComponents(
+          new TextInputBuilder()
+            .setCustomId('reason')
+            .setLabel('Why are you opting out? (optional)')
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(100)
+            .setRequired(false)
+        )
+      );
+    await interaction.showModal(modal);
+  } else {
+    // Free tier: direct opt-out without reason
+    await handleDirectOptOut(interaction, raidId);
+  }
+}
+
+async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string) {
+  await interaction.deferReply({ ephemeral: true });
+
+  const raid = await prisma.raid.findUnique({
+    where: { id: raidId },
+    include: { guild: true },
+  });
+
+  if (!raid) {
+    await interaction.editReply({ content: '❌ Raid not found.' });
+    return;
+  }
+
+  const trans = getTranslations(raid.guild.language || 'en');
+
+  if (raid.status === 'closed') {
+    await interaction.editReply({ content: trans.raidIsClosed });
+    return;
+  }
+
+  if (raid.status === 'cancelled') {
+    await interaction.editReply({ content: trans.raidIsCancelled });
+    return;
+  }
+
+  const attendance = await prisma.raidAttendance.findUnique({
+    where: { raidId_userId: { raidId, userId: interaction.user.id } },
+  });
+
+  if (!attendance) {
+    await interaction.editReply({ content: '❌ You are not on the attendance list for this raid.' });
+    return;
+  }
+
+  if (attendance.status === 'opted_out') {
+    await interaction.editReply({ content: '❌ You have already opted out of this raid.' });
+    return;
+  }
+
+  await prisma.raidAttendance.update({
+    where: { raidId_userId: { raidId, userId: interaction.user.id } },
+    data: { status: 'opted_out', respondedAt: new Date() },
+  });
+
+  await interaction.editReply({ content: trans.optoutReasonSubmitted });
+  await updateRaidMessage(interaction, raidId);
 }
 
 async function handleOptIn(interaction: ButtonInteraction, raidId: string) {

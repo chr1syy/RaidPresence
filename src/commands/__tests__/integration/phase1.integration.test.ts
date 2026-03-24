@@ -15,6 +15,8 @@ import { canManageRaids } from '../../../utils/permissions';
 
 jest.mock('../../../database/client');
 jest.mock('../../../utils/permissions');
+jest.mock('../../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockResolvedValue(true) }));
+jest.mock('../../../services/entitlementService', () => ({ getTier: jest.fn().mockResolvedValue('PREMIUM'), hasFeature: jest.fn().mockReturnValue(true), tryConsumeWeeklyRaid: jest.fn().mockResolvedValue({ allowed: true, remaining: 4 }), skuToTier: jest.fn(), FEATURE_TIERS: {} }));
 
 import prisma from '../../../database/client';
 import command from '../../raid';

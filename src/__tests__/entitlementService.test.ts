@@ -91,7 +91,7 @@ describe('syncEntitlement()', () => {
 });
 
 describe('hasFeature()', () => {
-  const premiumFeatures: PremiumFeature[] = ['raid.notes', 'raid.archive', 'raid.recurring', 'stats.full_history'];
+  const premiumFeatures: PremiumFeature[] = ['raid.optout_reason', 'raid.archive', 'raid.recurring', 'stats.full_history', 'stats.analytics'];
   const proFeatures: PremiumFeature[] = ['raid.template', 'stats.export', 'raid.integrations'];
 
   it('FREE tier has no gated features', () => {

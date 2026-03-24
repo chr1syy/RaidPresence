@@ -18,6 +18,8 @@ import { VERSION } from '../utils/version';
 import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
+import { tryConsumeWeeklyRaid } from '../services/entitlementService';
+import { gateFeature } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
@@ -404,6 +406,17 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!member || !(await canManageRaids(member as any))) {
     await interaction.editReply({
       content: '❌ You do not have permission to create raids. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
+
+  // Check weekly raid limit (free tier: 5/week)
+  const { allowed, remaining } = await tryConsumeWeeklyRaid(interaction.guild.id);
+  if (!allowed) {
+    const guildForLimit = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+    const lang = guildForLimit?.language || 'en';
+    await interaction.editReply({
+      content: t(lang, 'premiumWeeklyLimitReached', { count: '5', max: '5' }),
     });
     return;
   }
@@ -1448,6 +1461,10 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: archive
+  const archiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', archiveGuildData?.language || 'en'))) return;
+
   const raidId = interaction.options.get('raid_id', true).value as string;
 
   try {
@@ -1482,6 +1499,10 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
+
+  // Premium gate: archive
+  const unarchiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', unarchiveGuildData?.language || 'en'))) return;
 
   const raidId = interaction.options.get('raid_id', true).value as string;
 
@@ -1522,6 +1543,10 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
   }
 
   await interaction.deferReply({ ephemeral: true });
+
+  // Premium gate: archive
+  const searchGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', searchGuildData?.language || 'en'))) return;
 
   const query = interaction.options.get('query', true).value as string;
   const period = interaction.options.get('period', false)?.value as string || 'month';

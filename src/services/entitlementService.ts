@@ -5,20 +5,22 @@ import prisma from '../database/client';
 export { PremiumTier };
 
 export type PremiumFeature =
-  | 'raid.notes'
+  | 'raid.optout_reason'
   | 'raid.archive'
   | 'raid.recurring'
   | 'raid.template'
   | 'raid.integrations'
   | 'stats.full_history'
+  | 'stats.analytics'
   | 'stats.export';
 
 /** Feature → minimum tier required */
 export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
-  'raid.notes': 'PREMIUM',
+  'raid.optout_reason': 'PREMIUM',
   'raid.archive': 'PREMIUM',
   'raid.recurring': 'PREMIUM',
   'stats.full_history': 'PREMIUM',
+  'stats.analytics': 'PREMIUM',
   'raid.template': 'PRO',
   'stats.export': 'PRO',
   'raid.integrations': 'PRO',

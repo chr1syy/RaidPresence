@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PremiumTier {
+  FREE
+  PREMIUM
+  PRO
+}
+
 model Guild {
   id              String   @id
   name            String
@@ -20,6 +26,14 @@ model Guild {
   // Archive system fields (Phase 2.4)
   archiveChannelId String?  // Guild's designated archive channel
   autoArchive      Boolean  @default(false) // Auto-archive on close?
+
+  // Premium system (Phase 1.2)
+  premiumTier            PremiumTier @default(FREE)
+  premiumExpiresAt       DateTime?
+  entitlementId          String?
+  weeklyRaidCount        Int         @default(0)
+  weeklyRaidCountResetAt DateTime?
+  trialStartedAt         DateTime?
 
   raids Raid[]
   users UserPreference[]

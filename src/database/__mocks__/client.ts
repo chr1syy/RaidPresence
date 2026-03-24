@@ -1,4 +1,4 @@
-const prisma = {
+const prisma: Record<string, any> = {
   raid: {
     findUnique: jest.fn(),
     findMany: jest.fn(),
@@ -39,5 +39,8 @@ const prisma = {
     count: jest.fn(),
   },
 };
+
+// Assigned separately to avoid circular type reference
+prisma.$transaction = jest.fn((fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma));
 
 export default prisma;

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- In-memory tier cache (30s TTL) on `getTier()` for responsive button interactions; invalidated on entitlement sync
+- `tryConsumeWeeklyRaid()` now returns `max` (limit value) and `resetAt` (window reset timestamp) for accurate upsell messaging
+
+### Changed
+- Premium gates (`gateFeature()`) now run before `deferReply()` in archive, unarchive, search, guild stats, and suggest commands — prevents "thinking..." spinner from hanging when access is denied
+- Weekly raid slot consumption moved after all input validation in `/raid create` — invalid input no longer wastes a free-tier slot
+- `premiumWeeklyLimitReached` message now passes dynamic `max` and `resetDate` instead of hardcoded values
+
+### Fixed
+- Deferred reply left unresolved when premium gate blocked access (5 commands affected)
+- Free-tier raid slots consumed before validation, causing premature rate limiting on invalid input
+- `{resetDate}` placeholder in weekly limit message rendered as raw text instead of actual date
+
 ---
 
 ## [0.3.2] - 2026-03-24

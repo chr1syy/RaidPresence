@@ -410,17 +410,6 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Check weekly raid limit (free tier: 5/week)
-  const { allowed, remaining } = await tryConsumeWeeklyRaid(interaction.guild.id);
-  if (!allowed) {
-    const guildForLimit = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
-    const lang = guildForLimit?.language || 'en';
-    await interaction.editReply({
-      content: t(lang, 'premiumWeeklyLimitReached', { count: '5', max: '5' }),
-    });
-    return;
-  }
-
   const dateStr = interaction.options.get('date', true).value as string;
   const timeStr = interaction.options.get('time', true).value as string;
   const title = interaction.options.get('title', true).value as string;
@@ -565,6 +554,19 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     roleIds,
     memberRolesMap,
   );
+
+  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input
+  const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
+  if (!allowed) {
+    const lang = guildData.language || 'en';
+    const resetDate = resetAt
+      ? resetAt.toLocaleString(lang === 'en' ? 'en-US' : undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+    await interaction.editReply({
+      content: t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate }),
+    });
+    return;
+  }
 
   // Create raid in database
   const raid = await prisma.raid.create({
@@ -1450,6 +1452,10 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
+  const archiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', archiveGuildData?.language || 'en'))) return;
+
   await interaction.deferReply({ ephemeral: true });
 
   // Check permissions
@@ -1460,10 +1466,6 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
-
-  // Premium gate: archive
-  const archiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
-  if (!(await gateFeature(interaction, 'raid.archive', archiveGuildData?.language || 'en'))) return;
 
   const raidId = interaction.options.get('raid_id', true).value as string;
 
@@ -1489,6 +1491,10 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
+  const unarchiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', unarchiveGuildData?.language || 'en'))) return;
+
   await interaction.deferReply({ ephemeral: true });
 
   // Check permissions
@@ -1499,10 +1505,6 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
-
-  // Premium gate: archive
-  const unarchiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
-  if (!(await gateFeature(interaction, 'raid.archive', unarchiveGuildData?.language || 'en'))) return;
 
   const raidId = interaction.options.get('raid_id', true).value as string;
 
@@ -1542,11 +1544,11 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
-
-  // Premium gate: archive
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
   const searchGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
   if (!(await gateFeature(interaction, 'raid.archive', searchGuildData?.language || 'en'))) return;
+
+  await interaction.deferReply({ ephemeral: true });
 
   const query = interaction.options.get('query', true).value as string;
   const period = interaction.options.get('period', false)?.value as string || 'month';

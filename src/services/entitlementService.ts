@@ -41,23 +41,43 @@ const TIER_RANK: Record<PremiumTier, number> = {
 
 const FREE_WEEKLY_RAID_LIMIT = 5;
 
+/** In-memory tier cache with 30s TTL — keeps button interactions fast */
+const tierCache = new Map<string, { tier: PremiumTier; expiresAt: number }>();
+const TIER_CACHE_TTL_MS = 30_000;
+
 /**
  * Returns the effective premium tier for a guild.
  * If the subscription has expired, returns FREE.
+ * Results are cached for 30s to keep button interactions responsive.
  */
 export async function getTier(guildId: string): Promise<PremiumTier> {
+  const cached = tierCache.get(guildId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.tier;
+  }
+
   const guild = await prisma.guild.findUnique({
     where: { id: guildId },
     select: { premiumTier: true, premiumExpiresAt: true },
   });
 
-  if (!guild) return 'FREE';
-
-  if (guild.premiumExpiresAt && guild.premiumExpiresAt < new Date()) {
-    return 'FREE';
+  let tier: PremiumTier = 'FREE';
+  if (guild) {
+    tier = guild.premiumExpiresAt && guild.premiumExpiresAt < new Date() ? 'FREE' : guild.premiumTier;
   }
 
-  return guild.premiumTier;
+  tierCache.set(guildId, { tier, expiresAt: Date.now() + TIER_CACHE_TTL_MS });
+  return tier;
+}
+
+/** Invalidates the tier cache for a guild (call after entitlement sync). */
+export function invalidateTierCache(guildId: string): void {
+  tierCache.delete(guildId);
+}
+
+/** Clears the entire tier cache (for testing). */
+export function clearTierCache(): void {
+  tierCache.clear();
 }
 
 /**
@@ -93,6 +113,7 @@ export async function syncEntitlement(params: {
     });
   }
 
+  invalidateTierCache(guildId);
   console.log(`💎 Premium synced: guild=${guildId} tier=${tier} source=${source}`);
 }
 
@@ -113,35 +134,39 @@ export function hasFeature(tier: PremiumTier, feature: PremiumFeature): boolean 
  * Returns { allowed, remaining } — if allowed, the count has already been incremented.
  * This prevents race conditions where two concurrent creates both pass the check.
  */
-export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: boolean; remaining: number }> {
+export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: boolean; remaining: number; max: number; resetAt: Date | null }> {
   return prisma.$transaction(async (tx) => {
     const guild = await tx.guild.findUnique({
       where: { id: guildId },
       select: { premiumTier: true, premiumExpiresAt: true, weeklyRaidCount: true, weeklyRaidCountResetAt: true },
     });
 
-    if (!guild) return { allowed: true, remaining: FREE_WEEKLY_RAID_LIMIT };
+    if (!guild) return { allowed: true, remaining: FREE_WEEKLY_RAID_LIMIT, max: FREE_WEEKLY_RAID_LIMIT, resetAt: null };
 
     const effectiveTier =
       guild.premiumExpiresAt && guild.premiumExpiresAt < new Date() ? 'FREE' : guild.premiumTier;
 
     if (effectiveTier !== 'FREE') {
-      return { allowed: true, remaining: Infinity };
+      return { allowed: true, remaining: Infinity, max: Infinity, resetAt: null };
     }
 
     const now = new Date();
-    const resetAt = guild.weeklyRaidCountResetAt;
+    const windowStart = guild.weeklyRaidCountResetAt;
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
     let currentCount = guild.weeklyRaidCount;
+    let effectiveWindowStart = windowStart;
 
     // Reset window if expired or never set
-    if (!resetAt || now.getTime() - resetAt.getTime() >= sevenDaysMs) {
+    if (!windowStart || now.getTime() - windowStart.getTime() >= sevenDaysMs) {
       currentCount = 0;
+      effectiveWindowStart = now;
     }
 
+    const windowResetAt = effectiveWindowStart ? new Date(effectiveWindowStart.getTime() + sevenDaysMs) : null;
+
     if (currentCount >= FREE_WEEKLY_RAID_LIMIT) {
-      return { allowed: false, remaining: 0 };
+      return { allowed: false, remaining: 0, max: FREE_WEEKLY_RAID_LIMIT, resetAt: windowResetAt };
     }
 
     // Atomically increment and (re)set the window
@@ -149,12 +174,12 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
       where: { id: guildId },
       data: {
         weeklyRaidCount: currentCount + 1,
-        weeklyRaidCountResetAt: !resetAt || now.getTime() - resetAt.getTime() >= sevenDaysMs ? now : resetAt,
+        weeklyRaidCountResetAt: effectiveWindowStart,
       },
     });
 
     const remaining = FREE_WEEKLY_RAID_LIMIT - (currentCount + 1);
-    return { allowed: true, remaining };
+    return { allowed: true, remaining, max: FREE_WEEKLY_RAID_LIMIT, resetAt: windowResetAt };
   });
 }
 

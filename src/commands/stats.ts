@@ -155,6 +155,10 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: analytics (before deferReply so gateFeature can reply directly)
+  const guildDataForGate = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'stats.analytics', guildDataForGate?.language || 'en'))) return;
+
   await interaction.deferReply({ ephemeral: true });
 
   const period = interaction.options.get('period', false)?.value as string || 'month';
@@ -169,9 +173,6 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
-
-  // Premium gate: analytics
-  if (!(await gateFeature(interaction, 'stats.analytics', guildData.language || 'en'))) return;
 
   const startDate = getStartDate(period);
   const raids = await prisma.raid.findMany({
@@ -301,6 +302,10 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: analytics (before deferReply so gateFeature can reply directly)
+  const suggestGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'stats.analytics', suggestGuildData?.language || 'en'))) return;
+
   await interaction.deferReply({ ephemeral: true });
 
   const raidId = interaction.options.get('raid_id', true).value as string;
@@ -323,9 +328,6 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
-
-  // Premium gate: analytics
-  if (!(await gateFeature(interaction, 'stats.analytics', raid.guild.language || 'en'))) return;
 
   const composition = await analyzeRaidComposition(raid.attendance);
   const gaps = findCompositionGaps(raid.attendance);

@@ -178,7 +178,7 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 
 ## Commands Reference
 
-### `/raid` Subcommands (15 total)
+### `/raid` Subcommands (13 total)
 
 | Subcommand | Permission | Description | Premium |
 |-----------|-----------|-------------|---------|
@@ -187,16 +187,14 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 | `edit` | Leader role | Edit raid details | — |
 | `delete` | Leader role | Delete a raid | — |
 | `close` | Leader role | Lock raid roster | — |
+| `open` | Leader role | Reopen a closed raid | — |
 | `cancel` | Leader role | Cancel a raid | — |
 | `refresh` | Leader role | Refresh roster and embed | — |
 | `clone` | Leader role | Clone raid with new date/time | — |
 | `remind` | Leader role | Send reminder with custom message | — |
-| `notes` | Any member | View raid notes and opt-out reasons | — |
 | `archive` | Leader role | Archive a raid to archive channel | PREMIUM |
 | `unarchive` | Leader role | Restore archived raid to original channel | PREMIUM |
 | `search` | Any member | Search archived raids by name/player/date | PREMIUM |
-| `status` | Any member | Status dashboard of upcoming raids | — |
-| `stats` | Any member | View per-raid attendance statistics | — |
 
 ### `/stats` Subcommands (Analytics consolidated here)
 

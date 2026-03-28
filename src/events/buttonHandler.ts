@@ -109,7 +109,7 @@ async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string
 
   await prisma.raidAttendance.update({
     where: { raidId_userId: { raidId, userId: interaction.user.id } },
-    data: { status: 'opted_out', respondedAt: new Date() },
+    data: { status: 'opted_out', respondedAt: new Date(), optoutReason: null, notedAt: null },
   });
 
   await interaction.editReply({ content: trans.optoutReasonSubmitted });

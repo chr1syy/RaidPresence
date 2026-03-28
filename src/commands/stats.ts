@@ -155,17 +155,13 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Fetch guild once — used for both gating and later logic
+  const guildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id } });
+
   // Premium gate: analytics (before deferReply so gateFeature can reply directly)
-  const guildDataForGate = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
-  if (!(await gateFeature(interaction, 'stats.analytics', guildDataForGate?.language || 'en'))) return;
+  if (!(await gateFeature(interaction, 'stats.analytics', guildData?.language || 'en'))) return;
 
   await interaction.deferReply({ ephemeral: true });
-
-  const period = interaction.options.get('period', false)?.value as string || 'month';
-
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
 
   if (!guildData) {
     await interaction.editReply({
@@ -173,6 +169,8 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
+
+  const period = interaction.options.get('period', false)?.value as string || 'month';
 
   const startDate = getStartDate(period);
   const raids = await prisma.raid.findMany({
@@ -302,9 +300,12 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Premium gate: analytics (before deferReply so gateFeature can reply directly)
+  // Fetch guild language once — used for both gating and embed formatting
   const suggestGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
-  if (!(await gateFeature(interaction, 'stats.analytics', suggestGuildData?.language || 'en'))) return;
+  const suggestLang = suggestGuildData?.language || 'en';
+
+  // Premium gate: analytics (before deferReply so gateFeature can reply directly)
+  if (!(await gateFeature(interaction, 'stats.analytics', suggestLang))) return;
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -312,7 +313,7 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
 
   const raid = await prisma.raid.findUnique({
     where: { id: raidId },
-    include: { attendance: true, guild: true },
+    include: { attendance: true },
   });
 
   if (!raid) {
@@ -334,11 +335,7 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   const suggestions = suggestPlayerSwaps(raid.attendance, gaps);
   const likelihood = calculateSuccessLikelihood(raid.attendance);
 
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
-  const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, guildData?.language || 'en');
+  const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, suggestLang);
 
   await interaction.editReply({ embeds: [embed] });
 }

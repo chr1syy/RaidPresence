@@ -559,8 +559,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
   if (!allowed) {
     const lang = guildData.language || 'en';
+    const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE' };
     const resetDate = resetAt
-      ? resetAt.toLocaleString(lang === 'en' ? 'en-US' : undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      ? resetAt.toLocaleString(localeMap[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     await interaction.editReply({
       content: t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate }),

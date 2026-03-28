@@ -52,8 +52,11 @@ const TIER_CACHE_TTL_MS = 30_000;
  */
 export async function getTier(guildId: string): Promise<PremiumTier> {
   const cached = tierCache.get(guildId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.tier;
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.tier;
+    }
+    tierCache.delete(guildId);
   }
 
   const guild = await prisma.guild.findUnique({

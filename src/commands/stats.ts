@@ -16,6 +16,7 @@ import { formatCompositionEmbed } from '../utils/compositionFormatter';
 import { gateFeature } from '../middleware/premiumGate';
 import { getTier, hasFeature } from '../services/entitlementService';
 import { t } from '../utils/localization';
+import { VERSION } from '../utils/version';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -285,7 +286,7 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
 
   if (wasCapped) {
     const upsell = t(lang, 'premiumAttendanceCapped', { count: FREE_HISTORY_LIMIT });
-    embed.setFooter({ text: upsell });
+    embed.setFooter({ text: `${upsell} | v${VERSION}` });
   }
 
   await interaction.editReply({ embeds: [embed] });

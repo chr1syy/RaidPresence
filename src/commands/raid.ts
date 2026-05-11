@@ -1477,8 +1477,9 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     });
   } catch (error) {
     console.error('Error archiving raid:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     await interaction.editReply({
-      content: '❌ Failed to archive raid.',
+      content: `❌ ${message}`,
     });
   }
 }
@@ -1516,8 +1517,9 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     });
   } catch (error) {
     console.error('Error restoring raid:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     await interaction.editReply({
-      content: '❌ Failed to restore raid.',
+      content: `❌ ${message}`,
     });
   }
 }

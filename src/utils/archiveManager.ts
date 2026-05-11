@@ -1,5 +1,8 @@
-import { Client, TextChannel, NewsChannel, EmbedBuilder } from 'discord.js';
+import { Client, TextChannel, NewsChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import prisma from '../database/client';
+import { createRaidEmbed } from '../commands/raid';
+import { getTranslations } from './localization';
+import { VERSION } from './version';
 
 /**
  * Archive-related search filter options.
@@ -94,7 +97,7 @@ export async function archiveRaid(
          inline: true
        }
     )
-    .setFooter({ text: `Original Channel: ${raid.channelId}` })
+    .setFooter({ text: `Original Channel: ${raid.channelId} | v${VERSION}` })
     .setTimestamp(new Date());
 
   // Post to archive channel
@@ -170,14 +173,35 @@ export async function unarchiveRaid(
      throw new Error('Original channel is invalid or not accessible.');
    }
 
-  // Create a basic notification that raid was restored
-  const restoreEmbed = new EmbedBuilder()
-    .setColor(0x3498db)
-    .setTitle(`✅ Raid Restored`)
-    .setDescription(`${raid.description || 'Raid'} from <t:${Math.floor(raid.raidDate.getTime() / 1000)}:F>`)
-    .setTimestamp(new Date());
+  // Rebuild the full raid embed with buttons
+  const guild = await prisma.guild.findUnique({ where: { id: guildId }, select: { language: true } });
+  const language = guild?.language || 'en';
+  const embed = await createRaidEmbed(raidId, language);
+  const trans = getTranslations(language);
 
-  const newMessage = await originalChannel.send({ embeds: [restoreEmbed] });
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_optin_${raidId}`)
+      .setLabel(trans.optIn)
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`raid_late_${raidId}`)
+      .setLabel(trans.runningLateButton)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`raid_optout_${raidId}`)
+      .setLabel(trans.optOut)
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`raid_class_${raidId}`)
+      .setLabel(trans.setClassSpec)
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  const newMessage = await originalChannel.send({ embeds: [embed], components: [row1, row2] });
 
   // Update raid in database
   await prisma.raid.update({

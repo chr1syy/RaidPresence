@@ -19,6 +19,21 @@ jest.mock('../../database/client', () => ({
   }
 }));
 
+// Mock createRaidEmbed (imported by unarchiveRaid for full embed rebuild)
+jest.mock('../../commands/raid', () => ({
+  createRaidEmbed: jest.fn(),
+}));
+
+// Mock localization (imported by unarchiveRaid for button labels)
+jest.mock('../localization', () => ({
+  getTranslations: jest.fn().mockReturnValue({
+    optIn: 'Opt In',
+    runningLateButton: 'Running Late',
+    optOut: 'Opt Out',
+    setClassSpec: 'Set Class/Spec',
+  }),
+}));
+
 describe('archiveManager', () => {
   let mockClient: any;
 

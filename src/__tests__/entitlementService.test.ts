@@ -6,12 +6,14 @@ import {
   syncEntitlement,
   hasFeature,
   tryConsumeWeeklyRaid,
+  clearTierCache,
   PremiumTier,
   PremiumFeature,
 } from '../services/entitlementService';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearTierCache();
 });
 
 describe('getTier()', () => {
@@ -91,7 +93,7 @@ describe('syncEntitlement()', () => {
 });
 
 describe('hasFeature()', () => {
-  const premiumFeatures: PremiumFeature[] = ['raid.notes', 'raid.archive', 'raid.recurring', 'stats.full_history'];
+  const premiumFeatures: PremiumFeature[] = ['raid.optout_reason', 'raid.archive', 'raid.recurring', 'stats.full_history', 'stats.analytics'];
   const proFeatures: PremiumFeature[] = ['raid.template', 'stats.export', 'raid.integrations'];
 
   it('FREE tier has no gated features', () => {
@@ -123,7 +125,7 @@ describe('tryConsumeWeeklyRaid()', () => {
   it('returns full limit for unknown guild', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
     const result = await tryConsumeWeeklyRaid('unknown');
-    expect(result).toEqual({ allowed: true, remaining: 5 });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: 5 }));
   });
 
   it('returns unlimited for PREMIUM tier without incrementing', async () => {
@@ -135,7 +137,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     } as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: true, remaining: Infinity });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: Infinity }));
     expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
   });
 
@@ -148,7 +150,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     } as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: true, remaining: Infinity });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: Infinity }));
   });
 
   it('consumes a slot and returns remaining for FREE tier', async () => {
@@ -161,7 +163,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 1 });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: 1 }));
     expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ weeklyRaidCount: 4 }),
@@ -178,7 +180,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     } as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: false, remaining: 0 });
+    expect(result).toEqual(expect.objectContaining({ allowed: false, remaining: 0 }));
     expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
   });
 
@@ -195,7 +197,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 4 });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: 4 }));
     expect((prisma.guild.update as jest.Mock)).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ weeklyRaidCount: 1 }),
@@ -213,7 +215,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: true, remaining: 4 });
+    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: 4 }));
   });
 
   it('treats expired premium as FREE tier', async () => {
@@ -225,7 +227,7 @@ describe('tryConsumeWeeklyRaid()', () => {
     } as any);
 
     const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual({ allowed: false, remaining: 0 });
+    expect(result).toEqual(expect.objectContaining({ allowed: false, remaining: 0 }));
   });
 
   it('runs inside a transaction', async () => {

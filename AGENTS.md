@@ -151,10 +151,10 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - Database migration: `20260210100000_add_raid_notes` (adds `optoutReason`, `playerNote`, `notedAt` to RaidAttendance)
 
 #### 2.4 Raid Archive System
-- Archive functionality consolidated to `/stats` command for centralized access
-- **`/stats archive raid_id:`** - Archive a raid (copy to archive channel, remove original)
-- **`/stats unarchive raid_id:`** - Restore archived raid to original channel
-- **`/stats search query: period:`** - Search archived raids by name/player/date
+- Archive functionality consolidated under `/raid` command
+- **`/raid archive raid_id:`** - Archive a raid (copy to archive channel, remove original) [PREMIUM]
+- **`/raid unarchive raid_id:`** - Restore archived raid to original channel [PREMIUM]
+- **`/raid search query: period:`** - Search archived raids by name/player/date [PREMIUM]
 - **`/config archive-channel channel:`** - Set guild archive channel
 - **`/config auto-archive enabled:`** - Toggle auto-archive on raid close
 - `archiveManager.ts` - `archiveRaid()`, `unarchiveRaid()`, `searchArchive()`, `getArchiveStats()`, `setupArchiveChannel()`
@@ -169,42 +169,44 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - **Premium gate** (`premiumGate.ts`): `gateFeature()` — checks tier access and sends ephemeral upsell if blocked
 - **Entitlement handler** (`entitlementHandler.ts`): Listens to Discord `EntitlementCreate`, `EntitlementUpdate`, `EntitlementDelete` events
 - **Startup sync**: Fetches all active entitlements from Discord API on bot ready to ensure DB reflects current state
-- **Feature tier map**: `raid.notes`, `raid.archive`, `raid.recurring`, `stats.full_history` → PREMIUM; `raid.template`, `stats.export`, `raid.integrations` → PRO
+- **Feature tier map**: `raid.optout_reason`, `raid.archive`, `raid.recurring`, `stats.full_history`, `stats.analytics` → PREMIUM; `raid.template`, `stats.export`, `raid.integrations` → PRO
 - **Weekly raid limit**: Free tier = 5/week (atomic via `$transaction`), Premium/Pro = unlimited
+- **Tier cache**: In-memory 30s TTL cache on `getTier()` for fast button interactions; invalidated on `syncEntitlement()`
 - **SKU config**: `DISCORD_SKU_PREMIUM`, `DISCORD_SKU_PRO` env vars mapped via `skuToTier()`
 
 ---
 
 ## Commands Reference
 
-### `/raid` Subcommands (14 total)
+### `/raid` Subcommands (13 total)
 
-| Subcommand | Permission | Description |
-|-----------|-----------|-------------|
-| `create` | Leader role | Create a new raid |
-| `list` | Any member | List upcoming raids |
-| `edit` | Leader role | Edit raid details |
-| `delete` | Leader role | Delete a raid |
-| `close` | Leader role | Lock raid roster |
-| `cancel` | Leader role | Cancel a raid |
-| `refresh` | Leader role | Refresh roster and embed |
-| `clone` | Leader role | Clone raid with new date/time |
-| `stats` | Any member | View attendance statistics |
-| `remind` | Leader role | Send reminder with custom message |
-| `status` | Any member | Status dashboard of upcoming raids |
-| `attendance` | Any member | View player attendance history |
-| `suggest` | Any member | Composition analysis and recommendations |
-| `notes` | Any member | View raid notes and opt-out reasons |
+| Subcommand | Permission | Description | Premium |
+|-----------|-----------|-------------|---------|
+| `create` | Leader role | Create a new raid | Free (5/week limit) |
+| `list` | Any member | List upcoming raids | — |
+| `edit` | Leader role | Edit raid details | — |
+| `delete` | Leader role | Delete a raid | — |
+| `close` | Leader role | Lock raid roster | — |
+| `open` | Leader role | Reopen a closed raid | — |
+| `cancel` | Leader role | Cancel a raid | — |
+| `refresh` | Leader role | Refresh roster and embed | — |
+| `clone` | Leader role | Clone raid with new date/time | — |
+| `remind` | Leader role | Send reminder with custom message | — |
+| `archive` | Leader role | Archive a raid to archive channel | PREMIUM |
+| `unarchive` | Leader role | Restore archived raid to original channel | PREMIUM |
+| `search` | Any member | Search archived raids by name/player/date | PREMIUM |
 
-### `/stats` Subcommands (Archive operations consolidated here)
+### `/stats` Subcommands (Analytics consolidated here)
 
-| Subcommand | Permission | Description |
-|-----------|-----------|-------------|
-| `archive` | Leader role | Archive a raid to archive channel |
-| `unarchive` | Leader role | Restore archived raid to original channel |
-| `search` | Any member | Search archived raids by name/player/date |
+| Subcommand | Permission | Description | Premium |
+|-----------|-----------|-------------|---------|
+| `raid` | Any member | Per-raid attendance statistics | — |
+| `guild` | Any member | Guild-wide analytics over a period | PREMIUM |
+| `status` | Any member | Dashboard of upcoming raids | — |
+| `attendance` | Any member | Player attendance history and trends | Free (10-raid cap) |
+| `suggest` | Any member | Composition analysis and recommendations | PREMIUM |
 
-**Note:** Archive operations previously in `/raid pin/unpin` are now consolidated in `/stats` for centralized access to statistics and archival functionality.
+**Note:** Archive operations are under `/raid`; analytics and player stats are under `/stats`.
 
 ### `/config` Subcommands (6 total)
 

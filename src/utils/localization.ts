@@ -444,8 +444,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
         // Premium system (Phase 1.4)
         premiumRequired: 'This feature requires {tier}.',
-        premiumUpsell: 'Upgrade to {tier} to unlock {feature}. Use `/premium` to learn more.',
-        premiumWeeklyLimitReached: 'Weekly raid limit reached ({count}/{max}). Resets {resetDate}.',
+        premiumUpsell: 'Upgrade to {tier} to unlock {feature}. Visit the App Directory or Server Settings → Subscriptions to subscribe.',
+        premiumWeeklyLimitReached: 'Weekly raid limit reached ({count}/{max}). Resets {resetDate}. Upgrade to Premium for unlimited raids.',
         premiumWeeklyLimitInfo: 'You have {remaining} raids left this week.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',
@@ -665,8 +665,8 @@ const translations: Record<SupportedLanguage, Translations> = {
 
         // Premium system (Phase 1.4)
         premiumRequired: 'Diese Funktion erfordert {tier}.',
-        premiumUpsell: 'Upgrade auf {tier}, um {feature} freizuschalten. Verwende `/premium` für mehr Infos.',
-        premiumWeeklyLimitReached: 'Wöchentliches Raid-Limit erreicht ({count}/{max}). Setzt zurück am {resetDate}.',
+        premiumUpsell: 'Upgrade auf {tier}, um {feature} freizuschalten. Besuche das App-Verzeichnis oder Servereinstellungen → Abonnements.',
+        premiumWeeklyLimitReached: 'Wöchentliches Raid-Limit erreicht ({count}/{max}). Setzt zurück am {resetDate}. Upgrade auf Premium für unbegrenzte Raids.',
         premiumWeeklyLimitInfo: 'Du hast noch {remaining} Raids diese Woche übrig.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',

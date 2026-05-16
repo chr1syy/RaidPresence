@@ -22,7 +22,8 @@
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "e2e:test": "tsx scripts/e2e-test.ts"
   },
   "keywords": [
     "discord",

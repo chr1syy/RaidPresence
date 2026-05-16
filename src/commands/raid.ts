@@ -18,6 +18,8 @@ import { VERSION } from '../utils/version';
 import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManager';
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
+import { tryConsumeWeeklyRaid } from '../services/entitlementService';
+import { gateFeature } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
@@ -552,6 +554,20 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     roleIds,
     memberRolesMap,
   );
+
+  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input
+  const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
+  if (!allowed) {
+    const lang = guildData.language || 'en';
+    const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE' };
+    const resetDate = resetAt
+      ? resetAt.toLocaleString(localeMap[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+    await interaction.editReply({
+      content: t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate }),
+    });
+    return;
+  }
 
   // Create raid in database
   const raid = await prisma.raid.create({
@@ -1437,6 +1453,10 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
+  const archiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', archiveGuildData?.language || 'en'))) return;
+
   await interaction.deferReply({ ephemeral: true });
 
   // Check permissions
@@ -1457,8 +1477,9 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
     });
   } catch (error) {
     console.error('Error archiving raid:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     await interaction.editReply({
-      content: '❌ Failed to archive raid.',
+      content: `❌ ${message}`,
     });
   }
 }
@@ -1471,6 +1492,10 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
+
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
+  const unarchiveGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', unarchiveGuildData?.language || 'en'))) return;
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -1492,8 +1517,9 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
     });
   } catch (error) {
     console.error('Error restoring raid:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
     await interaction.editReply({
-      content: '❌ Failed to restore raid.',
+      content: `❌ ${message}`,
     });
   }
 }
@@ -1520,6 +1546,10 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
+
+  // Premium gate: archive (before deferReply so gateFeature can reply directly)
+  const searchGuildData = await prisma.guild.findUnique({ where: { id: interaction.guild.id }, select: { language: true } });
+  if (!(await gateFeature(interaction, 'raid.archive', searchGuildData?.language || 'en'))) return;
 
   await interaction.deferReply({ ephemeral: true });
 

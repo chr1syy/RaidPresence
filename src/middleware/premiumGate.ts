@@ -9,12 +9,13 @@ const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremiu
 };
 
 const FEATURE_DISPLAY_NAMES: Record<PremiumFeature, string> = {
-  'raid.notes': 'Raid Notes',
+  'raid.optout_reason': 'Opt-Out Reasons',
   'raid.archive': 'Raid Archive',
   'raid.recurring': 'Recurring Raids',
   'raid.template': 'Raid Templates',
   'raid.integrations': 'Raid Integrations',
-  'stats.full_history': 'Full Statistics History',
+  'stats.full_history': 'Full Attendance History',
+  'stats.analytics': 'Attendance Analytics',
   'stats.export': 'Statistics Export',
 };
 

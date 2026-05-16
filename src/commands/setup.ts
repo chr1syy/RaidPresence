@@ -8,6 +8,7 @@ import {
 } from 'discord.js';
 import prisma from '../database/client';
 import { Command } from '../types';
+import { VERSION } from '../utils/version';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -90,7 +91,7 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
         inline: false,
       }
     )
-    .setFooter({ text: 'Run /config view to check your settings anytime' })
+    .setFooter({ text: `Run /config view to check your settings anytime | v${VERSION}` })
     .setTimestamp();
 
   await interaction.editReply({ embeds: [setupEmbed] });

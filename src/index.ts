@@ -6,6 +6,7 @@ import { startRaidScheduler } from './utils/raidScheduler';
 import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
 import { syncEntitlementsOnStartup } from './services/entitlementService';
+import { VERSION } from './utils/version';
 
 config();
 
@@ -217,7 +218,7 @@ client.on(Events.GuildCreate, async (guild) => {
           inline: false,
         }
       )
-      .setFooter({ text: 'Need help? Check out the documentation or contact support' })
+      .setFooter({ text: `Need help? Check out the documentation or contact support | v${VERSION}` })
       .setTimestamp();
 
     // Try to find who added the bot via audit logs

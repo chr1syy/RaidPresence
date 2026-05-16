@@ -92,7 +92,7 @@ describe('gateFeature()', () => {
     mockHasFeature.mockReturnValue(false);
 
     const interaction = createMockInteraction();
-    const result = await gateFeature(interaction, 'raid.notes', 'de');
+    const result = await gateFeature(interaction, 'raid.optout_reason', 'de');
 
     expect(result).toBe(false);
     expect(interaction.reply).toHaveBeenCalledWith(

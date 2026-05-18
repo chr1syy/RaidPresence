@@ -8,19 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-05-18
+
 ### Added
+- Premium gates wired into commands: `/raid archive`, `/raid unarchive`, `/raid search`, `/stats guild`, `/stats suggest` now require Premium tier
+- Free tier limited to 5 raids/week via `tryConsumeWeeklyRaid()` with localized upsell on `/raid create`
+- Opt-out reason modal gated behind `raid.optout_reason` Premium feature (free users still opt out, just without reason field)
+- `/stats attendance` history capped at 10 raids for free tier with upsell footer; Premium gets full history
+- New feature keys: `raid.optout_reason` (renamed from `raid.notes`) and `stats.analytics`
 - In-memory tier cache (30s TTL) on `getTier()` for responsive button interactions; invalidated on entitlement sync
-- `tryConsumeWeeklyRaid()` now returns `max` (limit value) and `resetAt` (window reset timestamp) for accurate upsell messaging
+- `tryConsumeWeeklyRaid()` returns `max` and `resetAt` for accurate upsell messaging
+- Bot version (`v${VERSION}`) now appears in all embed footers (config view, setup, attendance upsell, welcome message)
+- Interactive E2E test harness at `scripts/e2e-test.ts` (`npm run e2e:test`) with 8 scenarios for manual premium gate testing
 
 ### Changed
-- Premium gates (`gateFeature()`) now run before `deferReply()` in archive, unarchive, search, guild stats, and suggest commands — prevents "thinking..." spinner from hanging when access is denied
+- Premium gates (`gateFeature()`) run before `deferReply()` in 5 commands — prevents "thinking..." spinner from hanging when access is denied
 - Weekly raid slot consumption moved after all input validation in `/raid create` — invalid input no longer wastes a free-tier slot
 - `premiumWeeklyLimitReached` message now passes dynamic `max` and `resetDate` instead of hardcoded values
+- Premium upsell message no longer references nonexistent `/premium` command; points users to App Directory / Server Subscriptions
+- Weekly limit message now includes "Upgrade to Premium for unlimited raids"
+- `/raid unarchive` rebuilds full raid embed with action buttons in the original channel (previously posted bare "Raid Restored" notification, breaking re-sign-up)
+- `docker-compose.yml` exposes Postgres port 5432 to host for E2E harness
 
 ### Fixed
 - Deferred reply left unresolved when premium gate blocked access (5 commands affected)
 - Free-tier raid slots consumed before validation, causing premature rate limiting on invalid input
 - `{resetDate}` placeholder in weekly limit message rendered as raw text instead of actual date
+- `/raid archive` and `/raid unarchive` failure messages now surface the actual error (e.g., "Archive channel not configured") instead of generic "Failed to archive raid"
+- Free-tier direct opt-out clears stale `optoutReason`/`notedAt` from previous Premium opt-outs
+- Duplicate `guild.findUnique` queries in `/stats guild` and `/stats suggest` collapsed into one fetch
+- Locale tag mapping for date formatting (en→en-US, de→de-DE) — non-English guilds previously got host-default formatting
+- Expired tier cache entries are deleted on miss instead of leaking memory
 
 ---
 

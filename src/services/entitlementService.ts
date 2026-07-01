@@ -205,27 +205,37 @@ export interface TrialGrantResult {
  * Returns whether a trial was granted plus the resulting tier/expiry.
  */
 export async function grantTrialIfEligible(guildId: string): Promise<TrialGrantResult> {
-  const guild = await prisma.guild.findUnique({
-    where: { id: guildId },
-    select: { premiumTier: true, trialStartedAt: true, entitlementId: true },
-  });
-
-  // Unknown guild, prior trial, existing paid entitlement, or already on a paid tier → skip.
-  if (!guild || guild.trialStartedAt || guild.entitlementId || guild.premiumTier !== 'FREE') {
-    return { granted: false, tier: guild?.premiumTier ?? 'FREE', expiresAt: null };
-  }
-
   const now = new Date();
   const expiresAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
-  await prisma.guild.update({
-    where: { id: guildId },
+  // Atomic conditional grant: the eligibility predicate lives in the WHERE clause,
+  // so the DB only writes when the guild is *still* eligible (never had a trial, no
+  // linked paid entitlement, currently FREE). This closes the read-then-write TOCTOU
+  // window where two concurrent guildCreate events could both pass a separate read
+  // and double-grant. `id` is unique, so this matches at most one row.
+  const { count } = await prisma.guild.updateMany({
+    where: {
+      id: guildId,
+      trialStartedAt: null,
+      entitlementId: null,
+      premiumTier: 'FREE',
+    },
     data: {
       premiumTier: 'PREMIUM',
       premiumExpiresAt: expiresAt,
       trialStartedAt: now,
     },
   });
+
+  if (count === 0) {
+    // Not eligible (unknown guild, prior trial, paid entitlement, or already paid).
+    // Report the current tier if the guild exists.
+    const guild = await prisma.guild.findUnique({
+      where: { id: guildId },
+      select: { premiumTier: true },
+    });
+    return { granted: false, tier: guild?.premiumTier ?? 'FREE', expiresAt: null };
+  }
 
   invalidateTierCache(guildId);
   console.log(`🎁 Premium trial granted: guild=${guildId} tier=PREMIUM expiresAt=${expiresAt.toISOString()}`);

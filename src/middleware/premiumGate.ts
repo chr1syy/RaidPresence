@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction, EmbedBuilder } from 'discord.js';
 import { getTier, hasFeature, FEATURE_TIERS, PremiumFeature, PremiumTier } from '../services/entitlementService';
-import { t } from '../utils/localization';
+import { t, Translations } from '../utils/localization';
 import { VERSION } from '../utils/version';
 
 /** Gold accent used across all premium surfaces. */
@@ -12,20 +12,26 @@ const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremiu
   PRO: 'premiumTierPro',
 };
 
-const FEATURE_DISPLAY_NAMES: Record<PremiumFeature, string> = {
-  'raid.optout_reason': 'Opt-Out Reasons',
-  'raid.archive': 'Raid Archive',
-  'raid.recurring': 'Recurring Raids',
-  'raid.template': 'Raid Templates',
-  'raid.integrations': 'Raid Integrations',
-  'stats.full_history': 'Full Attendance History',
-  'stats.analytics': 'Attendance Analytics',
-  'stats.export': 'Statistics Export',
+/** Feature → localization key for its human-readable display name. */
+const FEATURE_NAME_KEYS: Record<PremiumFeature, keyof Translations> = {
+  'raid.optout_reason': 'featureRaidOptoutReason',
+  'raid.archive': 'featureRaidArchive',
+  'raid.recurring': 'featureRaidRecurring',
+  'raid.template': 'featureRaidTemplate',
+  'raid.integrations': 'featureRaidIntegrations',
+  'stats.full_history': 'featureStatsFullHistory',
+  'stats.analytics': 'featureStatsAnalytics',
+  'stats.export': 'featureStatsExport',
 };
 
 /** Localized display name for a tier (e.g. "Premium"). */
 function tierName(tier: PremiumTier, language: string): string {
   return t(language, TIER_NAME_KEYS[tier]);
+}
+
+/** Localized display name for a gated feature (e.g. "Raid Archive"). */
+function featureName(feature: PremiumFeature, language: string): string {
+  return t(language, FEATURE_NAME_KEYS[feature]);
 }
 
 /**
@@ -39,14 +45,14 @@ export function premiumUpsellEmbed(
   requiredTier: PremiumTier,
   language: string,
 ): EmbedBuilder {
-  const featureName = FEATURE_DISPLAY_NAMES[feature];
+  const localizedFeatureName = featureName(feature, language);
   const requiredTierName = tierName(requiredTier, language);
 
   return new EmbedBuilder()
     .setColor(PREMIUM_COLOR)
-    .setTitle(t(language, 'premiumUpsellTitle', { feature: featureName, tier: requiredTierName }))
+    .setTitle(t(language, 'premiumUpsellTitle', { feature: localizedFeatureName, tier: requiredTierName }))
     .setDescription(
-      `${t(language, 'premiumUpsellBody', { feature: featureName, tier: requiredTierName })}\n\n` +
+      `${t(language, 'premiumUpsellBody', { feature: localizedFeatureName, tier: requiredTierName })}\n\n` +
         t(language, 'premiumUpsellHowTo'),
     )
     .addFields(

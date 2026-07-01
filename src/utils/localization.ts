@@ -1,6 +1,6 @@
 export type SupportedLanguage = 'en' | 'de';
 
-interface Translations {
+export interface Translations {
   // Raid embed
   raidEvent: string;
   dateAndTime: string;
@@ -230,6 +230,16 @@ interface Translations {
 
     // Premium trial (Phase 1.6)
     premiumTrialGranted: string;
+
+    // Premium feature display names (localized upsell embed)
+    featureRaidOptoutReason: string;
+    featureRaidArchive: string;
+    featureRaidRecurring: string;
+    featureRaidTemplate: string;
+    featureRaidIntegrations: string;
+    featureStatsFullHistory: string;
+    featureStatsAnalytics: string;
+    featureStatsExport: string;
 }
 
 /**
@@ -474,6 +484,16 @@ const translations: Record<SupportedLanguage, Translations> = {
 
         // Premium trial (Phase 1.6)
         premiumTrialGranted: '🎁 **Your 14-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
+
+        // Premium feature display names (localized upsell embed)
+        featureRaidOptoutReason: 'Opt-Out Reasons',
+        featureRaidArchive: 'Raid Archive',
+        featureRaidRecurring: 'Recurring Raids',
+        featureRaidTemplate: 'Raid Templates',
+        featureRaidIntegrations: 'Raid Integrations',
+        featureStatsFullHistory: 'Full Attendance History',
+        featureStatsAnalytics: 'Attendance Analytics',
+        featureStatsExport: 'Statistics Export',
     },
 
   de: {
@@ -706,6 +726,16 @@ const translations: Record<SupportedLanguage, Translations> = {
 
         // Premium trial (Phase 1.6)
         premiumTrialGranted: '🎁 **Deine 14-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
+
+        // Premium feature display names (localized upsell embed)
+        featureRaidOptoutReason: 'Abmeldungsgründe',
+        featureRaidArchive: 'Raid-Archiv',
+        featureRaidRecurring: 'Wiederkehrende Raids',
+        featureRaidTemplate: 'Raid-Vorlagen',
+        featureRaidIntegrations: 'Raid-Integrationen',
+        featureStatsFullHistory: 'Vollständige Anwesenheitshistorie',
+        featureStatsAnalytics: 'Anwesenheitsanalysen',
+        featureStatsExport: 'Statistik-Export',
     },
 };
 
@@ -729,6 +759,15 @@ const translations: Record<SupportedLanguage, Translations> = {
 export function getTranslations(language: string): Translations {
   const lang = (language === 'de' ? 'de' : 'en') as SupportedLanguage;
   return translations[lang];
+}
+
+/**
+ * Maps a Discord guild locale (e.g. "de", "en-US", "en-GB") to a supported bot
+ * language. Falls back to English for any locale we don't translate. Use this
+ * for brand-new guilds (guildCreate) before a `language` config row exists.
+ */
+export function localeToLanguage(locale: string | null | undefined): SupportedLanguage {
+  return locale?.toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
 /**

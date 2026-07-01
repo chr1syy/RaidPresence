@@ -6,6 +6,8 @@ import {
   syncEntitlement,
   hasFeature,
   tryConsumeWeeklyRaid,
+  grantTrialIfEligible,
+  TRIAL_DAYS,
   clearTierCache,
   PremiumTier,
   PremiumFeature,
@@ -241,5 +243,80 @@ describe('tryConsumeWeeklyRaid()', () => {
 
     await tryConsumeWeeklyRaid('guild1');
     expect((prisma.$transaction as jest.Mock)).toHaveBeenCalled();
+  });
+});
+
+describe('grantTrialIfEligible()', () => {
+  it('grants a 14-day PREMIUM trial to a fresh free guild', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE',
+      trialStartedAt: null,
+      entitlementId: null,
+    } as any);
+    (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
+
+    const before = Date.now();
+    const result = await grantTrialIfEligible('guild1');
+    const after = Date.now();
+
+    expect(result.granted).toBe(true);
+    expect(result.tier).toBe('PREMIUM');
+
+    const update = (prisma.guild.update as jest.Mock).mock.calls[0][0];
+    expect(update.where).toEqual({ id: 'guild1' });
+    expect(update.data.premiumTier).toBe('PREMIUM');
+    expect(update.data.trialStartedAt).toBeInstanceOf(Date);
+
+    // Expiry is ~14 days out.
+    const expiryMs = (update.data.premiumExpiresAt as Date).getTime();
+    const expectedMin = before + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    const expectedMax = after + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    expect(expiryMs).toBeGreaterThanOrEqual(expectedMin);
+    expect(expiryMs).toBeLessThanOrEqual(expectedMax);
+  });
+
+  it('does not grant when a trial was already used', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE',
+      trialStartedAt: new Date('2026-01-01'),
+      entitlementId: null,
+    } as any);
+
+    const result = await grantTrialIfEligible('guild1');
+    expect(result.granted).toBe(false);
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
+  });
+
+  it('does not grant when a paid entitlement is linked', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE',
+      trialStartedAt: null,
+      entitlementId: 'ent_123',
+    } as any);
+
+    const result = await grantTrialIfEligible('guild1');
+    expect(result.granted).toBe(false);
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
+  });
+
+  it('does not grant when the guild is already on a paid tier', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'PRO',
+      trialStartedAt: null,
+      entitlementId: null,
+    } as any);
+
+    const result = await grantTrialIfEligible('guild1');
+    expect(result.granted).toBe(false);
+    expect(result.tier).toBe('PRO');
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
+  });
+
+  it('does not grant for an unknown guild', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
+
+    const result = await grantTrialIfEligible('unknown');
+    expect(result.granted).toBe(false);
+    expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
   });
 });

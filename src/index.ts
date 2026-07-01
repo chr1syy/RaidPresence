@@ -5,8 +5,9 @@ import prisma from './database/client';
 import { startRaidScheduler } from './utils/raidScheduler';
 import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
-import { syncEntitlementsOnStartup } from './services/entitlementService';
+import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
 import { VERSION } from './utils/version';
+import { t } from './utils/localization';
 
 config();
 
@@ -144,8 +145,12 @@ client.on(Events.GuildCreate, async (guild) => {
   const detectedTimezone = getTimezoneFromLocale(guild.preferredLocale);
   const timezoneOffset = detectedTimezone ?? 0; // fallback to UTC if not detected
 
-  await prisma.guild.create({
-    data: {
+  // Upsert so a re-install (where the guild row persists) never throws and
+  // never clobbers the server's existing configuration.
+  await prisma.guild.upsert({
+    where: { id: guild.id },
+    update: { name: guild.name },
+    create: {
       id: guild.id,
       name: guild.name,
       raidRoles: process.env.RAID_ROLES || '',
@@ -153,6 +158,18 @@ client.on(Events.GuildCreate, async (guild) => {
       timezoneOffset: timezoneOffset,
     },
   });
+
+  // Auto-grant a one-time 14-day Premium trial to brand-new servers.
+  let trialGranted = false;
+  try {
+    const trial = await grantTrialIfEligible(guild.id);
+    trialGranted = trial.granted;
+    if (trial.granted) {
+      console.log(`🎁 Granted ${TRIAL_DAYS}-day Premium trial to ${guild.name} (${guild.id})`);
+    }
+  } catch (error) {
+    console.error(`❌ Failed to grant trial for ${guild.name}:`, error);
+  }
 
   // Log auto-detection
   if (detectedTimezone !== null) {
@@ -220,6 +237,15 @@ client.on(Events.GuildCreate, async (guild) => {
       )
       .setFooter({ text: `Need help? Check out the documentation or contact support | v${VERSION}` })
       .setTimestamp();
+
+    // Highlight the auto-granted Premium trial for brand-new servers.
+    if (trialGranted) {
+      welcomeEmbed.addFields({
+        name: `🎁 ${TRIAL_DAYS}-Day Premium Trial`,
+        value: t('en', 'premiumTrialGranted', { tier: t('en', 'premiumTierPremium') }),
+        inline: false,
+      });
+    }
 
     // Try to find who added the bot via audit logs
     let botAdder = null;

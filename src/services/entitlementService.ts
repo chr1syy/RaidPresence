@@ -186,6 +186,53 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
   });
 }
 
+/** Length of the auto-granted new-guild premium trial, in days. */
+export const TRIAL_DAYS = 14;
+
+export interface TrialGrantResult {
+  granted: boolean;
+  tier: PremiumTier;
+  expiresAt: Date | null;
+}
+
+/**
+ * Grants a one-time 14-day PREMIUM trial to a guild, if eligible.
+ *
+ * Eligible only when the guild has never had a trial (`trialStartedAt` is null),
+ * is currently on FREE, and has no linked paid entitlement. This keeps the grant
+ * idempotent across re-installs and never clobbers an active subscription.
+ *
+ * Returns whether a trial was granted plus the resulting tier/expiry.
+ */
+export async function grantTrialIfEligible(guildId: string): Promise<TrialGrantResult> {
+  const guild = await prisma.guild.findUnique({
+    where: { id: guildId },
+    select: { premiumTier: true, trialStartedAt: true, entitlementId: true },
+  });
+
+  // Unknown guild, prior trial, existing paid entitlement, or already on a paid tier → skip.
+  if (!guild || guild.trialStartedAt || guild.entitlementId || guild.premiumTier !== 'FREE') {
+    return { granted: false, tier: guild?.premiumTier ?? 'FREE', expiresAt: null };
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+  await prisma.guild.update({
+    where: { id: guildId },
+    data: {
+      premiumTier: 'PREMIUM',
+      premiumExpiresAt: expiresAt,
+      trialStartedAt: now,
+    },
+  });
+
+  invalidateTierCache(guildId);
+  console.log(`🎁 Premium trial granted: guild=${guildId} tier=PREMIUM expiresAt=${expiresAt.toISOString()}`);
+
+  return { granted: true, tier: 'PREMIUM', expiresAt };
+}
+
 /**
  * Syncs all active entitlements from Discord on startup.
  * Ensures the DB reflects current subscription state even after restarts.

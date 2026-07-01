@@ -122,8 +122,8 @@ describe('formatRaidStatsEmbed', () => {
   it('should include a Links field with clickable web link', () => {
     const embed = formatRaidStatsEmbed({ id: 'my-raid-42', description: 'Test' }, makeRaidStats(), 'en');
     const linksField = embed.data.fields!.find((f) => f.name === 'Links');
-    expect(linksField!.value).toBe('[Web](https://raidpresence.dev)');
-    expect(linksField!.inline).toBe(true);
+    expect(linksField!.value).toBe('[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)');
+    expect(linksField!.inline).toBe(false);
   });
 
   it('should use green color for high attendance (>=80)', () => {
@@ -202,8 +202,8 @@ describe('formatGuildStatsEmbed', () => {
   it('should include a Links field with clickable web link', () => {
     const embed = formatGuildStatsEmbed(makeGuildStats(), 'month', 'en');
     const linksField = embed.data.fields!.find((f) => f.name === 'Links');
-    expect(linksField!.value).toBe('[Web](https://raidpresence.dev)');
-    expect(linksField!.inline).toBe(true);
+    expect(linksField!.value).toBe('[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)');
+    expect(linksField!.inline).toBe(false);
   });
 
   it('should include total raids, attendance rate, and total raiders', () => {

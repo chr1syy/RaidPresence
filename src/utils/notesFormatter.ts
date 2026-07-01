@@ -171,7 +171,7 @@ export function formatRaidNotesEmbed(
     console.warn(`[notesFormatter] Field count limit reached (${DISCORD_FIELD_LIMIT}). Some fields may not be displayed.`);
   }
 
-  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
+  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false });
 
   embed.setFooter({ text: `v${VERSION}` });
 

@@ -334,8 +334,8 @@ describe('formatAttendanceEmbed()', () => {
   it('should include a Links field with clickable web link', () => {
     const embed = formatAttendanceEmbed('P', makeStats(), makeRoleDistribution(), [], 'month', 'en');
     const linksField = getField(embed, 'Links');
-    expect(linksField.value).toBe('[Web](https://raidpresence.dev)');
-    expect(linksField.inline).toBe(true);
+    expect(linksField.value).toBe('[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)');
+    expect(linksField.inline).toBe(false);
   });
 
   // ── Inline Layout ──────────────────────────────────────────

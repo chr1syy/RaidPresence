@@ -79,7 +79,7 @@ export function formatRaidStatsEmbed(
         inline: true,
       },
     )
-    .addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true })
+    .addFields({ name: trans.links, value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false })
     .setFooter({ text: `Raid ID: ${raid.id} | v${VERSION}` })
     .setTimestamp();
 
@@ -155,7 +155,7 @@ export function formatGuildStatsEmbed(
     });
   }
 
-  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true });
+  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false });
 
   embed.setFooter({ text: `v${VERSION}` });
   embed.setTimestamp();

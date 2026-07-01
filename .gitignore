@@ -38,3 +38,6 @@ prompts/
 
 # AutoRun
 Auto Run Docs/*
+
+# Maestro orchestration state (playbooks, local agent config)
+.maestro/

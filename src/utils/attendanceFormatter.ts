@@ -140,7 +140,7 @@ export function formatAttendanceEmbed(
     });
   }
 
-  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev)', inline: true });
+  embed.addFields({ name: trans.links, value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false });
 
   embed.setFooter({ text: `${periodLabel} | v${VERSION}` });
   embed.setTimestamp();

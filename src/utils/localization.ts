@@ -219,6 +219,17 @@ interface Translations {
     premiumTierPro: string;
     premiumExpired: string;
     premiumAttendanceCapped: string;
+
+    // Premium upsell embed + free-tier hint (Phase 1.5)
+    premiumUpsellTitle: string;
+    premiumUpsellBody: string;
+    premiumUpsellCurrentPlan: string;
+    premiumUpsellRequiredPlan: string;
+    premiumUpsellHowTo: string;
+    premiumFooterHint: string;
+
+    // Premium trial (Phase 1.6)
+    premiumTrialGranted: string;
 }
 
 /**
@@ -452,6 +463,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumTierPro: 'Pro',
         premiumExpired: 'Your {tier} subscription has expired.',
         premiumAttendanceCapped: 'Showing last {count} raids. Upgrade to Premium for full history.',
+
+        // Premium upsell embed + free-tier hint (Phase 1.5)
+        premiumUpsellTitle: '💎 {feature} is a {tier} feature',
+        premiumUpsellBody: 'Unlock **{feature}** — and every other {tier} perk — for your whole server.',
+        premiumUpsellCurrentPlan: 'Your Plan',
+        premiumUpsellRequiredPlan: 'Required Plan',
+        premiumUpsellHowTo: 'Tap the bot\'s profile → **Store**, or open **Server Settings → Subscriptions** to upgrade.',
+        premiumFooterHint: '-# 💎 Upgrade to Premium to unlock archives, analytics & unlimited raids.',
+
+        // Premium trial (Phase 1.6)
+        premiumTrialGranted: '🎁 **Your 14-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
     },
 
   de: {
@@ -673,6 +695,17 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumTierPro: 'Pro',
         premiumExpired: 'Dein {tier}-Abonnement ist abgelaufen.',
         premiumAttendanceCapped: 'Zeige die letzten {count} Raids. Upgrade auf Premium für die vollständige Historie.',
+
+        // Premium upsell embed + free-tier hint (Phase 1.5)
+        premiumUpsellTitle: '💎 {feature} ist eine {tier}-Funktion',
+        premiumUpsellBody: 'Schalte **{feature}** – und alle weiteren {tier}-Vorteile – für deinen ganzen Server frei.',
+        premiumUpsellCurrentPlan: 'Dein Plan',
+        premiumUpsellRequiredPlan: 'Benötigter Plan',
+        premiumUpsellHowTo: 'Tippe auf das Bot-Profil → **Shop**, oder öffne **Servereinstellungen → Abonnements**, um zu upgraden.',
+        premiumFooterHint: '-# 💎 Upgrade auf Premium für Archive, Analysen & unbegrenzte Raids.',
+
+        // Premium trial (Phase 1.6)
+        premiumTrialGranted: '🎁 **Deine 14-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
     },
 };
 

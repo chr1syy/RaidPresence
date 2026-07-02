@@ -856,7 +856,7 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     }
 
     embed
-      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
+      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false })
       .setFooter({ text: `${trans.raidId}: ${raid.id} | v${VERSION}` })
       .setTimestamp();
 
@@ -909,7 +909,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
         })
         .join('\n\n')
     )
-    .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
+    .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false })
     .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 

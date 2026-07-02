@@ -108,7 +108,7 @@ ${likelihood.factors.map((f) => `• ${f}`).join('\n')}`;
     inline: false,
   });
 
-  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
+  embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false });
 
   // Footer
   embed.setFooter({

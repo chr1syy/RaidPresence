@@ -46,7 +46,10 @@ export function formatArchiveSearchEmbed(
    // Add up to 10 results per embed (Discord field limit)
    const displayResults = results.slice(0, 10);
    for (const raid of displayResults) {
-     const raiderNames = raid.participantNames.join(', ');
+     // Defensive: the participant list is unbounded, but a Discord embed field
+     // value is capped at 1024 chars. Truncate the (only) variable-length line so
+     // a large roster can never make Discord reject the whole embed.
+     const raiderNames = truncateFieldValue(raid.participantNames.join(', '), 900);
      const fieldValue = 
        `**${t(language, 'archiveDate')}:** <t:${Math.floor(raid.raidDate.getTime() / 1000)}:d>\n` +
        `**${t(language, 'archiveAttendance')}:** ${raid.attendedCount}/${raid.totalInvited} (${raid.attendancePercent}%)\n` +
@@ -76,7 +79,7 @@ export function formatArchiveSearchEmbed(
       });
     }
 
-    embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true });
+    embed.addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false });
 
   return embed;
 }
@@ -105,9 +108,17 @@ export function formatArchiveNotificationEmbed(
         `**${raidName}** from <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
         `${t(language, 'archiveMovedNotification', { channel: `<#${archiveChannelId}>` })}`
       )
-      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev)', inline: true })
+      .addFields({ name: '\u200b', value: '[Web](https://raidpresence.dev) • [Vote](https://raidpresence.dev/vote)', inline: false })
       .setFooter({ text: `v${VERSION}` })
       .setTimestamp(new Date());
+}
+
+/**
+ * Truncates a string to a maximum length, appending an ellipsis if cut.
+ * Guards against Discord's 1024-char embed field-value limit.
+ */
+function truncateFieldValue(value: string, max: number): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
 /**

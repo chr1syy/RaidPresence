@@ -5,8 +5,9 @@ import prisma from './database/client';
 import { startRaidScheduler } from './utils/raidScheduler';
 import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
-import { syncEntitlementsOnStartup } from './services/entitlementService';
-import { VERSION } from './utils/version';
+import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
+import { localeToLanguage } from './utils/localization';
+import { buildWelcomeEmbed } from './utils/welcomeEmbed';
 
 config();
 
@@ -144,8 +145,12 @@ client.on(Events.GuildCreate, async (guild) => {
   const detectedTimezone = getTimezoneFromLocale(guild.preferredLocale);
   const timezoneOffset = detectedTimezone ?? 0; // fallback to UTC if not detected
 
-  await prisma.guild.create({
-    data: {
+  // Upsert so a re-install (where the guild row persists) never throws and
+  // never clobbers the server's existing configuration.
+  await prisma.guild.upsert({
+    where: { id: guild.id },
+    update: { name: guild.name },
+    create: {
       id: guild.id,
       name: guild.name,
       raidRoles: process.env.RAID_ROLES || '',
@@ -153,6 +158,18 @@ client.on(Events.GuildCreate, async (guild) => {
       timezoneOffset: timezoneOffset,
     },
   });
+
+  // Auto-grant a one-time 14-day Premium trial to brand-new servers.
+  let trialGranted = false;
+  try {
+    const trial = await grantTrialIfEligible(guild.id);
+    trialGranted = trial.granted;
+    if (trial.granted) {
+      console.log(`🎁 Granted ${TRIAL_DAYS}-day Premium trial to ${guild.name} (${guild.id})`);
+    }
+  } catch (error) {
+    console.error(`❌ Failed to grant trial for ${guild.name}:`, error);
+  }
 
   // Log auto-detection
   if (detectedTimezone !== null) {
@@ -163,63 +180,17 @@ client.on(Events.GuildCreate, async (guild) => {
 
   // Send welcome/setup message
   try {
-    const { EmbedBuilder, Colors, AuditLogEvent } = await import('discord.js');
+    const { AuditLogEvent } = await import('discord.js');
 
-    const timezoneNote = detectedTimezone !== null
-      ? `🌍 Timezone auto-detected as **${getTimezoneName(timezoneOffset)}**`
-      : '⚠️ Could not auto-detect timezone - defaulting to **UTC**';
-
-    const timezoneInstructions = detectedTimezone !== null && timezoneOffset !== 1
-      ? `\n⚠️ **If this is incorrect**, run: \`/config timezone offset:1\` for GMT+1`
-      : detectedTimezone === null
-      ? `\n**Please set your timezone:** \`/config timezone offset:1\` for GMT+1`
-      : '';
-
-    const welcomeEmbed = new EmbedBuilder()
-      .setTitle('🎉 Thanks for adding RaidPresence!')
-      .setColor(Colors.Green)
-      .setDescription(
-        'I help manage WoW raid attendance with a **reverse sign-up system** - everyone is automatically signed up and must opt-out if they can\'t attend.\n\n' +
-        `${timezoneNote}${timezoneInstructions}\n\n` +
-        '**Quick Setup Required:**'
-      )
-      .addFields(
-        {
-          name: '1️⃣ Set Timezone (if not GMT+1)',
-          value: 'Run: `/config timezone offset:1` for GMT+1\n' +
-                 'Or: `/config timezone offset:<hours>` for your timezone\n' +
-                 '**This ensures raid times are created correctly!**',
-          inline: false,
-        },
-        {
-          name: '2️⃣ Configure Raid Attendance Roles',
-          value: 'Run: `/config raid-roles roles:Raider,Member,Trial`\n' +
-                 'Members with these roles will be automatically added to raid rosters.',
-          inline: false,
-        },
-        {
-          name: '3️⃣ Configure Raid Leader Roles',
-          value: 'Run: `/config leader-roles roles:Officer,Raid Leader`\n' +
-                 'Members with these roles can create and manage raids.',
-          inline: false,
-        },
-        {
-          name: '4️⃣ Create Your First Raid',
-          value: 'Run: `/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night`',
-          inline: false,
-        }
-      )
-      .addFields(
-        {
-          name: '📋 Useful Commands',
-          value: '• `/config view` - View current settings\n' +
-                 '• `/raid list` - List upcoming raids\n' +
-                 '• `/raid delete` - Delete a raid',
-          inline: false,
-        }
-      )
-      .setFooter({ text: `Need help? Check out the documentation or contact support | v${VERSION}` })
-      .setTimestamp();
+    // Localize the welcome embed to the guild's Discord locale (brand-new guilds
+    // have no `language` config row yet), so a German server gets German copy.
+    const language = localeToLanguage(guild.preferredLocale);
+    const welcomeEmbed = buildWelcomeEmbed({
+      detectedTimezone,
+      timezoneOffset,
+      trialGranted,
+      language,
+    });
 
     // Try to find who added the bot via audit logs
     let botAdder = null;

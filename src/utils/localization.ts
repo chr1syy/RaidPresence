@@ -1,6 +1,6 @@
 export type SupportedLanguage = 'en' | 'de';
 
-interface Translations {
+export interface Translations {
   // Raid embed
   raidEvent: string;
   dateAndTime: string;
@@ -219,6 +219,27 @@ interface Translations {
     premiumTierPro: string;
     premiumExpired: string;
     premiumAttendanceCapped: string;
+
+    // Premium upsell embed + free-tier hint (Phase 1.5)
+    premiumUpsellTitle: string;
+    premiumUpsellBody: string;
+    premiumUpsellCurrentPlan: string;
+    premiumUpsellRequiredPlan: string;
+    premiumUpsellHowTo: string;
+    premiumFooterHint: string;
+
+    // Premium trial (Phase 1.6)
+    premiumTrialGranted: string;
+
+    // Premium feature display names (localized upsell embed)
+    featureRaidOptoutReason: string;
+    featureRaidArchive: string;
+    featureRaidRecurring: string;
+    featureRaidTemplate: string;
+    featureRaidIntegrations: string;
+    featureStatsFullHistory: string;
+    featureStatsAnalytics: string;
+    featureStatsExport: string;
 }
 
 /**
@@ -452,6 +473,27 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumTierPro: 'Pro',
         premiumExpired: 'Your {tier} subscription has expired.',
         premiumAttendanceCapped: 'Showing last {count} raids. Upgrade to Premium for full history.',
+
+        // Premium upsell embed + free-tier hint (Phase 1.5)
+        premiumUpsellTitle: '💎 {feature} is a {tier} feature',
+        premiumUpsellBody: 'Unlock **{feature}** — and every other {tier} perk — for your whole server.',
+        premiumUpsellCurrentPlan: 'Your Plan',
+        premiumUpsellRequiredPlan: 'Required Plan',
+        premiumUpsellHowTo: 'Tap the bot\'s profile → **Store**, or open **Server Settings → Subscriptions** to upgrade.',
+        premiumFooterHint: '-# 💎 Upgrade to Premium to unlock archives, analytics & unlimited raids.',
+
+        // Premium trial (Phase 1.6)
+        premiumTrialGranted: '🎁 **Your 14-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
+
+        // Premium feature display names (localized upsell embed)
+        featureRaidOptoutReason: 'Opt-Out Reasons',
+        featureRaidArchive: 'Raid Archive',
+        featureRaidRecurring: 'Recurring Raids',
+        featureRaidTemplate: 'Raid Templates',
+        featureRaidIntegrations: 'Raid Integrations',
+        featureStatsFullHistory: 'Full Attendance History',
+        featureStatsAnalytics: 'Attendance Analytics',
+        featureStatsExport: 'Statistics Export',
     },
 
   de: {
@@ -673,6 +715,27 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumTierPro: 'Pro',
         premiumExpired: 'Dein {tier}-Abonnement ist abgelaufen.',
         premiumAttendanceCapped: 'Zeige die letzten {count} Raids. Upgrade auf Premium für die vollständige Historie.',
+
+        // Premium upsell embed + free-tier hint (Phase 1.5)
+        premiumUpsellTitle: '💎 {feature} ist eine {tier}-Funktion',
+        premiumUpsellBody: 'Schalte **{feature}** – und alle weiteren {tier}-Vorteile – für deinen ganzen Server frei.',
+        premiumUpsellCurrentPlan: 'Dein Plan',
+        premiumUpsellRequiredPlan: 'Benötigter Plan',
+        premiumUpsellHowTo: 'Tippe auf das Bot-Profil → **Shop**, oder öffne **Servereinstellungen → Abonnements**, um zu upgraden.',
+        premiumFooterHint: '-# 💎 Upgrade auf Premium für Archive, Analysen & unbegrenzte Raids.',
+
+        // Premium trial (Phase 1.6)
+        premiumTrialGranted: '🎁 **Deine 14-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
+
+        // Premium feature display names (localized upsell embed)
+        featureRaidOptoutReason: 'Abmeldungsgründe',
+        featureRaidArchive: 'Raid-Archiv',
+        featureRaidRecurring: 'Wiederkehrende Raids',
+        featureRaidTemplate: 'Raid-Vorlagen',
+        featureRaidIntegrations: 'Raid-Integrationen',
+        featureStatsFullHistory: 'Vollständige Anwesenheitshistorie',
+        featureStatsAnalytics: 'Anwesenheitsanalysen',
+        featureStatsExport: 'Statistik-Export',
     },
 };
 
@@ -696,6 +759,15 @@ const translations: Record<SupportedLanguage, Translations> = {
 export function getTranslations(language: string): Translations {
   const lang = (language === 'de' ? 'de' : 'en') as SupportedLanguage;
   return translations[lang];
+}
+
+/**
+ * Maps a Discord guild locale (e.g. "de", "en-US", "en-GB") to a supported bot
+ * language. Falls back to English for any locale we don't translate. Use this
+ * for brand-new guilds (guildCreate) before a `language` config row exists.
+ */
+export function localeToLanguage(locale: string | null | undefined): SupportedLanguage {
+  return locale?.toLowerCase().startsWith('de') ? 'de' : 'en';
 }
 
 /**

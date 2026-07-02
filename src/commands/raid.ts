@@ -19,7 +19,7 @@ import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManag
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
 import { tryConsumeWeeklyRaid } from '../services/entitlementService';
-import { gateFeature } from '../middleware/premiumGate';
+import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
@@ -564,7 +564,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       ? resetAt.toLocaleString(localeMap[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
     await interaction.editReply({
-      content: t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate }),
+      content: `${t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate })}\n${premiumFooterHint(lang)}`,
     });
     return;
   }

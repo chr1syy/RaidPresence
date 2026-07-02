@@ -28,6 +28,7 @@ const prisma: Record<string, any> = {
     findUnique: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     upsert: jest.fn(),
   },
   userRolePreference: {

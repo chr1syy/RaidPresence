@@ -6,6 +6,8 @@ import {
   syncEntitlement,
   hasFeature,
   tryConsumeWeeklyRaid,
+  grantTrialIfEligible,
+  TRIAL_DAYS,
   clearTierCache,
   PremiumTier,
   PremiumFeature,
@@ -241,5 +243,70 @@ describe('tryConsumeWeeklyRaid()', () => {
 
     await tryConsumeWeeklyRaid('guild1');
     expect((prisma.$transaction as jest.Mock)).toHaveBeenCalled();
+  });
+});
+
+describe('grantTrialIfEligible()', () => {
+  it('grants a 14-day PREMIUM trial via a single atomic conditional update', async () => {
+    // Eligibility lives in the WHERE clause; the DB reports one row was updated.
+    (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 1 } as any);
+
+    const before = Date.now();
+    const result = await grantTrialIfEligible('guild1');
+    const after = Date.now();
+
+    expect(result.granted).toBe(true);
+    expect(result.tier).toBe('PREMIUM');
+
+    // The grant must be a single atomic updateMany — no read-then-write.
+    expect((prisma.guild.updateMany as jest.Mock)).toHaveBeenCalledTimes(1);
+    expect((prisma.guild.findUnique as jest.Mock)).not.toHaveBeenCalled();
+
+    const update = (prisma.guild.updateMany as jest.Mock).mock.calls[0][0];
+    // The conditional predicate that closes the TOCTOU window.
+    expect(update.where).toEqual({
+      id: 'guild1',
+      trialStartedAt: null,
+      entitlementId: null,
+      premiumTier: 'FREE',
+    });
+    expect(update.data.premiumTier).toBe('PREMIUM');
+    expect(update.data.trialStartedAt).toBeInstanceOf(Date);
+
+    // Expiry is ~14 days out.
+    const expiryMs = (update.data.premiumExpiresAt as Date).getTime();
+    const expectedMin = before + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    const expectedMax = after + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+    expect(expiryMs).toBeGreaterThanOrEqual(expectedMin);
+    expect(expiryMs).toBeLessThanOrEqual(expectedMax);
+  });
+
+  it('does not grant when no row matched the eligibility predicate (already used / paid)', async () => {
+    // count === 0 → the guild was no longer eligible when the write ran.
+    (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 0 } as any);
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({ premiumTier: 'FREE' } as any);
+
+    const result = await grantTrialIfEligible('guild1');
+    expect(result.granted).toBe(false);
+    expect(result.tier).toBe('FREE');
+    expect((prisma.guild.updateMany as jest.Mock)).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the current paid tier when the conditional grant matched nothing', async () => {
+    (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 0 } as any);
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({ premiumTier: 'PRO' } as any);
+
+    const result = await grantTrialIfEligible('guild1');
+    expect(result.granted).toBe(false);
+    expect(result.tier).toBe('PRO');
+  });
+
+  it('does not grant for an unknown guild', async () => {
+    (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 0 } as any);
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
+
+    const result = await grantTrialIfEligible('unknown');
+    expect(result.granted).toBe(false);
+    expect(result.tier).toBe('FREE');
   });
 });

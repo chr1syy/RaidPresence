@@ -186,6 +186,63 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
   });
 }
 
+/** Length of the auto-granted new-guild premium trial, in days. */
+export const TRIAL_DAYS = 14;
+
+export interface TrialGrantResult {
+  granted: boolean;
+  tier: PremiumTier;
+  expiresAt: Date | null;
+}
+
+/**
+ * Grants a one-time 14-day PREMIUM trial to a guild, if eligible.
+ *
+ * Eligible only when the guild has never had a trial (`trialStartedAt` is null),
+ * is currently on FREE, and has no linked paid entitlement. This keeps the grant
+ * idempotent across re-installs and never clobbers an active subscription.
+ *
+ * Returns whether a trial was granted plus the resulting tier/expiry.
+ */
+export async function grantTrialIfEligible(guildId: string): Promise<TrialGrantResult> {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
+  // Atomic conditional grant: the eligibility predicate lives in the WHERE clause,
+  // so the DB only writes when the guild is *still* eligible (never had a trial, no
+  // linked paid entitlement, currently FREE). This closes the read-then-write TOCTOU
+  // window where two concurrent guildCreate events could both pass a separate read
+  // and double-grant. `id` is unique, so this matches at most one row.
+  const { count } = await prisma.guild.updateMany({
+    where: {
+      id: guildId,
+      trialStartedAt: null,
+      entitlementId: null,
+      premiumTier: 'FREE',
+    },
+    data: {
+      premiumTier: 'PREMIUM',
+      premiumExpiresAt: expiresAt,
+      trialStartedAt: now,
+    },
+  });
+
+  if (count === 0) {
+    // Not eligible (unknown guild, prior trial, paid entitlement, or already paid).
+    // Report the current tier if the guild exists.
+    const guild = await prisma.guild.findUnique({
+      where: { id: guildId },
+      select: { premiumTier: true },
+    });
+    return { granted: false, tier: guild?.premiumTier ?? 'FREE', expiresAt: null };
+  }
+
+  invalidateTierCache(guildId);
+  console.log(`🎁 Premium trial granted: guild=${guildId} tier=PREMIUM expiresAt=${expiresAt.toISOString()}`);
+
+  return { granted: true, tier: 'PREMIUM', expiresAt };
+}
+
 /**
  * Syncs all active entitlements from Discord on startup.
  * Ensures the DB reflects current subscription state even after restarts.

@@ -21,6 +21,7 @@ const FEATURE_NAME_KEYS: Record<PremiumFeature, keyof Translations> = {
   'stats.full_history': 'featureStatsFullHistory',
   'stats.analytics': 'featureStatsAnalytics',
   'stats.export': 'featureStatsExport',
+  'team.multi': 'featureTeamMulti',
 };
 
 /** Localized display name for a tier (e.g. "Premium"). */

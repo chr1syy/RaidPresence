@@ -375,26 +375,28 @@ const command: Command = {
           )
       )
       .addSubcommand((subcommand) =>
-        subcommand
-          .setName('search')
-          .setDescription('Search archived raids')
-          .addStringOption((option) =>
-            option
-              .setName('query')
-              .setDescription('Search query (raid name, player, date)')
-              .setRequired(true)
-          )
-          .addStringOption((option) =>
-            option
-              .setName('period')
-              .setDescription('Time period to search')
-              .addChoices(
-                { name: 'Last 30 days', value: 'month' },
-                { name: 'Last 90 days', value: 'quarter' },
-                { name: 'All time', value: 'all' }
-              )
-              .setRequired(false)
-          )
+        addTeamOption(
+          subcommand
+            .setName('search')
+            .setDescription('Search archived raids')
+            .addStringOption((option) =>
+              option
+                .setName('query')
+                .setDescription('Search query (raid name, player, date)')
+                .setRequired(true)
+            )
+            .addStringOption((option) =>
+              option
+                .setName('period')
+                .setDescription('Time period to search')
+                .addChoices(
+                  { name: 'Last 30 days', value: 'month' },
+                  { name: 'Last 90 days', value: 'quarter' },
+                  { name: 'All time', value: 'all' }
+                )
+                .setRequired(false)
+            )
+        )
       )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
@@ -1581,8 +1583,13 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
 
   try {
     await archiveRaid(raidId, interaction.guild!.id, interaction.client);
+    const archivedRaid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      select: { teamId: true },
+    });
+    const archiveTeamLabel = await getTeamLabel(interaction.guild.id, archivedRaid?.teamId);
     await interaction.editReply({
-      content: '✅ Raid archived successfully.',
+      content: `✅ Raid archived successfully.${teamSuffix(archiveTeamLabel)}`,
     });
   } catch (error) {
     console.error('Error archiving raid:', error);
@@ -1621,8 +1628,13 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
 
   try {
     await unarchiveRaid(raidId, interaction.guild!.id, interaction.client);
+    const restoredRaid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      select: { teamId: true },
+    });
+    const unarchiveTeamLabel = await getTeamLabel(interaction.guild.id, restoredRaid?.teamId);
     await interaction.editReply({
-      content: '✅ Raid restored successfully.',
+      content: `✅ Raid restored successfully.${teamSuffix(unarchiveTeamLabel)}`,
     });
   } catch (error) {
     console.error('Error restoring raid:', error);
@@ -1664,10 +1676,19 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
 
   const query = interaction.options.get('query', true).value as string;
   const period = interaction.options.get('period', false)?.value as string || 'month';
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
 
   const guildData = await prisma.guild.findUnique({
     where: { id: interaction.guild.id },
   });
+
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError) {
+    await interaction.editReply({
+      content: t(guildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
 
   const startDate = getStartDate(period);
 
@@ -1675,9 +1696,17 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
     guildId: interaction.guild.id,
     query,
     startDate,
+    teamId: team.id,
   });
 
   const embed = formatArchiveSearchEmbed(results, query, period, guildData?.language || 'en');
+
+  // Multi-team guilds: make the scope of these results explicit. Single-team guilds keep
+  // the previous title verbatim.
+  const searchTeamLabel = await getTeamLabel(interaction.guild.id, team.id);
+  if (searchTeamLabel) {
+    embed.setTitle(`${embed.data.title} — ${searchTeamLabel}`);
+  }
 
   await interaction.editReply({ embeds: [embed] });
 }

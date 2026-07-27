@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   CommandInteraction,
   ChatInputCommandInteraction,
+  EmbedBuilder,
   PermissionFlagsBits,
 } from 'discord.js';
 import prisma from '../database/client';
@@ -17,6 +18,33 @@ import { gateFeature } from '../middleware/premiumGate';
 import { getTier, hasFeature } from '../services/entitlementService';
 import { t } from '../utils/localization';
 import { VERSION } from '../utils/version';
+import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
+
+/**
+ * Names the team an embed's numbers belong to, right in its title.
+ *
+ * `getTeamLabel()` yields `null` on single-team guilds, so their titles stay byte-for-byte
+ * identical to the pre-multi-team wording; only guilds that actually run several teams pay
+ * for the extra clarity.
+ * @param guildId Discord guild ID
+ * @param teamId Team the figures were scoped to, or the raid's own team
+ * @param embed Embed to amend in place
+ */
+async function appendTeamToTitle(
+  guildId: string,
+  teamId: string | null | undefined,
+  embed: EmbedBuilder,
+): Promise<void> {
+  const label = await getTeamLabel(guildId, teamId);
+  if (label) {
+    embed.setTitle(`${embed.data.title} — ${label}`);
+  }
+}
+
+/** Reads the shared optional `team` option; `undefined` when it was not supplied. */
+function getTeamOption(interaction: ChatInputCommandInteraction): string | undefined {
+  return interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+}
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -34,7 +62,7 @@ const command: Command = {
         )
     )
     .addSubcommand((subcommand) =>
-      subcommand
+      addTeamOption(subcommand
         .setName('guild')
         .setDescription('View guild-wide attendance statistics')
         .addStringOption((option) =>
@@ -47,15 +75,15 @@ const command: Command = {
               { name: 'All time', value: 'all' }
             )
             .setRequired(false)
-        )
+        ))
     )
     .addSubcommand((subcommand) =>
-      subcommand
+      addTeamOption(subcommand
         .setName('status')
-        .setDescription('View all upcoming raids at a glance')
+        .setDescription('View all upcoming raids at a glance'))
     )
     .addSubcommand((subcommand) =>
-      subcommand
+      addTeamOption(subcommand
         .setName('attendance')
         .setDescription('View a player\'s attendance history and reliability')
         .addUserOption((option) =>
@@ -74,7 +102,7 @@ const command: Command = {
               { name: 'All time', value: 'all' }
             )
             .setRequired(false)
-        )
+        ))
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -144,6 +172,9 @@ async function handleRaidStats(interaction: ChatInputCommandInteraction) {
   const raidInfo = { id: raid.id, description: raid.description };
   const embed = formatRaidStatsEmbed(raidInfo, stats, raid.guild.language || 'en');
 
+  // No `team` option here — the raid ID already pins the team; just name it on multi-team guilds.
+  await appendTeamToTitle(interaction.guild.id, raid.teamId, embed);
+
   await interaction.editReply({ embeds: [embed] });
 }
 
@@ -173,10 +204,20 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
 
   const period = interaction.options.get('period', false)?.value as string || 'month';
 
+  const teamOption = getTeamOption(interaction);
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError) {
+    await interaction.editReply({
+      content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
   const startDate = getStartDate(period);
   const raids = await prisma.raid.findMany({
     where: {
       guildId: interaction.guild.id,
+      teamId: team.id,
       raidDate: { gte: startDate },
     },
     include: { attendance: true },
@@ -184,6 +225,8 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
 
   const stats = calculateGuildStats(raids);
   const embed = formatGuildStatsEmbed(stats, period, guildData.language || 'en');
+
+  await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -215,10 +258,25 @@ async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
+  // Fetched before the query so an unknown team name can be reported in the guild's language
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+  });
+
+  const teamOption = getTeamOption(interaction);
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError) {
+    await interaction.editReply({
+      content: t(guildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
   const now = new Date();
   const raids = await prisma.raid.findMany({
     where: {
       guildId: interaction.guild.id,
+      teamId: team.id,
       status: 'open',
       raidDate: {
         gte: now,
@@ -233,11 +291,9 @@ async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
     },
   });
 
-  const guildData = await prisma.guild.findUnique({
-    where: { id: interaction.guild.id },
-  });
-
   const embed = formatStatusEmbed(raids, guildData?.language || 'en');
+
+  await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -268,12 +324,22 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   }
 
   const lang = guildData.language || 'en';
+
+  const teamOption = getTeamOption(interaction);
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError) {
+    await interaction.editReply({
+      content: t(lang, 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
   const tier = await getTier(interaction.guild.id);
   const hasFullHistory = hasFeature(tier, 'stats.full_history');
 
-  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period);
-  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id);
-  let history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period);
+  const playerStats = await calculatePlayerStats(player.id, interaction.guild.id, period, team.id);
+  const roleDistribution = await getPlayerRoleDistribution(player.id, interaction.guild.id, team.id);
+  let history = await getPlayerAttendanceHistory(player.id, interaction.guild.id, period, team.id);
 
   // Cap history for free tier
   const FREE_HISTORY_LIMIT = 10;
@@ -283,6 +349,8 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   }
 
   const embed = formatAttendanceEmbed(player.displayName || player.username || 'Unknown', playerStats, roleDistribution, history, period, lang);
+
+  await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
   if (wasCapped) {
     const upsell = t(lang, 'premiumAttendanceCapped', { count: FREE_HISTORY_LIMIT });
@@ -337,6 +405,9 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   const likelihood = calculateSuccessLikelihood(raid.attendance);
 
   const embed = formatCompositionEmbed(raid.description || 'Raid', composition, gaps, suggestions, likelihood, suggestLang);
+
+  // Like `stats raid`, this analyses one raid by ID — the team follows from the raid itself.
+  await appendTeamToTitle(interaction.guild.id, raid.teamId, embed);
 
   await interaction.editReply({ embeds: [embed] });
 }

@@ -43,6 +43,8 @@ function buildStatusInteraction(extras: Record<string, any> = {}) {
     reply: jest.fn().mockResolvedValue(undefined),
     options: {
       getSubcommand: jest.fn().mockReturnValue('status'),
+      // No `team` option supplied → default team
+      get: jest.fn().mockReturnValue(undefined),
     },
     ...extras,
   } as any;

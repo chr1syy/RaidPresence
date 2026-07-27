@@ -100,12 +100,14 @@ function getDateCutoff(days?: number): Date | undefined {
  * @param userId - Discord user ID
  * @param guildId - Guild ID
  * @param period - Time period: 'month' (30d), 'quarter' (90d), 'all'
+ * @param teamId - Optional team scope; omitted means guild-wide (pre-multi-team behaviour)
  * @returns Array of attendance history entries sorted by date descending
  */
 export async function getPlayerAttendanceHistory(
   userId: string,
   guildId: string,
   period?: string,
+  teamId?: string,
 ): Promise<AttendanceHistoryEntry[]> {
   const days = periodToDays(period);
   const cutoff = getDateCutoff(days);
@@ -114,6 +116,7 @@ export async function getPlayerAttendanceHistory(
     where: {
       userId,
       guildId,
+      ...(teamId ? { teamId } : {}),
       ...(cutoff ? { raid: { raidDate: { gte: cutoff } } } : {}),
     },
     include: {
@@ -149,12 +152,14 @@ export async function getPlayerAttendanceHistory(
  * @param userId - Discord user ID
  * @param guildId - Guild ID
  * @param period - Time period: 'month' (30d), 'quarter' (90d), 'all'
+ * @param teamId - Optional team scope; omitted means guild-wide (pre-multi-team behaviour)
  * @returns PlayerStats with attendance breakdown, reliability, response time, and trend
  */
 export async function calculatePlayerStats(
   userId: string,
   guildId: string,
   period?: string,
+  teamId?: string,
 ): Promise<PlayerStats> {
   const days = periodToDays(period);
   const cutoff = getDateCutoff(days);
@@ -163,6 +168,7 @@ export async function calculatePlayerStats(
     where: {
       userId,
       guildId,
+      ...(teamId ? { teamId } : {}),
       ...(cutoff ? { raid: { raidDate: { gte: cutoff } } } : {}),
     },
     include: {
@@ -224,16 +230,19 @@ export async function calculatePlayerStats(
  *
  * @param userId - Discord user ID
  * @param guildId - Guild ID
+ * @param teamId - Optional team scope; omitted means guild-wide (pre-multi-team behaviour)
  * @returns PlayerRoleDistribution with main role, alt roles, and flexibility score
  */
 export async function getPlayerRoleDistribution(
   userId: string,
   guildId: string,
+  teamId?: string,
 ): Promise<PlayerRoleDistribution> {
   const records = await prisma.raidAttendance.findMany({
     where: {
       userId,
       guildId,
+      ...(teamId ? { teamId } : {}),
       status: { in: ['attending', 'late'] },
     },
     select: {

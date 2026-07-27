@@ -22,15 +22,15 @@ import { tryConsumeWeeklyRaid } from '../services/entitlementService';
 import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 import { addTeamOption, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
+import { countTeams } from '../services/teamService';
 
 /**
  * Resolve the guild's default ("Main") team, creating it lazily for guilds that
  * predate the multi-team migration or were onboarded without one.
  *
- * `raid create` now resolves its team via `resolveTeam()` from
- * `src/utils/teamContext.ts`; this fallback remains for `clone`, whose source raid may
- * predate the migration.
- * TODO (RPTIER Phase 4): replace the remaining clone call site with `resolveTeam()`.
+ * `raid create`, `raid list` and `raid clone` resolve their team via `resolveTeam()` from
+ * `src/utils/teamContext.ts`. This fallback remains only for `clone` without an explicit
+ * `team` option, where the source raid may predate the migration and carry no `teamId`.
  * @param guildId Discord guild ID
  * @returns The default team's ID
  */
@@ -190,9 +190,11 @@ const command: Command = {
       )
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('list')
-        .setDescription('List all upcoming raids')
+      addTeamOption(
+        subcommand
+          .setName('list')
+          .setDescription('List all upcoming raids')
+      )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -307,34 +309,36 @@ const command: Command = {
       )
      )
      .addSubcommand((subcommand) =>
-       subcommand
-         .setName('clone')
-         .setDescription('Clone an existing raid to create a new one')
-         .addStringOption((option) =>
-           option
-             .setName('raid_id')
-             .setDescription('The ID of the raid to clone')
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('date')
-             .setDescription('New raid date (YYYY-MM-DD)')
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('time')
-             .setDescription('New raid time (HH:MM in 24h format)')
-             .setRequired(false)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('title')
-             .setDescription('New raid title (optional, defaults to original)')
-             .setRequired(false)
-         )
+       addTeamOption(
+         subcommand
+           .setName('clone')
+           .setDescription('Clone an existing raid to create a new one')
+           .addStringOption((option) =>
+             option
+               .setName('raid_id')
+               .setDescription('The ID of the raid to clone')
+               .setRequired(true)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('date')
+               .setDescription('New raid date (YYYY-MM-DD)')
+               .setRequired(true)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('time')
+               .setDescription('New raid time (HH:MM in 24h format)')
+               .setRequired(false)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('title')
+               .setDescription('New raid title (optional, defaults to original)')
+               .setRequired(false)
+           )
        )
+      )
       .addSubcommand((subcommand) =>
         subcommand
           .setName('archive')
@@ -917,10 +921,25 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
+  const listGuildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+    select: { language: true },
+  });
+
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError === 'not_found') {
+    await interaction.editReply({
+      content: t(listGuildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
   const now = new Date();
   const raids = await prisma.raid.findMany({
     where: {
       guildId: interaction.guild.id,
+      teamId: team.id,
       raidDate: {
         gte: now,
       },
@@ -933,15 +952,21 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     },
   });
 
+  // Only disambiguate by team once the guild actually has more than one — single-team
+  // guilds keep the exact wording they had before multi-team support.
+  const isMultiTeam = (await countTeams(interaction.guild.id)) > 1;
+
   if (raids.length === 0) {
     await interaction.editReply({
-      content: '📅 No upcoming raids found.',
+      content: isMultiTeam
+        ? `📅 No upcoming raids found for **${team.name}**.`
+        : '📅 No upcoming raids found.',
     });
     return;
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('Upcoming Raids')
+    .setTitle(isMultiTeam ? `Upcoming Raids — ${team.name}` : 'Upcoming Raids')
     .setColor(0x00ae86)
     .setDescription(
       raids
@@ -1280,6 +1305,22 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // Get guild settings for timezone
   const guildData = sourceRaid.guild;
 
+  // An explicitly named team wins over the source raid's team. Resolved up front so an
+  // unknown name fails before the expensive member scanning, while the source-team
+  // fallback stays lazy further down (it may have to create the default team).
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  let explicitTeamId: string | undefined;
+  if (teamOption?.trim()) {
+    const { team, error: teamError } = await resolveTeam(interaction.guild!.id, teamOption);
+    if (teamError === 'not_found') {
+      await interaction.editReply({
+        content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption }),
+      });
+      return;
+    }
+    explicitTeamId = team.id;
+  }
+
   // Parse and validate date
   const dateParts = dateStr.split('-');
   const year = parseInt(dateParts[0], 10);
@@ -1408,12 +1449,16 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // Determine description
   const description = customTitle || sourceRaid.description || 'Cloned Raid';
 
+  // Without an explicit option the clone stays in the source raid's team; the default-team
+  // fallback covers source raids that predate the multi-team migration.
+  const targetTeamId =
+    explicitTeamId || sourceRaid.teamId || (await resolveDefaultTeamId(interaction.guild!.id));
+
   // Create cloned raid
   const newRaid = await prisma.raid.create({
     data: {
       guildId: interaction.guild!.id,
-      // Clones stay in the source raid's team
-      teamId: sourceRaid.teamId || (await resolveDefaultTeamId(interaction.guild!.id)),
+      teamId: targetTeamId,
       channelId: interaction.channel.id,
       raidDate,
       description,
@@ -1430,7 +1475,8 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: newRaid.id,
-      teamId: newRaid.teamId,
+      // Denormalised from the resolved team rather than the create result so it is never undefined.
+      teamId: targetTeamId,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',

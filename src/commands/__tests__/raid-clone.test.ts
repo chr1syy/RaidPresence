@@ -53,6 +53,7 @@ function makeSourceRaid(overrides: Record<string, any> = {}) {
   return {
     id: 'source-raid-1',
     guildId: 'guild-123',
+    teamId: 'team-source',
     channelId: 'channel-123',
     raidDate: new Date('2026-03-01T18:00:00Z'),
     description: 'Mythic Raid Night',
@@ -520,6 +521,72 @@ describe('handleCloneRaid()', () => {
       const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
       const storedDate: Date = createCall.data.raidDate;
       expect(storedDate.getTime()).toBe(expected.getTime());
+    });
+  });
+
+  describe('Team context', () => {
+    it('should keep the clone in the source raid team when no team option is given', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-source' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-source')).toBe(true);
+    });
+
+    it('should fall back to the default team for a pre-migration source raid', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: null }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-default',
+        guildId: 'guild-123',
+        name: 'Main',
+        isDefault: true,
+        createdBy: 'system',
+      });
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-default' }) })
+      );
+    });
+
+    it('should let an explicit team option win over the source raid team', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-alts',
+        guildId: 'guild-123',
+        name: 'Alts',
+        isDefault: false,
+        createdBy: 'user-leader',
+      });
+
+      const interaction = buildMockInteraction({ team: { value: 'Alts' } });
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-alts' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-alts')).toBe(true);
+    });
+
+    it('should reject an unknown team without creating a raid', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const interaction = buildMockInteraction({ team: { value: 'Ghosts' } });
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Ghosts') })
+      );
     });
   });
 

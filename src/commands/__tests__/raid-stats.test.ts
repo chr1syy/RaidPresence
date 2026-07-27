@@ -10,6 +10,7 @@ jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
 jest.mock('../../middleware/premiumGate', () => ({
   gateFeature: jest.fn().mockResolvedValue(true),
+  freeTierHint: jest.fn().mockResolvedValue(''),
 }));
 jest.mock('../../services/entitlementService', () => ({
   getTier: jest.fn().mockResolvedValue('PREMIUM'),

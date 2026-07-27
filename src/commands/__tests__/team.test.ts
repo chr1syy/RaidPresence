@@ -20,7 +20,7 @@ import {
   DuplicateTeamNameError,
 } from '../../services/teamService';
 import { canCreateAdditionalTeam, getTier } from '../../services/entitlementService';
-import { gateFeature, premiumFooterHint } from '../../middleware/premiumGate';
+import { gateFeature, freeTierHint } from '../../middleware/premiumGate';
 
 const team = (overrides: Record<string, unknown> = {}) => ({
   id: 'team-1',
@@ -42,7 +42,7 @@ describe('team command', () => {
     (canCreateAdditionalTeam as jest.Mock).mockResolvedValue(true);
     (getTier as jest.Mock).mockResolvedValue('PREMIUM');
     (gateFeature as jest.Mock).mockResolvedValue(false);
-    (premiumFooterHint as jest.Mock).mockReturnValue('-# upgrade hint');
+    (freeTierHint as jest.Mock).mockResolvedValue('');
 
     mockInteraction = {
       guild: { id: 'guild-123', name: 'Test Guild' },
@@ -190,20 +190,21 @@ describe('team command', () => {
       expect(description).toBe('No teams yet.');
     });
 
-    it('should append the premium hint for free guilds with a single team', async () => {
+    it('should append the premium hint for free guilds', async () => {
       (listTeams as jest.Mock).mockResolvedValue([team({ isDefault: true, name: 'Main' })]);
-      (getTier as jest.Mock).mockResolvedValue('FREE');
+      (freeTierHint as jest.Mock).mockResolvedValue('\n-# upgrade hint');
 
       await command.execute(mockInteraction);
 
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: '-# upgrade hint' })
+        expect.objectContaining({ content: '\n-# upgrade hint' })
       );
     });
 
     it('should not append the premium hint for premium guilds', async () => {
       (listTeams as jest.Mock).mockResolvedValue([team({ isDefault: true, name: 'Main' })]);
-      (getTier as jest.Mock).mockResolvedValue('PREMIUM');
+      (freeTierHint as jest.Mock).mockResolvedValue('');
 
       await command.execute(mockInteraction);
 

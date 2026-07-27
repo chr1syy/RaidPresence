@@ -9,8 +9,8 @@ import prisma from '../database/client';
 import { Command } from '../types';
 import { VERSION } from '../utils/version';
 import { t } from '../utils/localization';
-import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
-import { canCreateAdditionalTeam, getTier } from '../services/entitlementService';
+import { gateFeature, freeTierHint } from '../middleware/premiumGate';
+import { canCreateAdditionalTeam } from '../services/entitlementService';
 import {
   countTeams,
   createTeam,
@@ -158,11 +158,10 @@ async function handleListTeams(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `RaidPresence • v${VERSION}` })
     .setTimestamp();
 
-  // Free guilds sitting at their single default team get a low-key upgrade nudge.
-  const tier = await getTier(guildId);
-  const content = teams.length <= 1 && tier === 'FREE' ? premiumFooterHint(lang) : undefined;
+  // Free guilds get the shared low-key upgrade nudge; premium replies stay unchanged.
+  const hint = await freeTierHint(interaction.guildId, lang);
 
-  await interaction.editReply({ embeds: [embed], ...(content ? { content } : {}) });
+  await interaction.editReply({ embeds: [embed], ...(hint ? { content: hint } : {}) });
 }
 
 async function handleDeleteTeam(interaction: ChatInputCommandInteraction) {

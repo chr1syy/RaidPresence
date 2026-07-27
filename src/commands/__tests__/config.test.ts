@@ -5,9 +5,13 @@
  */
 
 jest.mock('../../database/client');
+jest.mock('../../middleware/premiumGate', () => ({
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 
 import prisma from '../../database/client';
 import command from '../config';
+import { freeTierHint } from '../../middleware/premiumGate';
 
 describe('config command', () => {
   let mockInteraction: any;
@@ -15,8 +19,11 @@ describe('config command', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    (freeTierHint as jest.Mock).mockResolvedValue('');
+
     mockInteraction = {
       guild: { id: 'guild-123', name: 'Test Guild' },
+      guildId: 'guild-123',
       isChatInputCommand: jest.fn().mockReturnValue(true),
       deferReply: jest.fn().mockResolvedValue(undefined),
       editReply: jest.fn().mockResolvedValue(undefined),
@@ -84,6 +91,34 @@ describe('config command', () => {
           ]),
         })
       );
+    });
+
+    it('should append the free-tier upsell hint as content', async () => {
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+        id: 'guild-123',
+        raidLeaderRoles: 'Officer',
+        language: 'de',
+        timezoneOffset: 1,
+      });
+      (freeTierHint as jest.Mock).mockResolvedValue('\n-# upgrade hint');
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'de');
+      expect(mockInteraction.editReply.mock.calls[0][0].content).toBe('\n-# upgrade hint');
+    });
+
+    it('should leave content undefined for premium guilds', async () => {
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+        id: 'guild-123',
+        raidLeaderRoles: 'Officer',
+        language: 'en',
+        timezoneOffset: 1,
+      });
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply.mock.calls[0][0].content).toBeUndefined();
     });
 
     it('should show defaults when roles not configured', async () => {

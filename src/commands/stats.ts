@@ -14,7 +14,7 @@ import { calculatePlayerStats, getPlayerRoleDistribution, getPlayerAttendanceHis
 import { formatAttendanceEmbed } from '../utils/attendanceFormatter';
 import { analyzeRaidComposition, findCompositionGaps, suggestPlayerSwaps, calculateSuccessLikelihood } from '../utils/compositionAnalyzer';
 import { formatCompositionEmbed } from '../utils/compositionFormatter';
-import { gateFeature } from '../middleware/premiumGate';
+import { gateFeature, freeTierHint } from '../middleware/premiumGate';
 import { getTier, hasFeature } from '../services/entitlementService';
 import { t } from '../utils/localization';
 import { VERSION } from '../utils/version';
@@ -228,7 +228,8 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
 
   await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
-  await interaction.editReply({ embeds: [embed] });
+  const hint = await freeTierHint(interaction.guildId, guildData.language || 'en');
+  await interaction.editReply({ embeds: [embed], content: hint || undefined });
 }
 
 function getStartDate(period: string): Date {
@@ -295,7 +296,8 @@ async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
 
   await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
-  await interaction.editReply({ embeds: [embed] });
+  const hint = await freeTierHint(interaction.guildId, guildData?.language || 'en');
+  await interaction.editReply({ embeds: [embed], content: hint || undefined });
 }
 
 async function handleAttendanceCommand(interaction: ChatInputCommandInteraction) {
@@ -357,7 +359,8 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
     embed.setFooter({ text: `${upsell} | v${VERSION}` });
   }
 
-  await interaction.editReply({ embeds: [embed] });
+  const hint = await freeTierHint(interaction.guildId, lang);
+  await interaction.editReply({ embeds: [embed], content: hint || undefined });
 }
 
 async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {

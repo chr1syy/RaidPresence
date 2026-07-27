@@ -8,6 +8,7 @@ jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
 jest.mock('../../middleware/premiumGate', () => ({
   gateFeature: jest.fn().mockResolvedValue(true),
+  freeTierHint: jest.fn().mockResolvedValue(''),
   premiumFooterHint: jest.fn().mockReturnValue(''),
 }));
 jest.mock('../../services/entitlementService', () => ({
@@ -21,6 +22,7 @@ jest.mock('../../services/entitlementService', () => ({
 
 import prisma from '../../database/client';
 import command from '../stats';
+import { freeTierHint } from '../../middleware/premiumGate';
 
 const DEFAULT_TEAM = {
   id: 'team-default',
@@ -45,6 +47,7 @@ function buildMockInteraction(
   return {
     isChatInputCommand: jest.fn().mockReturnValue(true),
     guild: { id: 'guild-123', name: 'Test Guild' },
+    guildId: 'guild-123',
     channel: { id: 'channel-123' },
     member: { user: { bot: false, id: 'user-leader' }, roles: { cache: new Map() } },
     user: { id: 'user-leader' },
@@ -68,6 +71,7 @@ function withMultipleTeams(team = NAMED_TEAM) {
 describe('/stats team awareness', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (freeTierHint as jest.Mock).mockResolvedValue('');
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'en',
@@ -198,6 +202,35 @@ describe('/stats team awareness', () => {
 
       expect(interaction.editReply.mock.calls[0][0].content).toContain('Ghost');
       expect(prisma.raidAttendance.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── free-tier upsell hint (RPTIER Phase 5) ──────────────────
+
+  describe('free-tier footer hint', () => {
+    const player = { value: 'user-9', user: { id: 'user-9', username: 'Raider', displayName: 'Raider' } };
+
+    const cases: Array<[string, Record<string, any>]> = [
+      ['guild', {}],
+      ['status', {}],
+      ['attendance', { player }],
+    ];
+
+    it.each(cases)('appends the hint as content on %s', async (subcommand, options) => {
+      (freeTierHint as jest.Mock).mockResolvedValue('\n-# upgrade hint');
+
+      const interaction = buildMockInteraction(subcommand, options);
+      await command.execute(interaction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      expect(interaction.editReply.mock.calls[0][0].content).toBe('\n-# upgrade hint');
+    });
+
+    it.each(cases)('leaves content undefined for premium guilds on %s', async (subcommand, options) => {
+      const interaction = buildMockInteraction(subcommand, options);
+      await command.execute(interaction);
+
+      expect(interaction.editReply.mock.calls[0][0].content).toBeUndefined();
     });
   });
 

@@ -306,12 +306,14 @@ export async function getPlayerRoleDistribution(
  * @param userId - Discord user ID
  * @param guildId - Guild ID
  * @param periodDays - Number of days to analyze (default 90)
+ * @param teamId - Optional team scope; omitted means guild-wide (pre-multi-team behaviour)
  * @returns TrendAnalysis with weekly data points and direction
  */
 export async function getTrendData(
   userId: string,
   guildId: string,
   periodDays: number = 90,
+  teamId?: string,
 ): Promise<TrendAnalysis> {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - periodDays);
@@ -320,6 +322,7 @@ export async function getTrendData(
     where: {
       userId,
       guildId,
+      ...(teamId ? { teamId } : {}),
       raid: { raidDate: { gte: cutoff } },
     },
     include: {

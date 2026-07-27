@@ -769,3 +769,83 @@ describe('analyzeTrendFromRecords() - additional edge cases', () => {
     expect(trend.confidence).toBeLessThanOrEqual(25);
   });
 });
+
+// --- Optional team filter (multi-team support) ---
+
+describe('optional teamId filter', () => {
+  function lastWhere() {
+    const calls = (mockedPrisma.raidAttendance.findMany as jest.Mock).mock.calls;
+    return calls[calls.length - 1][0].where;
+  }
+
+  beforeEach(() => {
+    (mockedPrisma.raidAttendance.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  describe('getPlayerAttendanceHistory()', () => {
+    it('should scope the query to the team when teamId is given', async () => {
+      await getPlayerAttendanceHistory('user-1', 'guild-1', 'month', 'team-1');
+
+      expect(lastWhere().teamId).toBe('team-1');
+    });
+
+    it('should not add a teamId filter when omitted', async () => {
+      await getPlayerAttendanceHistory('user-1', 'guild-1', 'month');
+
+      expect(lastWhere()).not.toHaveProperty('teamId');
+    });
+  });
+
+  describe('calculatePlayerStats()', () => {
+    it('should scope the query to the team when teamId is given', async () => {
+      await calculatePlayerStats('user-1', 'guild-1', 'month', 'team-1');
+
+      expect(lastWhere().teamId).toBe('team-1');
+    });
+
+    it('should not add a teamId filter when omitted', async () => {
+      await calculatePlayerStats('user-1', 'guild-1', 'month');
+
+      expect(lastWhere()).not.toHaveProperty('teamId');
+    });
+  });
+
+  describe('getPlayerRoleDistribution()', () => {
+    it('should scope the query to the team when teamId is given', async () => {
+      await getPlayerRoleDistribution('user-1', 'guild-1', 'team-1');
+
+      expect(lastWhere().teamId).toBe('team-1');
+    });
+
+    it('should not add a teamId filter when omitted', async () => {
+      await getPlayerRoleDistribution('user-1', 'guild-1');
+
+      expect(lastWhere()).not.toHaveProperty('teamId');
+    });
+  });
+
+  describe('getTrendData()', () => {
+    it('should scope the query to the team when teamId is given', async () => {
+      await getTrendData('user-1', 'guild-1', 30, 'team-1');
+
+      const where = lastWhere();
+      expect(where.teamId).toBe('team-1');
+      // Team scope must not replace the existing guild/date scoping
+      expect(where.guildId).toBe('guild-1');
+      expect(where.raid.raidDate.gte).toBeDefined();
+    });
+
+    it('should not add a teamId filter when omitted', async () => {
+      await getTrendData('user-1', 'guild-1', 30);
+
+      expect(lastWhere()).not.toHaveProperty('teamId');
+    });
+
+    it('should keep the default period when teamId is passed without periodDays', async () => {
+      const trend = await getTrendData('user-1', 'guild-1', undefined, 'team-1');
+      // Default 90 days = 13 weekly buckets
+      expect(trend.dataPoints.length).toBe(13);
+      expect(lastWhere().teamId).toBe('team-1');
+    });
+  });
+});

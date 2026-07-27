@@ -203,6 +203,44 @@ describe('handleRemindRaid()', () => {
     });
   });
 
+  describe('Team context', () => {
+    it('should add a team field and suffix on multi-team guilds', async () => {
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(makeRaid({ teamId: 'team-alts' }));
+      (prisma.team.count as jest.Mock).mockResolvedValue(2);
+      (prisma.team.findUnique as jest.Mock).mockResolvedValue({ id: 'team-alts', name: 'Alts' });
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      const channel = await interaction.client.channels.fetch('channel-123');
+      const embed = channel.send.mock.calls[0][0].embeds[0];
+
+      const teamField = embed.data.fields?.find((f: any) => f.name.includes('Team'));
+      expect(teamField).toBeDefined();
+      expect(teamField.value).toBe('Alts');
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('(Team: **Alts**)') })
+      );
+    });
+
+    it('should omit the team field on single-team guilds', async () => {
+      (prisma.raid.findUnique as jest.Mock).mockResolvedValueOnce(makeRaid({ teamId: 'team-default' }));
+      (prisma.team.count as jest.Mock).mockResolvedValue(1);
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      const channel = await interaction.client.channels.fetch('channel-123');
+      const embed = channel.send.mock.calls[0][0].embeds[0];
+
+      expect(embed.data.fields?.find((f: any) => f.name.includes('Team'))).toBeUndefined();
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: '✅ Reminder sent for **Sunday Raid Night**.' })
+      );
+    });
+  });
+
   describe('Custom message functionality', () => {
     it('should include custom message in embed when message option is provided', async () => {
       const raid = makeRaid();

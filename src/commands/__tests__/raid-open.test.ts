@@ -19,6 +19,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
     channelId: 'channel-123',
     description: 'Weekly Raid',
     status: 'closed',
+    teamId: 'team-default',
     messageId: 'msg-123',
     raidDate: new Date(),
     guild: { language: 'en', raidRoles: ['role-123'] },
@@ -150,6 +151,31 @@ describe('handleOpenRaid()', () => {
 
     expect(mockInteraction.editReply).toHaveBeenCalledWith(
       expect.objectContaining({ content: expect.stringContaining('opened') })
+    );
+  });
+
+  it('should name the raid team on multi-team guilds', async () => {
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue(makeRaid({ teamId: 'team-alts' }));
+    (prisma.raid.update as jest.Mock).mockResolvedValue({});
+    (prisma.team.count as jest.Mock).mockResolvedValue(2);
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({ id: 'team-alts', name: 'Alts' });
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: '✅ Raid has been opened. (Team: **Alts**)' })
+    );
+  });
+
+  it('should keep the original wording on single-team guilds', async () => {
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue(makeRaid());
+    (prisma.raid.update as jest.Mock).mockResolvedValue({});
+    (prisma.team.count as jest.Mock).mockResolvedValue(1);
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: '✅ Raid has been opened.' })
     );
   });
 

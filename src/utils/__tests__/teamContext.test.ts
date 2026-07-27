@@ -1,13 +1,22 @@
 jest.mock('../../services/teamService', () => ({
+  countTeams: jest.fn(),
   getDefaultTeam: jest.fn(),
+  getTeamById: jest.fn(),
   getTeamByName: jest.fn(),
   listTeams: jest.fn(),
 }));
 
 import { SlashCommandSubcommandBuilder } from 'discord.js';
-import { getDefaultTeam, getTeamByName, listTeams } from '../../services/teamService';
+import {
+  countTeams,
+  getDefaultTeam,
+  getTeamById,
+  getTeamByName,
+  listTeams,
+} from '../../services/teamService';
 import {
   addTeamOption,
+  getTeamLabel,
   resolveTeam,
   teamAutocomplete,
   TEAM_OPTION_NAME,
@@ -146,5 +155,33 @@ describe('teamAutocomplete', () => {
 
     expect(interaction.respond).toHaveBeenCalledWith([]);
     expect(listTeams).not.toHaveBeenCalled();
+  });
+});
+
+describe('getTeamLabel()', () => {
+  it('returns null for single-team guilds without looking the team up', async () => {
+    (countTeams as jest.Mock).mockResolvedValue(1);
+
+    await expect(getTeamLabel('guild1', 'team-1')).resolves.toBeNull();
+    expect(getTeamById).not.toHaveBeenCalled();
+  });
+
+  it('returns the team name once the guild has more than one team', async () => {
+    (countTeams as jest.Mock).mockResolvedValue(2);
+    (getTeamById as jest.Mock).mockResolvedValue(team({ id: 'team-2', name: 'Alts', isDefault: false }));
+
+    await expect(getTeamLabel('guild1', 'team-2')).resolves.toBe('Alts');
+  });
+
+  it('returns null for a missing teamId without querying', async () => {
+    await expect(getTeamLabel('guild1', null)).resolves.toBeNull();
+    expect(countTeams).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the team row is gone', async () => {
+    (countTeams as jest.Mock).mockResolvedValue(3);
+    (getTeamById as jest.Mock).mockResolvedValue(null);
+
+    await expect(getTeamLabel('guild1', 'team-deleted')).resolves.toBeNull();
   });
 });

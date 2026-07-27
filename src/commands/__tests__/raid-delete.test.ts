@@ -137,6 +137,48 @@ describe('handleDeleteRaid()', () => {
     );
   });
 
+  it('should name the raid team on multi-team guilds', async () => {
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue({
+      id: 'raid-123',
+      guildId: 'guild-123',
+      teamId: 'team-alts',
+      description: 'Weekly Raid',
+      messageId: null,
+      channelId: null,
+      guild: { language: 'en' },
+    });
+    (prisma.raid.delete as jest.Mock).mockResolvedValue({});
+    (prisma.team.count as jest.Mock).mockResolvedValue(2);
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({ id: 'team-alts', name: 'Alts' });
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('Team: **Alts**') })
+    );
+  });
+
+  it('should not mention a team on single-team guilds', async () => {
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue({
+      id: 'raid-123',
+      guildId: 'guild-123',
+      teamId: 'team-default',
+      description: 'Weekly Raid',
+      messageId: null,
+      channelId: null,
+      guild: { language: 'en' },
+    });
+    (prisma.raid.delete as jest.Mock).mockResolvedValue({});
+    (prisma.team.count as jest.Mock).mockResolvedValue(1);
+
+    await command.execute(mockInteraction);
+
+    const { content } = (mockInteraction.editReply as jest.Mock).mock.calls[0][0];
+    expect(content).not.toContain('Team:');
+    // Single-team guilds must not even pay for the team lookup.
+    expect(prisma.team.findUnique).not.toHaveBeenCalled();
+  });
+
   it('should handle raid without messageId gracefully', async () => {
     (prisma.raid.findUnique as jest.Mock).mockResolvedValue({
       id: 'raid-123',

@@ -2,7 +2,14 @@ import {
   AutocompleteInteraction,
   SlashCommandSubcommandBuilder,
 } from 'discord.js';
-import { getDefaultTeam, getTeamByName, listTeams, type Team } from '../services/teamService';
+import {
+  countTeams,
+  getDefaultTeam,
+  getTeamById,
+  getTeamByName,
+  listTeams,
+  type Team,
+} from '../services/teamService';
 
 /** Discord hard limit on autocomplete choices per response. */
 const MAX_AUTOCOMPLETE_CHOICES = 25;
@@ -42,6 +49,24 @@ export async function resolveTeam(
   if (!team) return { team: null, error: 'not_found' };
 
   return { team };
+}
+
+/**
+ * Name of a raid's team, but only when it is worth showing.
+ *
+ * Returns `null` for single-team guilds so their command output stays byte-for-byte
+ * identical to the pre-multi-team wording, and also when the raid carries no (or a
+ * dangling) `teamId`. Callers treat `null` as "say nothing about teams".
+ */
+export async function getTeamLabel(
+  guildId: string,
+  teamId: string | null | undefined
+): Promise<string | null> {
+  if (!teamId) return null;
+  if ((await countTeams(guildId)) <= 1) return null;
+
+  const team = await getTeamById(teamId);
+  return team?.name ?? null;
 }
 
 /**

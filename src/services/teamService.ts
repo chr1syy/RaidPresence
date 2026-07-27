@@ -82,6 +82,11 @@ export async function listTeams(guildId: string): Promise<Team[]> {
   });
 }
 
+/** Lookup of a team by its ID. Returns `null` when the team no longer exists. */
+export async function getTeamById(teamId: string): Promise<Team | null> {
+  return prisma.team.findUnique({ where: { id: teamId } });
+}
+
 /** Case-insensitive lookup of a team by name within a guild. */
 export async function getTeamByName(guildId: string, name: string): Promise<Team | null> {
   return prisma.team.findFirst({

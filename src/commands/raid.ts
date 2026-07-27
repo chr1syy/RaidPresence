@@ -21,8 +21,21 @@ import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandli
 import { tryConsumeWeeklyRaid } from '../services/entitlementService';
 import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
-import { addTeamOption, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
+import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
 import { countTeams } from '../services/teamService';
+
+/**
+ * Suffix that names the raid's team in a confirmation message.
+ *
+ * The raid-ID based subcommands (`delete`, `close`, `open`, `cancel`, `remind`, `refresh`)
+ * take no `team` option — the ID already pins the team — but on multi-team guilds the
+ * leader needs to see which team they just touched. `getTeamLabel()` returns `null` for
+ * single-team guilds, so their wording is unchanged.
+ * @param label Team name from {@link getTeamLabel}, or `null`
+ */
+function teamSuffix(label: string | null): string {
+  return label ? ` (Team: **${label}**)` : '';
+}
 
 /**
  * Resolve the guild's default ("Main") team, creating it lazily for guilds that
@@ -1045,8 +1058,12 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     where: { id: raidId },
   });
 
+  const deleteTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }),
+    content:
+      t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }) +
+      teamSuffix(deleteTeamLabel),
   });
 }
 
@@ -1737,8 +1754,10 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const closeTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been closed.',
+    content: `✅ Raid has been closed.${teamSuffix(closeTeamLabel)}`,
   });
 }
 
@@ -1842,8 +1861,10 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const openTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been opened.',
+    content: `✅ Raid has been opened.${teamSuffix(openTeamLabel)}`,
   });
 }
 
@@ -1919,8 +1940,10 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const cancelTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been cancelled.',
+    content: `✅ Raid has been cancelled.${teamSuffix(cancelTeamLabel)}`,
   });
 }
 
@@ -2001,11 +2024,18 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
   const trans = getTranslations(raid.guild.language || 'en');
 
+  const remindTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   // Build fields array
   const fields: { name: string; value: string; inline: boolean }[] = [
     { name: '📅 Date & Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
     { name: '👥 Current Attendance', value: `${attendingCount} confirmed`, inline: false },
   ];
+
+  // Public reminder: on multi-team guilds spell out which team is being pinged.
+  if (remindTeamLabel) {
+    fields.push({ name: '🛡️ Team', value: remindTeamLabel, inline: false });
+  }
 
   if (customMessage) {
     // Truncate message to 1024 chars if needed (Discord embed field limit)
@@ -2047,7 +2077,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   });
 
   await interaction.editReply({
-    content: `✅ Reminder sent for **${raid.description}**.`,
+    content: `✅ Reminder sent for **${raid.description}**.${teamSuffix(remindTeamLabel)}`,
   });
 }
 
@@ -2245,13 +2275,15 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Report changes
+  const refreshTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   if (newMembers.length > 0 || membersToRemove.length > 0) {
     await interaction.editReply({
-      content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).`,
+      content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).${teamSuffix(refreshTeamLabel)}`,
     });
   } else {
     await interaction.editReply({
-      content: '✅ No roster changes needed.',
+      content: `✅ No roster changes needed.${teamSuffix(refreshTeamLabel)}`,
     });
   }
 }

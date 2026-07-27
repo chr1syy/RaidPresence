@@ -37,6 +37,23 @@ model Guild {
   raids Raid[]
   users UserPreference[]
   rolePreferences UserRolePreference[]
+  teams Team[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  isDefault Boolean  @default(false) // Exactly one default ("Main") team per guild
+  createdBy String // Discord user ID of the creator ("system" for auto-created default teams)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  raids Raid[]
+
+  @@unique([guildId, name])
+  @@index([guildId])
 }
 
 model UserPreference {
@@ -81,7 +98,11 @@ model Raid {
   archiveMessageId String?   // Message ID of archived embed
   isPinned         Boolean   @default(false) // Is raid pinned/archived?
 
+  // Team assignment (RPTIER Phase 2) — nullable until the backfill migration lands
+  teamId String?
+
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  team       Team?            @relation(fields: [teamId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
 
   @@index([guildId, status])

@@ -6,8 +6,14 @@
 // Mock dependencies before imports that use them
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
+jest.mock('../../middleware/premiumGate', () => ({
+  gateFeature: jest.fn().mockResolvedValue(true),
+  premiumFooterHint: jest.fn().mockReturnValue('-# hint'),
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 
 import prisma from '../../database/client';
+import { freeTierHint } from '../../middleware/premiumGate';
 import command from '../raid';
 
 describe('handleListRaids()', () => {
@@ -16,8 +22,11 @@ describe('handleListRaids()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    (freeTierHint as jest.Mock).mockResolvedValue('');
+
     mockInteraction = {
       guild: { id: 'guild-123', name: 'Test Guild' },
+      guildId: 'guild-123',
       channel: { id: 'channel-123' },
       member: { user: { id: 'user-123' } },
       isChatInputCommand: jest.fn().mockReturnValue(true),
@@ -189,6 +198,62 @@ describe('handleListRaids()', () => {
             }),
           ]),
         })
+      );
+    });
+  });
+
+  describe('free tier upsell hint', () => {
+    const HINT = '\n-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.';
+
+    it('should append the hint to the empty-list reply for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Upgrade to Premium') })
+      );
+    });
+
+    it('should send the hint as content alongside the raid list embed for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      (prisma.raid.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'raid-1',
+          guildId: 'guild-123',
+          teamId: 'team-default',
+          description: 'Heroic Raid',
+          raidDate: new Date(Date.now() + 86400000),
+          attendance: [],
+        },
+      ]);
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: HINT, embeds: expect.any(Array) })
+      );
+    });
+
+    it('should leave the raid list reply untouched for PREMIUM guilds', async () => {
+      // freeTierHint resolves to '' for non-FREE guilds — no `content` must be sent.
+      (prisma.raid.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'raid-1',
+          guildId: 'guild-123',
+          teamId: 'team-default',
+          description: 'Heroic Raid',
+          raidDate: new Date(Date.now() + 86400000),
+          attendance: [],
+        },
+      ]);
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: undefined })
       );
     });
   });

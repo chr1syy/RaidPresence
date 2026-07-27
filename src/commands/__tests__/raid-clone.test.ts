@@ -9,8 +9,14 @@ import { canManageRaids } from '../../utils/permissions';
 // Mock dependencies before imports that use them
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
+jest.mock('../../middleware/premiumGate', () => ({
+  gateFeature: jest.fn().mockResolvedValue(true),
+  premiumFooterHint: jest.fn().mockReturnValue('-# hint'),
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 
 import prisma from '../../database/client';
+import { freeTierHint } from '../../middleware/premiumGate';
 import command from '../raid';
 
 /**
@@ -116,6 +122,7 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
 
   const mockInteraction: any = {
     isChatInputCommand: jest.fn().mockReturnValue(true),
+    guildId: 'guild-123',
     guild: {
       id: 'guild-123',
       name: 'Test Guild',
@@ -789,6 +796,33 @@ describe('handleCloneRaid()', () => {
           },
         })
       );
+    });
+  });
+
+  describe('success confirmation and free tier hint', () => {
+    const HINT = '\n-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.';
+
+    it('should resolve the deferred reply with a confirmation naming the raid', async () => {
+      const interaction = buildMockInteraction();
+
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '✅ Raid "Mythic Raid Night" cloned successfully with 1 members!',
+        })
+      );
+    });
+
+    it('should append the upsell hint for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      const interaction = buildMockInteraction();
+
+      await command.execute(interaction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      const content = (interaction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content.endsWith(HINT)).toBe(true);
     });
   });
 });

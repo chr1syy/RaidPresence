@@ -19,7 +19,7 @@ import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManag
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
 import { tryConsumeWeeklyRaid } from '../services/entitlementService';
-import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
+import { gateFeature, premiumFooterHint, freeTierHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
 import { countTeams } from '../services/teamService';
@@ -721,9 +721,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     data: { messageId: message.id },
   });
 
-  // Send ephemeral confirmation to command user
+  // Send ephemeral confirmation to command user — FREE guilds get the premium nudge appended.
   await interaction.editReply({
-    content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`,
+    content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`
+      + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
   });
 }
 
@@ -971,11 +972,14 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
   // guilds keep the exact wording they had before multi-team support.
   const isMultiTeam = (await countTeams(interaction.guild.id)) > 1;
 
+  // FREE guilds get the premium nudge on both successful list outcomes (empty and populated).
+  const listHint = await freeTierHint(interaction.guildId, listGuildData?.language || 'en');
+
   if (raids.length === 0) {
     await interaction.editReply({
-      content: isMultiTeam
+      content: (isMultiTeam
         ? `📅 No upcoming raids found for **${team.name}**.`
-        : '📅 No upcoming raids found.',
+        : '📅 No upcoming raids found.') + listHint,
     });
     return;
   }
@@ -996,7 +1000,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed], content: listHint || undefined });
 }
 
 async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
@@ -1548,6 +1552,12 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   await prisma.raid.update({
     where: { id: newRaid.id },
     data: { messageId: message.id },
+  });
+
+  // Resolve the deferred ephemeral reply with a confirmation — FREE guilds get the premium nudge appended.
+  await interaction.editReply({
+    content: `✅ Raid "${description}" cloned successfully with ${eligibleMembers.size} members!`
+      + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
   });
   return;
 }

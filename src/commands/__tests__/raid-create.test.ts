@@ -9,11 +9,16 @@ import { canManageRaids } from '../../utils/permissions';
 // Mock dependencies before imports that use them
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
-jest.mock('../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockResolvedValue(true) }));
+jest.mock('../../middleware/premiumGate', () => ({
+  gateFeature: jest.fn().mockResolvedValue(true),
+  premiumFooterHint: jest.fn().mockReturnValue('-# hint'),
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 jest.mock('../../services/entitlementService', () => ({ getTier: jest.fn().mockResolvedValue('PREMIUM'), hasFeature: jest.fn().mockReturnValue(true), tryConsumeWeeklyRaid: jest.fn().mockResolvedValue({ allowed: true, remaining: 4 }), skuToTier: jest.fn(), FEATURE_TIERS: {} }));
 
 import prisma from '../../database/client';
 import { tryConsumeWeeklyRaid } from '../../services/entitlementService';
+import { freeTierHint } from '../../middleware/premiumGate';
 import command from '../raid';
 
 /**
@@ -58,6 +63,7 @@ describe('handleCreateRaid()', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (freeTierHint as jest.Mock).mockResolvedValue('');
 
     const rolesCache = new MockCollection<string, any>();
     rolesCache.set('role-raider', { id: 'role-raider', name: 'role-raider' });
@@ -123,6 +129,7 @@ describe('handleCreateRaid()', () => {
 
     mockInteraction = {
       guild: mockGuild,
+      guildId: 'guild-123',
       channel: mockChannel,
       member: mockMember,
       user: { id: 'user-123' },
@@ -528,6 +535,52 @@ describe('handleCreateRaid()', () => {
         expect.objectContaining({ content: expect.stringContaining('Ghosts') })
       );
       expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('free tier upsell hint', () => {
+    beforeEach(() => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-default',
+        guildId: 'guild-123',
+        name: 'Main',
+        isDefault: true,
+        createdBy: 'system',
+      });
+    });
+
+    const HINT = '\n-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.';
+
+    it('should append the hint to the success confirmation for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('created successfully'),
+        })
+      );
+      const content = (mockInteraction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content.endsWith(HINT)).toBe(true);
+    });
+
+    it('should leave the success confirmation untouched for PREMIUM guilds', async () => {
+      await command.execute(mockInteraction);
+
+      const content = (mockInteraction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content).toBe('✅ Raid "Weekly Raid" created successfully with 5 members!');
+    });
+
+    it('should not append the hint to the weekly limit reply (it already carries one)', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      (tryConsumeWeeklyRaid as jest.Mock).mockResolvedValue({ allowed: false, max: 5, resetAt: null });
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).not.toHaveBeenCalled();
       expect(prisma.raid.create).not.toHaveBeenCalled();
     });
   });

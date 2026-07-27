@@ -130,8 +130,27 @@ describe('premiumUpsellEmbed()', () => {
     expect(embed.fields).toEqual([
       { name: 'Your Plan', value: 'Free', inline: true },
       { name: 'Required Plan', value: 'Premium', inline: true },
+      { name: '💎 Premium', value: expect.stringContaining('Multiple teams'), inline: false },
     ]);
     expect(embed.footer?.text).toContain('RaidPresence');
+  });
+
+  it('lists the premium perks with multi-team first', () => {
+    const embed = premiumUpsellEmbed('raid.archive', 'FREE', 'PREMIUM', 'en').toJSON();
+    const perks = embed.fields?.find((f: any) => !f.inline)?.value ?? '';
+    const lines = perks.split('\n');
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toContain('Multiple teams');
+    expect(perks).toContain('Unlimited raids');
+    expect(perks).toContain('archives');
+    expect(perks).toContain('analytics');
+  });
+
+  it('localizes the perks field to German', () => {
+    const embed = premiumUpsellEmbed('raid.archive', 'FREE', 'PREMIUM', 'de').toJSON();
+    const perksField = embed.fields?.find((f: any) => !f.inline);
+    expect(perksField?.name).toBe('💎 Premium');
+    expect(perksField?.value).toContain('Mehrere Teams');
   });
 
   it('localizes to German', () => {

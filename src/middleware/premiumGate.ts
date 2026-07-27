@@ -58,6 +58,8 @@ export function premiumUpsellEmbed(
     .addFields(
       { name: t(language, 'premiumUpsellCurrentPlan'), value: tierName(currentTier, language), inline: true },
       { name: t(language, 'premiumUpsellRequiredPlan'), value: requiredTierName, inline: true },
+      // Perks list so every upsell sells multi-team, regardless of which feature triggered it.
+      { name: `💎 ${requiredTierName}`, value: t(language, 'premiumUpsellPerks'), inline: false },
     )
     .setFooter({ text: `RaidPresence • v${VERSION}` });
 }

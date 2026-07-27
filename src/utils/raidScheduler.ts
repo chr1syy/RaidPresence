@@ -2,6 +2,18 @@ import { Client } from 'discord.js';
 import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
+import { getTeamLabel } from './teamContext';
+
+/**
+ * Formats a raid's team for the scheduler's log output.
+ *
+ * `getTeamLabel` already returns `null` for single-team guilds, so their log lines stay
+ * byte-for-byte identical to the pre-multi-team wording. Plain text, no markdown — these
+ * end up in the operator console, not in a Discord message.
+ */
+function teamSuffix(label: string | null): string {
+  return label ? ` (Team: ${label})` : '';
+}
 
 /**
  * Starts a background scheduler that automatically closes expired raids.
@@ -38,7 +50,10 @@ export function startRaidScheduler(client: Client) {
 export async function checkAndCloseExpiredRaids(client: Client) {
   const now = new Date();
 
-  // Find all open raids that have expired
+  // Find all open raids that have expired.
+  // Deliberately NOT scoped by team: auto-close and auto-archive are background maintenance
+  // and must cover every team of every guild. Adding a `teamId` filter here would silently
+  // leave the raids of all non-default teams open forever.
   const expiredRaids = await withRetry(() =>
     prisma.raid.findMany({
       where: {
@@ -67,6 +82,10 @@ export async function checkAndCloseExpiredRaids(client: Client) {
          }),
        );
 
+       // Name the team in the log lines below, but only when the guild actually has more
+       // than one — resolved once per raid so a multi-team guild pays a single lookup.
+       const teamLabel = teamSuffix(await getTeamLabel(raid.guildId, raid.teamId));
+
          // Check if auto-archive is enabled for this guild
          const shouldAutoArchive = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);
          let archivedSuccessfully = false;
@@ -76,7 +95,7 @@ export async function checkAndCloseExpiredRaids(client: Client) {
           try {
             await archiveRaid(raid.id, raid.guildId, client);
             archivedSuccessfully = true;
-            console.log(`✅ Auto-archived raid: ${raid.description} (${raid.id})`);
+            console.log(`✅ Auto-archived raid: ${raid.description} (${raid.id})${teamLabel}`);
           } catch (archiveError) {
             console.error(`⚠️ Failed to auto-archive raid ${raid.id}:`, archiveError);
             // Continue with regular closure even if archiving fails
@@ -97,16 +116,16 @@ export async function checkAndCloseExpiredRaids(client: Client) {
                components: [],
              });
 
-              console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})`);
+              console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})${teamLabel}`);
             }
           } catch (error) {
             console.error(`Error updating message for raid ${raid.id}:`, error);
           }
         } else if (archivedSuccessfully) {
-          console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})`);
+          console.log(`✅ Auto-closed and archived raid: ${raid.description} (${raid.id})${teamLabel}`);
         } else if (raid.messageId && raid.channelId) {
           // This case handles when shouldAutoArchive was false but we didn't have message to update
-          console.log(`✅ Auto-closed raid (no message update needed): ${raid.description} (${raid.id})`);
+          console.log(`✅ Auto-closed raid (no message update needed): ${raid.description} (${raid.id})${teamLabel}`);
         }
      } catch (error) {
        console.error(`Error closing raid ${raid.id}:`, error);

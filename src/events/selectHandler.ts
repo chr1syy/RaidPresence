@@ -128,6 +128,8 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
     data: {
       wowClass: selectedClass,
       wowSpec: selectedSpec,
+      // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
+      ...(raid?.teamId ? { teamId: raid.teamId } : {}),
     },
   });
 

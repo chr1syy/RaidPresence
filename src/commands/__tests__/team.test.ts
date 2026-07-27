@@ -6,7 +6,13 @@
 
 jest.mock('../../database/client');
 jest.mock('../../services/teamService');
-jest.mock('../../services/entitlementService');
+// Only the tier lookups are mocked; `hasFeature`/`FEATURE_TIERS` stay real so the
+// upsell test below can drive the genuine gateFeature through the FREE code path.
+jest.mock('../../services/entitlementService', () => ({
+  ...jest.requireActual('../../services/entitlementService'),
+  getTier: jest.fn(),
+  canCreateAdditionalTeam: jest.fn(),
+}));
 jest.mock('../../middleware/premiumGate');
 
 import prisma from '../../database/client';
@@ -120,6 +126,37 @@ describe('team command', () => {
       expect(gateFeature).toHaveBeenCalledWith(mockInteraction, 'team.multi', 'en');
       expect(createTeam).not.toHaveBeenCalled();
       expect(mockInteraction.deferReply).not.toHaveBeenCalled();
+    });
+
+    it('should send an ephemeral upsell embed when a free guild hits the team gate', async () => {
+      // Drive the real gate so the FREE path is asserted end-to-end (embed + ephemeral),
+      // not just "gateFeature was called".
+      const { gateFeature: realGateFeature } = jest.requireActual('../../middleware/premiumGate');
+      (gateFeature as jest.Mock).mockImplementation(realGateFeature);
+      (canCreateAdditionalTeam as jest.Mock).mockResolvedValue(false);
+      (getTier as jest.Mock).mockResolvedValue('FREE');
+
+      await command.execute(mockInteraction);
+
+      expect(createTeam).not.toHaveBeenCalled();
+      const reply = mockInteraction.reply.mock.calls[0][0];
+      expect(reply.ephemeral).toBe(true);
+      expect(reply.embeds[0].data.title).toContain('Multiple Teams');
+      expect(reply.embeds[0].data.fields.map((f: any) => f.value)).toContain('Premium');
+    });
+
+    it('should create a second team on the premium tier', async () => {
+      (getTier as jest.Mock).mockResolvedValue('PREMIUM');
+      (canCreateAdditionalTeam as jest.Mock).mockResolvedValue(true);
+      (countTeams as jest.Mock).mockResolvedValue(3);
+
+      await command.execute(mockInteraction);
+
+      expect(gateFeature).not.toHaveBeenCalled();
+      expect(createTeam).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1');
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('**Alpha**') })
+      );
     });
 
     it('should create the team when allowed and confirm ephemerally', async () => {

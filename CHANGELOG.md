@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multi-Team support (Premium) — servers can run several raid teams side by side via `/team create|list|delete`; raids, rosters, and statistics are scoped per team
+- Optional `team:<name>` option with autocomplete on `/raid create|list|clone|search` and `/stats guild|status|attendance`, defaulting to the server's default team
+- Every guild gets a default team ("Main") on onboarding; existing guilds, raids, and attendance records are backfilled by migration
+- `team.multi` feature key with upsell embed — free servers keep exactly one team, Premium is unlimited
+
+### Changed
+- PRO tier removed (two-tier model) — only `FREE` and `PREMIUM` remain; existing PRO guilds are migrated to PREMIUM, and all former PRO-only features are now PREMIUM
+- Free-tier upsell hints unified into a shared footer hint across `/raid`, `/stats`, `/config`, and `/team`
+- Welcome embed and trial callout mention Multi-Team as a Premium feature
+- Weekly free-tier raid limit stays server-wide — additional teams do not grant additional raid slots
+
 ---
 
 ## [0.4.0] - 2026-05-18

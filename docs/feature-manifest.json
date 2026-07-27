@@ -1,6 +1,6 @@
 {
   "version": "0.4.0",
-  "updated_at": "2026-05-18",
+  "updated_at": "2026-07-27",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": ["en", "de"],
@@ -35,6 +35,20 @@
       "docs_url": "docs/commands/RAID-COMMAND.md",
       "commands": ["create", "edit", "clone", "close", "cancel", "delete"],
       "since": "0.0.1"
+    },
+    {
+      "id": "multi-team",
+      "name": "Multiple Raid Teams",
+      "category": "commands",
+      "status": "live",
+      "premium_tier": "FREE",
+      "premium_note": "Free tier limited to 1 team; PREMIUM unlimited",
+      "summary": "Split a server into several raid teams — each raid, roster, and statistic is scoped to its team, so a guild can run mains and alts side by side.",
+      "landing_copy": "Mains on Tuesday, alts on Friday. Give every roster its own team — raids and stats stay neatly separated.",
+      "docs_url": "docs/commands/CONFIG-COMMAND.md",
+      "commands": ["create", "list", "delete"],
+      "command_prefix": "/team",
+      "since": "0.5.0"
     },
     {
       "id": "attendance-tracking",
@@ -184,6 +198,13 @@
       "description": "Statistics and analytics — raid, guild, status, attendance, suggest",
       "status": "live",
       "docs_url": "docs/commands/RAID-COMMAND.md"
+    },
+    {
+      "name": "/team",
+      "subcommand_count": 3,
+      "description": "Raid team management — create, list, delete",
+      "status": "live",
+      "docs_url": "docs/commands/CONFIG-COMMAND.md"
     },
     {
       "name": "/config",
@@ -436,6 +457,87 @@
         "The status dashboard only shows open raids with future dates — closed or past raids are excluded.",
         "Attendance data is based on final roster state — opt-outs that later re-join are counted as attending.",
         "Suggest works best when raids have a roles composition set (e.g., '2T 4H 14D' on creation)."
+      ]
+    },
+    {
+      "id": "team",
+      "name": "/team",
+      "path": "/docs/team",
+      "summary": "Raid team management — create, list, delete",
+      "highlights": [
+        "3 subcommands available",
+        "Every server starts with one default team",
+        "Raids, rosters, and stats are scoped per team",
+        "Additional teams require Premium"
+      ],
+      "syntax": "/team <subcommand> [options]",
+      "parameters": [
+        {
+          "name": "create",
+          "required": false,
+          "format": "name:<text>",
+          "description": "Create an additional raid team (max 50 characters) — Premium only, the free tier keeps its single default team"
+        },
+        {
+          "name": "list",
+          "required": false,
+          "format": "(no options)",
+          "description": "List all teams of this server with their raid counts and a badge on the default team"
+        },
+        {
+          "name": "delete",
+          "required": false,
+          "format": "name:<text>",
+          "description": "Delete a team and all of its raids — the default team cannot be deleted"
+        }
+      ],
+      "examples": [
+        {
+          "title": "Create an alt team",
+          "command": "/team create name:Alts",
+          "description": "Adds a second team next to the default team (requires Premium)"
+        },
+        {
+          "title": "Create a raid for a specific team",
+          "command": "/raid create team:Alts date:2026-08-07 time:20:00 title:Alt Run roles:Member",
+          "description": "Creates the raid inside the Alts team instead of the default team"
+        },
+        {
+          "title": "Team-scoped statistics",
+          "command": "/stats guild team:Alts period:month",
+          "description": "Aggregates only the raids of the Alts team for the last 30 days"
+        }
+      ],
+      "sections": [
+        {
+          "title": "Team Scoping",
+          "body": "Commands that work on more than one raid accept an optional team option and fall back to the default team when it is omitted.",
+          "bullets": [
+            "/raid create, /raid list, /raid clone, /raid search",
+            "/stats guild, /stats status, /stats attendance",
+            "Subcommands that take a raid_id need no team option — the ID already pins the team",
+            "The weekly free-tier raid limit is counted server-wide, not per team"
+          ]
+        },
+        {
+          "title": "Tier Behavior",
+          "body": "Every server gets one default team for free; more teams are a Premium feature.",
+          "bullets": [
+            "Free — exactly one team (the default 'Main' team, created automatically)",
+            "Premium — unlimited teams",
+            "Existing teams stay readable after Premium expires; only creating further teams is blocked again",
+            "Deleting a team also deletes its raids and attendance records"
+          ]
+        }
+      ],
+      "permissions": [
+        "Administrator permission required"
+      ],
+      "troubleshooting": [
+        "If /team create replies with an upgrade embed, the server is on the free tier and already has its one team.",
+        "The default team cannot be deleted — it is the fallback for every command used without a team option.",
+        "Team names are matched case-insensitively, but must be unique per server.",
+        "If a raid does not show up in /raid list, check whether it belongs to another team."
       ]
     },
     {

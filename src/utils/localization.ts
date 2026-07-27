@@ -239,6 +239,20 @@ export interface Translations {
     featureStatsFullHistory: string;
     featureStatsAnalytics: string;
     featureStatsExport: string;
+    featureTeamMulti: string;
+
+    // Teams (Phase 3 — multi-team support)
+    teamCreated: string;
+    teamDeleted: string;
+    teamAlreadyExists: string;
+    teamNotFound: string;
+    teamCannotDeleteDefault: string;
+    teamListTitle: string;
+    teamListEmpty: string;
+    teamListEntry: string;
+    teamDefaultBadge: string;
+    teamInvalidName: string;
+    teamLimitReached: string;
 }
 
 /**
@@ -492,6 +506,20 @@ const translations: Record<SupportedLanguage, Translations> = {
         featureStatsFullHistory: 'Full Attendance History',
         featureStatsAnalytics: 'Attendance Analytics',
         featureStatsExport: 'Statistics Export',
+        featureTeamMulti: 'Multiple Teams',
+
+        // Teams (Phase 3 — multi-team support)
+        teamCreated: '✅ Team **{name}** created.',
+        teamDeleted: '🗑️ Team **{name}** deleted.',
+        teamAlreadyExists: '⚠️ A team named **{name}** already exists.',
+        teamNotFound: '❌ No team named **{name}** found.',
+        teamCannotDeleteDefault: '❌ The default team cannot be deleted.',
+        teamListTitle: '👥 Teams',
+        teamListEmpty: 'No teams yet.',
+        teamListEntry: '• **{name}** — {count} raids',
+        teamDefaultBadge: 'default',
+        teamInvalidName: '❌ Please provide a valid team name (1-50 characters).',
+        teamLimitReached: 'You\'ve reached the free limit of {max} team. Upgrade to Premium for unlimited teams.',
     },
 
   de: {
@@ -733,6 +761,20 @@ const translations: Record<SupportedLanguage, Translations> = {
         featureStatsFullHistory: 'Vollständige Anwesenheitshistorie',
         featureStatsAnalytics: 'Anwesenheitsanalysen',
         featureStatsExport: 'Statistik-Export',
+        featureTeamMulti: 'Mehrere Teams',
+
+        // Teams (Phase 3 — multi-team support)
+        teamCreated: '✅ Team **{name}** erstellt.',
+        teamDeleted: '🗑️ Team **{name}** gelöscht.',
+        teamAlreadyExists: '⚠️ Ein Team mit dem Namen **{name}** existiert bereits.',
+        teamNotFound: '❌ Kein Team mit dem Namen **{name}** gefunden.',
+        teamCannotDeleteDefault: '❌ Das Standard-Team kann nicht gelöscht werden.',
+        teamListTitle: '👥 Teams',
+        teamListEmpty: 'Noch keine Teams vorhanden.',
+        teamListEntry: '• **{name}** — {count} Raids',
+        teamDefaultBadge: 'Standard',
+        teamInvalidName: '❌ Bitte gib einen gültigen Team-Namen an (1-50 Zeichen).',
+        teamLimitReached: 'Du hast das kostenlose Limit von {max} Team erreicht. Upgrade auf Premium für unbegrenzt viele Teams.',
     },
 };
 

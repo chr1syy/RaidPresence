@@ -148,6 +148,16 @@ export async function canCreateAdditionalTeam(
 }
 
 /**
+ * Total number of teams the guild's current tier allows, or `null` for unlimited.
+ *
+ * Handed to `createTeamWithinLimit()` so the limit is enforced inside the insert's
+ * transaction instead of only in the command's pre-check.
+ */
+export async function teamLimitFor(guildId: string): Promise<number | null> {
+  return hasFeature(await getTier(guildId), 'team.multi') ? null : FREE_TEAM_LIMIT;
+}
+
+/**
  * Atomically checks and consumes a weekly raid slot for a guild.
  * Free tier: 5 raids/week. Premium: unlimited.
  * Auto-resets the counter when the 7-day window expires.

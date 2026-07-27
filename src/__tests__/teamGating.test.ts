@@ -7,6 +7,7 @@ import {
   FREE_TEAM_LIMIT,
   hasFeature,
   PremiumTier,
+  teamLimitFor,
 } from '../services/entitlementService';
 import prisma from '../database/client';
 
@@ -71,6 +72,26 @@ describe('canCreateAdditionalTeam()', () => {
       premiumExpiresAt: new Date(Date.now() - 1000),
     });
     expect(await canCreateAdditionalTeam('guild1', 1)).toBe(false);
+  });
+});
+
+describe('teamLimitFor()', () => {
+  it('returns the free cap for FREE guilds so the insert can enforce it', async () => {
+    guildOnTier('FREE');
+    expect(await teamLimitFor('guild1')).toBe(FREE_TEAM_LIMIT);
+  });
+
+  it('returns null (unlimited) for PREMIUM guilds', async () => {
+    guildOnTier('PREMIUM');
+    expect(await teamLimitFor('guild1')).toBeNull();
+  });
+
+  it('falls back to the free cap once premium has expired', async () => {
+    mockPrisma.guild.findUnique.mockResolvedValue({
+      premiumTier: 'PREMIUM',
+      premiumExpiresAt: new Date(Date.now() - 1000),
+    });
+    expect(await teamLimitFor('guild1')).toBe(FREE_TEAM_LIMIT);
   });
 });
 

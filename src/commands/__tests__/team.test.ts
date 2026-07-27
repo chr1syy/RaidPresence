@@ -12,6 +12,7 @@ jest.mock('../../services/entitlementService', () => ({
   ...jest.requireActual('../../services/entitlementService'),
   getTier: jest.fn(),
   canCreateAdditionalTeam: jest.fn(),
+  teamLimitFor: jest.fn(),
 }));
 jest.mock('../../middleware/premiumGate');
 
@@ -19,13 +20,18 @@ import prisma from '../../database/client';
 import command from '../team';
 import {
   countTeams,
-  createTeam,
+  createTeamWithinLimit,
   deleteTeam,
   getTeamByName,
   listTeams,
   DuplicateTeamNameError,
+  TeamLimitReachedError,
 } from '../../services/teamService';
-import { canCreateAdditionalTeam, getTier } from '../../services/entitlementService';
+import {
+  canCreateAdditionalTeam,
+  getTier,
+  teamLimitFor,
+} from '../../services/entitlementService';
 import { gateFeature, freeTierHint } from '../../middleware/premiumGate';
 
 const team = (overrides: Record<string, unknown> = {}) => ({
@@ -46,6 +52,7 @@ describe('team command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({ language: 'en' });
     (prisma.raid.count as jest.Mock).mockResolvedValue(0);
     (canCreateAdditionalTeam as jest.Mock).mockResolvedValue(true);
+    (teamLimitFor as jest.Mock).mockResolvedValue(null);
     (getTier as jest.Mock).mockResolvedValue('PREMIUM');
     (gateFeature as jest.Mock).mockResolvedValue(false);
     (freeTierHint as jest.Mock).mockResolvedValue('');
@@ -55,9 +62,12 @@ describe('team command', () => {
       guildId: 'guild-123',
       user: { id: 'user-1' },
       isChatInputCommand: jest.fn().mockReturnValue(true),
+      deferred: false,
+      replied: false,
       deferReply: jest.fn().mockResolvedValue(undefined),
       editReply: jest.fn().mockResolvedValue(undefined),
       reply: jest.fn().mockResolvedValue(undefined),
+      followUp: jest.fn().mockResolvedValue(undefined),
       options: {
         getSubcommand: jest.fn().mockReturnValue('list'),
         getString: jest.fn(() => null),
@@ -87,7 +97,7 @@ describe('team command', () => {
       mockInteraction.options.getSubcommand.mockReturnValue('create');
       mockInteraction.options.getString.mockReturnValue('Alpha');
       (countTeams as jest.Mock).mockResolvedValue(1);
-      (createTeam as jest.Mock).mockResolvedValue(team());
+      (createTeamWithinLimit as jest.Mock).mockResolvedValue(team());
     });
 
     it('should reject when not in a guild', async () => {
@@ -96,7 +106,7 @@ describe('team command', () => {
       expect(mockInteraction.reply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('server'), ephemeral: true })
       );
-      expect(createTeam).not.toHaveBeenCalled();
+      expect(createTeamWithinLimit).not.toHaveBeenCalled();
     });
 
     it('should reject whitespace-only names without touching the service', async () => {
@@ -105,7 +115,7 @@ describe('team command', () => {
       expect(mockInteraction.reply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('valid team name'), ephemeral: true })
       );
-      expect(createTeam).not.toHaveBeenCalled();
+      expect(createTeamWithinLimit).not.toHaveBeenCalled();
     });
 
     it('should reject names longer than 50 characters', async () => {
@@ -114,7 +124,7 @@ describe('team command', () => {
       expect(mockInteraction.reply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('valid team name'), ephemeral: true })
       );
-      expect(createTeam).not.toHaveBeenCalled();
+      expect(createTeamWithinLimit).not.toHaveBeenCalled();
     });
 
     it('should gate the second team on the free tier and not create it', async () => {
@@ -124,7 +134,7 @@ describe('team command', () => {
 
       expect(canCreateAdditionalTeam).toHaveBeenCalledWith('guild-123', 1);
       expect(gateFeature).toHaveBeenCalledWith(mockInteraction, 'team.multi', 'en');
-      expect(createTeam).not.toHaveBeenCalled();
+      expect(createTeamWithinLimit).not.toHaveBeenCalled();
       expect(mockInteraction.deferReply).not.toHaveBeenCalled();
     });
 
@@ -138,7 +148,7 @@ describe('team command', () => {
 
       await command.execute(mockInteraction);
 
-      expect(createTeam).not.toHaveBeenCalled();
+      expect(createTeamWithinLimit).not.toHaveBeenCalled();
       const reply = mockInteraction.reply.mock.calls[0][0];
       expect(reply.ephemeral).toBe(true);
       expect(reply.embeds[0].data.title).toContain('Multiple Teams');
@@ -153,7 +163,7 @@ describe('team command', () => {
       await command.execute(mockInteraction);
 
       expect(gateFeature).not.toHaveBeenCalled();
-      expect(createTeam).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1');
+      expect(createTeamWithinLimit).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1', null);
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('**Alpha**') })
       );
@@ -162,7 +172,7 @@ describe('team command', () => {
     it('should create the team when allowed and confirm ephemerally', async () => {
       await command.execute(mockInteraction);
 
-      expect(createTeam).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1');
+      expect(createTeamWithinLimit).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1', null);
       expect(mockInteraction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('**Alpha**') })
@@ -172,17 +182,70 @@ describe('team command', () => {
     it('should trim the name before creating', async () => {
       mockInteraction.options.getString.mockReturnValue('  Alpha  ');
       await command.execute(mockInteraction);
-      expect(createTeam).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1');
+      expect(createTeamWithinLimit).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1', null);
     });
 
     it('should report duplicate names instead of throwing', async () => {
-      (createTeam as jest.Mock).mockRejectedValue(new DuplicateTeamNameError('guild-123', 'Alpha'));
+      (createTeamWithinLimit as jest.Mock).mockRejectedValue(new DuplicateTeamNameError('guild-123', 'Alpha'));
 
       await command.execute(mockInteraction);
 
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('already exists') })
       );
+    });
+
+    it('should hand the free-tier limit to the service so the insert enforces it', async () => {
+      (getTier as jest.Mock).mockResolvedValue('FREE');
+      (countTeams as jest.Mock).mockResolvedValue(0);
+      (teamLimitFor as jest.Mock).mockResolvedValue(1);
+
+      await command.execute(mockInteraction);
+
+      expect(createTeamWithinLimit).toHaveBeenCalledWith('guild-123', 'Alpha', 'user-1', 1);
+    });
+
+    it('should answer with the upsell — not an error — when the create loses the limit race', async () => {
+      // Pre-check passed (count was still 0), then a parallel create took the only free slot.
+      (getTier as jest.Mock).mockResolvedValue('FREE');
+      (countTeams as jest.Mock).mockResolvedValue(0);
+      (teamLimitFor as jest.Mock).mockResolvedValue(1);
+      (createTeamWithinLimit as jest.Mock).mockRejectedValue(
+        new TeamLimitReachedError('guild-123', 1),
+      );
+
+      await expect(command.execute(mockInteraction)).resolves.toBeUndefined();
+
+      expect(gateFeature).toHaveBeenCalledWith(mockInteraction, 'team.multi', 'en');
+      expect(mockInteraction.editReply).not.toHaveBeenCalled();
+    });
+
+    it('should edit the deferred reply with the upsell embed when the race is lost', async () => {
+      // Real gate, deferred interaction: the upsell must resolve the pending deferral
+      // instead of leaving a "thinking…" placeholder behind.
+      const { gateFeature: realGateFeature } = jest.requireActual('../../middleware/premiumGate');
+      (gateFeature as jest.Mock).mockImplementation(realGateFeature);
+      (getTier as jest.Mock).mockResolvedValue('FREE');
+      (countTeams as jest.Mock).mockResolvedValue(0);
+      (teamLimitFor as jest.Mock).mockResolvedValue(1);
+      (createTeamWithinLimit as jest.Mock).mockRejectedValue(
+        new TeamLimitReachedError('guild-123', 1),
+      );
+      mockInteraction.deferReply.mockImplementation(async () => {
+        mockInteraction.deferred = true;
+      });
+
+      await command.execute(mockInteraction);
+
+      const edit = mockInteraction.editReply.mock.calls[0][0];
+      expect(edit.embeds[0].data.title).toContain('Multiple Teams');
+      expect(mockInteraction.followUp).not.toHaveBeenCalled();
+    });
+
+    it('should rethrow unrelated service errors', async () => {
+      (createTeamWithinLimit as jest.Mock).mockRejectedValue(new Error('db down'));
+
+      await expect(command.execute(mockInteraction)).rejects.toThrow('db down');
     });
 
     it('should use the guild language for responses', async () => {

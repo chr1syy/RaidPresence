@@ -7,11 +7,13 @@ import {
   listTeams,
   getTeamByName,
   createTeam,
+  createTeamWithinLimit,
   deleteTeam,
   countTeams,
   DEFAULT_TEAM_NAME,
   DuplicateTeamNameError,
   DefaultTeamProtectedError,
+  TeamLimitReachedError,
   TeamNotFoundError,
 } from '../services/teamService';
 
@@ -43,6 +45,9 @@ beforeEach(() => {
   // The shared mock ships a default findFirst result for the raid suites — each test
   // here sets its own expectation explicitly.
   (prisma.team.findFirst as jest.Mock).mockReset();
+  // `clearAllMocks` keeps implementations, so the store/transaction stubs below would leak.
+  (prisma.team.count as jest.Mock).mockReset();
+  (prisma.$transaction as jest.Mock).mockReset();
 });
 
 describe('getDefaultTeam()', () => {
@@ -92,13 +97,33 @@ describe('getDefaultTeam()', () => {
     await expect(getDefaultTeam('guild1')).rejects.toThrow('db down');
   });
 
-  it('rethrows the P2002 error when the re-read still finds nothing', async () => {
+  it('promotes an existing non-default "Main" instead of looping on the name conflict', async () => {
+    const squatter = team({ id: 'team-main', isDefault: false, createdBy: 'user1' });
+    (prisma.team.findFirst as jest.Mock)
+      .mockResolvedValueOnce(null) // no default team
+      .mockResolvedValueOnce(null) // ...still none after the conflict
+      .mockResolvedValueOnce(squatter); // but the name is taken by a non-default team
+    (prisma.team.create as jest.Mock).mockRejectedValue(uniqueConstraintError());
+    (prisma.team.update as jest.Mock).mockResolvedValue({ ...squatter, isDefault: true });
+
+    await expect(getDefaultTeam('guild1')).resolves.toMatchObject({
+      id: 'team-main',
+      isDefault: true,
+    });
+    expect(prisma.team.update as jest.Mock).toHaveBeenCalledWith({
+      where: { id: 'team-main' },
+      data: { isDefault: true },
+    });
+  });
+
+  it('rethrows the P2002 error when neither a default team nor the name holder is found', async () => {
     (prisma.team.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.team.create as jest.Mock).mockRejectedValue(uniqueConstraintError());
 
     await expect(getDefaultTeam('guild1')).rejects.toBeInstanceOf(
       Prisma.PrismaClientKnownRequestError,
     );
+    expect(prisma.team.update as jest.Mock).not.toHaveBeenCalled();
   });
 });
 
@@ -164,6 +189,196 @@ describe('createTeam()', () => {
     (prisma.team.create as jest.Mock).mockRejectedValue(new Error('db down'));
 
     await expect(createTeam('guild1', 'Mythic', 'user1')).rejects.toThrow('db down');
+  });
+});
+
+describe('createTeamWithinLimit()', () => {
+  /** The P2034 error Prisma raises when Postgres refuses to serialize a transaction. */
+  function serializationError() {
+    return new Prisma.PrismaClientKnownRequestError(
+      'Transaction failed due to a write conflict or a deadlock',
+      { code: 'P2034', clientVersion: '5.22.0' },
+    );
+  }
+
+  /**
+   * Installs a `$transaction` mock that emulates Postgres' Serializable isolation over an
+   * in-memory team store: a transaction whose `count()` snapshot is stale by the time it
+   * inserts is rejected with P2034, exactly as SSI would reject it. That is what makes the
+   * FREE=1 invariant testable — without it a mocked transaction can never observe a race.
+   */
+  function installSerializableStore(rows: Array<Record<string, any>> = []) {
+    const store = [...rows];
+    let version = 0;
+    let nextId = 1;
+
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: any) => Promise<unknown>, options?: { isolationLevel?: string }) => {
+        // The invariant only holds under Serializable — assert the caller asked for it.
+        expect(options?.isolationLevel).toBe('Serializable');
+
+        let snapshot: number | null = null;
+        const tx = {
+          team: {
+            count: async ({ where }: any) => {
+              snapshot = version;
+              return store.filter((row) => row.guildId === where.guildId).length;
+            },
+            create: async ({ data }: any) => {
+              if (snapshot !== null && snapshot !== version) throw serializationError();
+              if (store.some((row) => row.guildId === data.guildId && row.name === data.name)) {
+                throw uniqueConstraintError();
+              }
+              const row = { id: `team-${nextId++}`, ...data };
+              store.push(row);
+              version++;
+              return row;
+            },
+          },
+        };
+
+        return fn(tx);
+      },
+    );
+
+    // The post-retry fallback count reads through the top-level client.
+    (prisma.team.count as jest.Mock).mockImplementation(async ({ where }: any) =>
+      store.filter((row) => row.guildId === where.guildId).length,
+    );
+
+    return store;
+  }
+
+  it('creates the team when the guild is below its limit', async () => {
+    const store = installSerializableStore();
+
+    const created = await createTeamWithinLimit('guild1', 'Mythic', 'user1', 1);
+
+    expect(created).toMatchObject({ guildId: 'guild1', name: 'Mythic', isDefault: false });
+    expect(store).toHaveLength(1);
+  });
+
+  it('refuses the insert when the limit is already reached', async () => {
+    const store = installSerializableStore([team({ id: 'existing' })]);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 1)).rejects.toBeInstanceOf(
+      TeamLimitReachedError,
+    );
+    expect(store).toHaveLength(1);
+  });
+
+  it('lets exactly one of two parallel FREE creates through — the limit is hard', async () => {
+    const store = installSerializableStore();
+
+    const results = await Promise.allSettled([
+      createTeamWithinLimit('guild1', 'Alpha', 'user1', 1),
+      createTeamWithinLimit('guild1', 'Bravo', 'user2', 1),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter(
+      (r): r is PromiseRejectedResult => r.status === 'rejected',
+    );
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    // The loser must surface as the gateable limit error, never as a raw DB error.
+    expect(rejected[0].reason).toBeInstanceOf(TeamLimitReachedError);
+    // The invariant that matters: a FREE guild ends up with one team, not two.
+    expect(store).toHaveLength(1);
+  });
+
+  it('lets both parallel creates through when the tier allows the second slot', async () => {
+    const store = installSerializableStore();
+
+    const results = await Promise.all([
+      createTeamWithinLimit('guild1', 'Alpha', 'user1', 2),
+      createTeamWithinLimit('guild1', 'Bravo', 'user2', 2),
+    ]);
+
+    expect(results.map((r) => r.name).sort()).toEqual(['Alpha', 'Bravo']);
+    expect(store).toHaveLength(2);
+  });
+
+  it('counts other guilds separately', async () => {
+    const store = installSerializableStore([team({ id: 'other', guildId: 'guild2' })]);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 1)).resolves.toMatchObject({
+      guildId: 'guild1',
+    });
+    expect(store).toHaveLength(2);
+  });
+
+  it('skips the transaction entirely for unlimited (premium) guilds', async () => {
+    const created = team({ id: 't2', name: 'Mythic', isDefault: false });
+    (prisma.team.create as jest.Mock).mockResolvedValue(created);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', null)).resolves.toBe(created);
+    expect(prisma.$transaction as jest.Mock).not.toHaveBeenCalled();
+  });
+
+  it('maps a duplicate name to DuplicateTeamNameError', async () => {
+    installSerializableStore([team({ id: 'existing', name: 'Mythic', isDefault: false })]);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 5)).rejects.toBeInstanceOf(
+      DuplicateTeamNameError,
+    );
+  });
+
+  it('retries a serialization failure and succeeds when a slot is still free', async () => {
+    let calls = 0;
+    (prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => {
+      calls++;
+      if (calls === 1) throw serializationError();
+      return { id: 't2', guildId: 'guild1', name: 'Mythic' };
+    });
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 5)).resolves.toMatchObject({
+      id: 't2',
+    });
+    expect(calls).toBe(2);
+  });
+
+  it('reports the limit when the retries are exhausted and the guild is full', async () => {
+    (prisma.$transaction as jest.Mock).mockRejectedValue(serializationError());
+    (prisma.team.count as jest.Mock).mockResolvedValue(1);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 1)).rejects.toBeInstanceOf(
+      TeamLimitReachedError,
+    );
+  });
+
+  it('rethrows an exhausted serialization failure when the guild is not full', async () => {
+    (prisma.$transaction as jest.Mock).mockRejectedValue(serializationError());
+    (prisma.team.count as jest.Mock).mockResolvedValue(0);
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 5)).rejects.toMatchObject({
+      code: 'P2034',
+    });
+  });
+
+  it('treats a raw 40001 driver error as a serialization failure', async () => {
+    let calls = 0;
+    (prisma.$transaction as jest.Mock).mockImplementation(async () => {
+      calls++;
+      if (calls === 1) {
+        throw new Prisma.PrismaClientUnknownRequestError(
+          'ERROR: could not serialize access due to read/write dependencies (SQLSTATE 40001)',
+          { clientVersion: '5.22.0' },
+        );
+      }
+      return { id: 't2', guildId: 'guild1', name: 'Mythic' };
+    });
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 5)).resolves.toMatchObject({
+      id: 't2',
+    });
+  });
+
+  it('rethrows unrelated transaction errors untouched', async () => {
+    (prisma.$transaction as jest.Mock).mockRejectedValue(new Error('db down'));
+
+    await expect(createTeamWithinLimit('guild1', 'Mythic', 'user1', 1)).rejects.toThrow('db down');
   });
 });
 

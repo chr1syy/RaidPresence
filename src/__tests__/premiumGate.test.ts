@@ -14,6 +14,7 @@ function createMockInteraction(guildId: string = 'guild1') {
     deferred: false,
     reply: jest.fn().mockResolvedValue(undefined),
     followUp: jest.fn().mockResolvedValue(undefined),
+    editReply: jest.fn().mockResolvedValue(undefined),
   } as any;
 }
 
@@ -84,6 +85,23 @@ describe('gateFeature()', () => {
     expect(interaction.followUp).toHaveBeenCalledWith(
       expect.objectContaining({ ephemeral: true, embeds: expect.any(Array) }),
     );
+    expect(interaction.reply).not.toHaveBeenCalled();
+  });
+
+  it('edits the deferred reply instead of following up when a deferral is pending', async () => {
+    mockGetTier.mockResolvedValue('FREE');
+    mockHasFeature.mockReturnValue(false);
+
+    const interaction = createMockInteraction();
+    interaction.deferred = true;
+    const result = await gateFeature(interaction, 'raid.archive', 'en');
+
+    expect(result).toBe(false);
+    // A pending deferral must be resolved, or the "thinking…" placeholder never clears.
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ embeds: expect.any(Array) }),
+    );
+    expect(interaction.followUp).not.toHaveBeenCalled();
     expect(interaction.reply).not.toHaveBeenCalled();
   });
 

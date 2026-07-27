@@ -10,14 +10,15 @@ import { Command } from '../types';
 import { VERSION } from '../utils/version';
 import { t } from '../utils/localization';
 import { gateFeature, freeTierHint } from '../middleware/premiumGate';
-import { canCreateAdditionalTeam } from '../services/entitlementService';
+import { canCreateAdditionalTeam, teamLimitFor } from '../services/entitlementService';
 import {
   countTeams,
-  createTeam,
+  createTeamWithinLimit,
   deleteTeam,
   getTeamByName,
   listTeams,
   DuplicateTeamNameError,
+  TeamLimitReachedError,
 } from '../services/teamService';
 
 /** Discord option limit we mirror for team names. */
@@ -113,14 +114,23 @@ async function handleCreateTeam(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // The pre-check above is only the fast path for the common case; the limit itself is
+  // enforced inside the create transaction, so two parallel calls can never both pass.
+  const maxTeams = await teamLimitFor(guildId);
+
   await interaction.deferReply({ ephemeral: true });
 
   try {
-    const team = await createTeam(guildId, name, interaction.user.id);
+    const team = await createTeamWithinLimit(guildId, name, interaction.user.id, maxTeams);
     await interaction.editReply({ content: t(lang, 'teamCreated', { name: team.name }) });
   } catch (error) {
     if (error instanceof DuplicateTeamNameError) {
       await interaction.editReply({ content: t(lang, 'teamAlreadyExists', { name }) });
+      return;
+    }
+    if (error instanceof TeamLimitReachedError) {
+      // Lost the race against a concurrent create: same friendly upsell, never a raw DB error.
+      await gateFeature(interaction, 'team.multi', lang);
       return;
     }
     throw error;

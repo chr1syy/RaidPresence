@@ -107,8 +107,12 @@ export async function gateFeature(
 
   const embed = premiumUpsellEmbed(feature, tier, FEATURE_TIERS[feature], language);
 
-  if (interaction.replied || interaction.deferred) {
+  if (interaction.replied) {
     await interaction.followUp({ embeds: [embed], ephemeral: true });
+  } else if (interaction.deferred) {
+    // A pending deferral must be resolved, otherwise the "thinking…" placeholder never
+    // goes away and the upsell shows up as a second, orphaned message.
+    await interaction.editReply({ embeds: [embed] });
   } else {
     await interaction.reply({ embeds: [embed], ephemeral: true });
   }

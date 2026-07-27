@@ -33,6 +33,20 @@ export class TeamNotFoundError extends Error {
   }
 }
 
+/**
+ * Thrown when the guild already holds as many teams as its tier allows.
+ *
+ * Raised inside the serializable create transaction, so it is authoritative: at the
+ * moment of the (failed) insert the guild really was at its limit. The command layer
+ * translates it back into the regular premium upsell.
+ */
+export class TeamLimitReachedError extends Error {
+  constructor(public readonly guildId: string, public readonly limit: number) {
+    super(`Guild ${guildId} already has its maximum of ${limit} team(s)`);
+    this.name = 'TeamLimitReachedError';
+  }
+}
+
 /** True when the error is a Prisma unique-constraint violation (P2002). */
 function isUniqueConstraintError(error: unknown): boolean {
   return (
@@ -41,11 +55,36 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 /**
+ * True when the error is Postgres refusing to serialize a transaction (SQLSTATE 40001,
+ * surfaced by Prisma as P2034). Under `Serializable` this is the *expected* signal that
+ * a concurrent writer touched the rows we counted — the transaction simply has to be
+ * retried.
+ */
+function isSerializationFailure(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return error.code === 'P2034';
+  }
+  // Raw driver errors can slip through as unknown request errors carrying the SQLSTATE.
+  if (error instanceof Prisma.PrismaClientUnknownRequestError) {
+    return /40001|could not serialize/i.test(error.message);
+  }
+  return false;
+}
+
+/** How often a serialization failure is retried before we settle it with a plain count. */
+const MAX_SERIALIZATION_RETRIES = 2;
+
+/**
  * Returns the guild's default team, creating it lazily when the guild has none yet.
  *
  * Idempotent under concurrency: two parallel calls for a fresh guild both attempt the
  * create, the loser hits the `@@unique([guildId, name])` constraint (P2002) and re-reads
  * the row the winner just wrote, so no duplicates are produced.
+ *
+ * Also self-heals the one other way the P2002 can happen: a guild that owns a *non-default*
+ * team literally named "Main" (e.g. someone created it manually before the default team was
+ * provisioned) has no default team to re-read, and a plain retry would fail on the same
+ * conflict forever. That row is promoted to default instead.
  */
 export async function getDefaultTeam(guildId: string): Promise<Team> {
   const existing = await prisma.team.findFirst({
@@ -69,8 +108,19 @@ export async function getDefaultTeam(guildId: string): Promise<Team> {
     const team = await prisma.team.findFirst({
       where: { guildId, isDefault: true },
     });
-    if (!team) throw error;
-    return team;
+    if (team) return team;
+
+    // No default team, yet the name is taken: an existing non-default "Main" blocks us.
+    // Promote it rather than looping on a conflict we can never win.
+    const nameHolder = await prisma.team.findFirst({
+      where: { guildId, name: DEFAULT_TEAM_NAME },
+    });
+    if (!nameHolder) throw error;
+
+    return prisma.team.update({
+      where: { id: nameHolder.id },
+      data: { isDefault: true },
+    });
   }
 }
 
@@ -117,6 +167,65 @@ export async function createTeam(
       throw new DuplicateTeamNameError(guildId, name);
     }
     throw error;
+  }
+}
+
+/**
+ * Creates a non-default team, enforcing the guild's team limit atomically.
+ *
+ * `maxTeams` is the total number of teams the guild may hold, or `null` for unlimited
+ * (premium). The count and the insert run inside one `Serializable` transaction, so
+ * Postgres' predicate locks turn the read-then-write TOCTOU window into a serialization
+ * failure instead of an over-limit insert: of two concurrent `/team create` calls on a
+ * FREE guild, exactly one commits and the other is retried, sees the winner's row and
+ * throws {@link TeamLimitReachedError}.
+ *
+ * A partial unique index would be cheaper but cannot express this rule — the limit
+ * depends on `Guild.premiumTier`, i.e. on another table, which a Postgres index
+ * predicate may not reference (and a trigger reading it would need the same isolation
+ * to be race-free anyway).
+ *
+ * Throws {@link DuplicateTeamNameError} when the name is already taken in that guild and
+ * {@link TeamLimitReachedError} when the limit is (or has just become) exhausted.
+ */
+export async function createTeamWithinLimit(
+  guildId: string,
+  name: string,
+  createdBy: string,
+  maxTeams: number | null,
+): Promise<Team> {
+  // Unlimited tiers have no invariant to protect, so they skip the transaction entirely.
+  if (maxTeams === null) return createTeam(guildId, name, createdBy);
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const currentCount = await tx.team.count({ where: { guildId } });
+          if (currentCount >= maxTeams) throw new TeamLimitReachedError(guildId, maxTeams);
+
+          return tx.team.create({
+            data: { guildId, name, isDefault: false, createdBy },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (error instanceof TeamLimitReachedError) throw error;
+      if (isUniqueConstraintError(error)) throw new DuplicateTeamNameError(guildId, name);
+
+      if (isSerializationFailure(error) && attempt < MAX_SERIALIZATION_RETRIES) continue;
+
+      if (isSerializationFailure(error)) {
+        // Retries exhausted. A concurrent create having taken the last slot is by far the
+        // likeliest cause, so check once more and report the limit rather than a DB error.
+        if ((await countTeams(guildId)) >= maxTeams) {
+          throw new TeamLimitReachedError(guildId, maxTeams);
+        }
+      }
+
+      throw error;
+    }
   }
 }
 

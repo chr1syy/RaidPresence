@@ -10,7 +10,6 @@ datasource db {
 enum PremiumTier {
   FREE
   PREMIUM
-  PRO
 }
 
 model Guild {

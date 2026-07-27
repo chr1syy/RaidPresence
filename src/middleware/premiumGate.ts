@@ -73,6 +73,21 @@ export function premiumFooterHint(language: string): string {
 }
 
 /**
+ * Free-tier suffix for message content: the footer hint prefixed with a newline
+ * when the guild is on FREE, otherwise an empty string. Lets any call site do
+ * `content + await freeTierHint(interaction.guildId, lang)` without changing the
+ * response for premium guilds.
+ */
+export async function freeTierHint(guildId: string | null, language: string): Promise<string> {
+  if (!guildId) return '';
+
+  const tier = await getTier(guildId);
+  if (tier !== 'FREE') return '';
+
+  return `\n${premiumFooterHint(language)}`;
+}
+
+/**
  * Checks if a guild has access to a premium feature.
  * If blocked, sends an ephemeral upsell embed and returns false.
  */

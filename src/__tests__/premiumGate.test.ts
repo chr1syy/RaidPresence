@@ -1,7 +1,7 @@
 jest.mock('../database/client');
 jest.mock('../services/entitlementService');
 
-import { gateFeature, premiumUpsellEmbed, premiumFooterHint } from '../middleware/premiumGate';
+import { gateFeature, premiumUpsellEmbed, premiumFooterHint, freeTierHint } from '../middleware/premiumGate';
 import { getTier, hasFeature, FEATURE_TIERS } from '../services/entitlementService';
 
 const mockGetTier = getTier as jest.MockedFunction<typeof getTier>;
@@ -169,5 +169,31 @@ describe('premiumFooterHint()', () => {
   it('localizes to German', () => {
     expect(premiumFooterHint('de')).toMatch(/^-# /);
     expect(premiumFooterHint('de')).toContain('Upgrade auf Premium');
+  });
+});
+
+describe('freeTierHint()', () => {
+  it('returns the hint prefixed with a newline for free guilds', async () => {
+    mockGetTier.mockResolvedValue('FREE');
+
+    expect(await freeTierHint('guild1', 'en')).toBe(`\n${premiumFooterHint('en')}`);
+    expect(mockGetTier).toHaveBeenCalledWith('guild1');
+  });
+
+  it('localizes the hint', async () => {
+    mockGetTier.mockResolvedValue('FREE');
+
+    expect(await freeTierHint('guild1', 'de')).toContain('Upgrade auf Premium');
+  });
+
+  it('returns an empty string for premium guilds', async () => {
+    mockGetTier.mockResolvedValue('PREMIUM');
+
+    expect(await freeTierHint('guild1', 'en')).toBe('');
+  });
+
+  it('returns an empty string outside of a guild without hitting the tier lookup', async () => {
+    expect(await freeTierHint(null, 'en')).toBe('');
+    expect(mockGetTier).not.toHaveBeenCalled();
   });
 });

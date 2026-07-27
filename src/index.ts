@@ -9,8 +9,12 @@ import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './s
 import { localeToLanguage } from './utils/localization';
 import { buildWelcomeEmbed } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
+import { TEAM_OPTION_NAME } from './utils/teamContext';
 
 config();
+
+/** Commands that expose the shared, autocompleted `team` option. */
+const TEAM_AUTOCOMPLETE_COMMANDS = new Set(['raid', 'stats', 'team']);
 
 const client = new Client({
   intents: [
@@ -131,6 +135,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.followUp(errorMessage);
       } else {
         await interaction.reply(errorMessage);
+      }
+    }
+  } else if (interaction.isAutocomplete()) {
+    // Shared `team` option autocomplete — every team-aware command uses the same handler.
+    const focused = interaction.options.getFocused(true);
+
+    if (
+      TEAM_AUTOCOMPLETE_COMMANDS.has(interaction.commandName) &&
+      focused.name === TEAM_OPTION_NAME
+    ) {
+      try {
+        const { teamAutocomplete } = await import('./utils/teamContext');
+        await teamAutocomplete(interaction);
+      } catch (error) {
+        console.error('Error handling team autocomplete:', error);
       }
     }
   } else if (interaction.isButton()) {

@@ -12,7 +12,8 @@ export type PremiumFeature =
   | 'raid.integrations'
   | 'stats.full_history'
   | 'stats.analytics'
-  | 'stats.export';
+  | 'stats.export'
+  | 'team.multi';
 
 /** Feature → minimum tier required */
 export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
@@ -24,6 +25,7 @@ export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
   'raid.template': 'PREMIUM',
   'stats.export': 'PREMIUM',
   'raid.integrations': 'PREMIUM',
+  'team.multi': 'PREMIUM',
 };
 
 /** Maps a Discord SKU ID to its premium tier. */
@@ -38,6 +40,9 @@ const TIER_RANK: Record<PremiumTier, number> = {
 };
 
 const FREE_WEEKLY_RAID_LIMIT = 5;
+
+/** Number of teams a FREE guild may have (just the default "Main" team). */
+export const FREE_TEAM_LIMIT = 1;
 
 /** In-memory tier cache with 30s TTL — keeps button interactions fast */
 const tierCache = new Map<string, { tier: PremiumTier; expiresAt: number }>();
@@ -125,6 +130,21 @@ export async function syncEntitlement(params: {
 export function hasFeature(tier: PremiumTier, feature: PremiumFeature): boolean {
   const requiredTier = FEATURE_TIERS[feature];
   return TIER_RANK[tier] >= TIER_RANK[requiredTier];
+}
+
+/**
+ * Checks whether a guild may create another team.
+ *
+ * PREMIUM guilds have unlimited teams. FREE guilds are capped at
+ * `FREE_TEAM_LIMIT` (the default "Main" team) — a second team is the
+ * upsell trigger for the `team.multi` feature.
+ */
+export async function canCreateAdditionalTeam(
+  guildId: string,
+  currentTeamCount: number,
+): Promise<boolean> {
+  if (hasFeature(await getTier(guildId), 'team.multi')) return true;
+  return currentTeamCount < FREE_TEAM_LIMIT;
 }
 
 /**

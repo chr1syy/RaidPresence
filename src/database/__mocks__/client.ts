@@ -6,6 +6,7 @@ const prisma: Record<string, any> = {
     update: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   raidAttendance: {
     findMany: jest.fn(),

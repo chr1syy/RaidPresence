@@ -6,7 +6,7 @@ Future development plans for RaidPresence.
 
 **Status:** Complete ✅ (shipped in v0.4.0 + follow-ups)
 
-Tiered entitlement system (FREE / PREMIUM / PRO) with feature gating, weekly
+Tiered entitlement system (FREE / PREMIUM) with feature gating, weekly
 limits, and Discord/Stripe-agnostic subscription sync.
 
 - [x] **1.2 — Prisma schema** — `premiumTier`, `premiumExpiresAt`, `entitlementId`, `weeklyRaidCount`, `weeklyRaidCountResetAt`, `trialStartedAt` on `Guild`
@@ -93,7 +93,7 @@ limits, and Discord/Stripe-agnostic subscription sync.
   - Generic raid/event system
   - Game-specific customization
 
-- [ ] **Custom Raid Templates** (`raid.template`, PRO)
+- [ ] **Custom Raid Templates** (`raid.template`, PREMIUM)
   - Save raid configurations as templates
   - Quick-create from templates
   - Share templates with other servers

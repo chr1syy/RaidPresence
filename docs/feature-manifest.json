@@ -29,7 +29,7 @@
       "category": "commands",
       "status": "live",
       "premium_tier": "FREE",
-      "premium_note": "Free tier limited to 5 raid creates per week; PREMIUM/PRO unlimited",
+      "premium_note": "Free tier limited to 5 raid creates per week; PREMIUM unlimited",
       "summary": "Create, edit, clone, close, cancel, and delete raids with a single command.",
       "landing_copy": "Complete raid management from creation to archive — one command handles it all.",
       "docs_url": "docs/commands/RAID-COMMAND.md",

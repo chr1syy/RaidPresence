@@ -21,13 +21,16 @@ import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandli
 import { tryConsumeWeeklyRaid } from '../services/entitlementService';
 import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
+import { addTeamOption, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
 
 /**
  * Resolve the guild's default ("Main") team, creating it lazily for guilds that
  * predate the multi-team migration or were onboarded without one.
  *
- * TODO (RPTIER Phase 4): replace call sites with `resolveTeam()` from
- * `src/utils/teamContext.ts` so raids can target a user-selected team.
+ * `raid create` now resolves its team via `resolveTeam()` from
+ * `src/utils/teamContext.ts`; this fallback remains for `clone`, whose source raid may
+ * predate the migration.
+ * TODO (RPTIER Phase 4): replace the remaining clone call site with `resolveTeam()`.
  * @param guildId Discord guild ID
  * @returns The default team's ID
  */
@@ -150,39 +153,41 @@ const command: Command = {
     .setName('raid')
     .setDescription('Manage raid events')
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('create')
-        .setDescription('Create a new raid event')
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('Raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('Raid time (HH:MM in 24h format)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('Raid title/name')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('roles')
-            .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
-            .setRequired(true)
-        )
-        .addBooleanOption((option) =>
-          option
-            .setName('ping_roles')
-            .setDescription('Ping the specified roles when creating the raid')
-            .setRequired(false)
-        )
+      addTeamOption(
+        subcommand
+          .setName('create')
+          .setDescription('Create a new raid event')
+          .addStringOption((option) =>
+            option
+              .setName('date')
+              .setDescription('Raid date (YYYY-MM-DD)')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('time')
+              .setDescription('Raid time (HH:MM in 24h format)')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('title')
+              .setDescription('Raid title/name')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('roles')
+              .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
+              .setRequired(true)
+          )
+          .addBooleanOption((option) =>
+            option
+              .setName('ping_roles')
+              .setDescription('Ping the specified roles when creating the raid')
+              .setRequired(false)
+          )
+      )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -576,7 +581,20 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     memberRolesMap,
   );
 
-  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input
+  // Resolve the target team before the weekly limit is consumed — an unknown team name is
+  // an input error and must not burn a raid slot.
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError === 'not_found') {
+    await interaction.editReply({
+      content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
+  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input.
+  // Deliberately guild-wide, not per team: extra teams are a premium convenience and must not
+  // multiply the FREE tier's weekly raid allowance.
   const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
   if (!allowed) {
     const lang = guildData.language || 'en';
@@ -591,11 +609,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Create raid in database
-  const teamId = await resolveDefaultTeamId(interaction.guild.id);
   const raid = await prisma.raid.create({
     data: {
       guildId: interaction.guild.id,
-      teamId,
+      teamId: team.id,
       channelId: interaction.channel.id,
       raidDate,
       description: title,
@@ -610,7 +627,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: raid.id,
-      teamId: raid.teamId,
+      // Denormalised from the raid we just created — read from the resolved team rather
+      // than the create result so it is never undefined.
+      teamId: team.id,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',

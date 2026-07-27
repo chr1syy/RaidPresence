@@ -13,6 +13,7 @@ jest.mock('../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockRe
 jest.mock('../../services/entitlementService', () => ({ getTier: jest.fn().mockResolvedValue('PREMIUM'), hasFeature: jest.fn().mockReturnValue(true), tryConsumeWeeklyRaid: jest.fn().mockResolvedValue({ allowed: true, remaining: 4 }), skuToTier: jest.fn(), FEATURE_TIERS: {} }));
 
 import prisma from '../../database/client';
+import { tryConsumeWeeklyRaid } from '../../services/entitlementService';
 import command from '../raid';
 
 /**
@@ -455,5 +456,79 @@ describe('handleCreateRaid()', () => {
     );
     expect(rangedField.value).toContain('MagePlayer');
     expect(rangedField.value).toContain('HunterPlayer');
+  });
+
+  describe('team option', () => {
+    const defaultTeam = {
+      id: 'team-default',
+      guildId: 'guild-123',
+      name: 'Main',
+      isDefault: true,
+      createdBy: 'system',
+    };
+
+    /** Replaces the option getter, keeping the valid base options and adding `team`. */
+    function withTeamOption(team: string | undefined) {
+      const values: Record<string, any> = {
+        date: { value: futureDateStr() },
+        time: { value: '20:00' },
+        title: { value: 'Weekly Raid' },
+        roles: { value: 'role-raider' },
+        ping_roles: { value: false },
+      };
+      if (team !== undefined) values.team = { value: team };
+      mockInteraction.options.get = jest.fn((key: string, required?: boolean) =>
+        values[key] !== undefined ? values[key] : (required ? { value: null } : undefined)
+      );
+    }
+
+    it('should fall back to the default team when no team option is given', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(defaultTeam);
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-default' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-default')).toBe(true);
+    });
+
+    it('should create the raid for the named team when the team option is given', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        ...defaultTeam,
+        id: 'team-alts',
+        name: 'Alts',
+        isDefault: false,
+      });
+      withTeamOption('Alts');
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.team.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            guildId: 'guild-123',
+            name: { equals: 'Alts', mode: 'insensitive' },
+          }),
+        })
+      );
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-alts' }) })
+      );
+    });
+
+    it('should reject an unknown team without consuming a weekly raid slot', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(null);
+      withTeamOption('Ghosts');
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Ghosts') })
+      );
+      expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
   });
 });

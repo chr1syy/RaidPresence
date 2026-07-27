@@ -98,17 +98,19 @@ model Raid {
   archiveMessageId String?   // Message ID of archived embed
   isPinned         Boolean   @default(false) // Is raid pinned/archived?
 
-  // Team assignment (RPTIER Phase 2) — nullable until the backfill migration lands
-  teamId String?
+  // Team assignment (RPTIER Phase 2) — backfilled to the guild's default team
+  teamId String
 
   guild      Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  team       Team?            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team       Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   attendance RaidAttendance[]
 
   @@index([guildId, status])
   @@index([raidDate])
   @@index([guildId, raidDate])
   @@index([guildId, archivedAt])
+  @@index([teamId, status])
+  @@index([teamId, raidDate])
 }
 
 model UserRolePreference {
@@ -147,7 +149,12 @@ model RaidAttendance {
   userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])
   guildId        String
 
+  // Denormalized team assignment (RPTIER Phase 2) — inherited from the raid, kept
+  // relation-free on purpose so cascades stay driven by Raid alone
+  teamId String
+
   @@unique([raidId, userId])
   @@index([raidId, status])
   @@index([userId, guildId, status])
+  @@index([teamId, userId, status])
 }

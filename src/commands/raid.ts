@@ -23,6 +23,27 @@ import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 
 /**
+ * Resolve the guild's default ("Main") team, creating it lazily for guilds that
+ * predate the multi-team migration or were onboarded without one.
+ *
+ * TODO (RPTIER Phase 4): replace call sites with `resolveTeam()` from
+ * `src/utils/teamContext.ts` so raids can target a user-selected team.
+ * @param guildId Discord guild ID
+ * @returns The default team's ID
+ */
+async function resolveDefaultTeamId(guildId: string): Promise<string> {
+  const existing = await prisma.team.findFirst({
+    where: { guildId, isDefault: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.team.create({
+    data: { guildId, name: 'Main', isDefault: true, createdBy: 'system' },
+  });
+  return created.id;
+}
+
+/**
  * Build role mentions from role IDs or names
  * @param guild Discord guild instance
  * @param roleIds Array of role IDs (snowflake strings) or exact role names (case-sensitive)
@@ -570,9 +591,11 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Create raid in database
+  const teamId = await resolveDefaultTeamId(interaction.guild.id);
   const raid = await prisma.raid.create({
     data: {
       guildId: interaction.guild.id,
+      teamId,
       channelId: interaction.channel.id,
       raidDate,
       description: title,
@@ -587,6 +610,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: raid.id,
+      teamId: raid.teamId,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',
@@ -1369,6 +1393,8 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const newRaid = await prisma.raid.create({
     data: {
       guildId: interaction.guild!.id,
+      // Clones stay in the source raid's team
+      teamId: sourceRaid.teamId || (await resolveDefaultTeamId(interaction.guild!.id)),
       channelId: interaction.channel.id,
       raidDate,
       description,
@@ -1385,6 +1411,7 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: newRaid.id,
+      teamId: newRaid.teamId,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',
@@ -2108,6 +2135,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       const pref = prefsMap.get(userId);
       return {
         raidId: raid.id,
+        teamId: raid.teamId,
         userId,
         username: member?.displayName || 'Unknown',
         status: 'attending' as const,

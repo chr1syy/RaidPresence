@@ -36,11 +36,34 @@ describe('buildWelcomeEmbed()', () => {
     const deValue = trialField(de)?.value;
 
     // German locale must render the German trial copy, English the English copy.
-    expect(deValue).toBe(t('de', 'premiumTrialGranted', { tier: t('de', 'premiumTierPremium') }));
-    expect(enValue).toBe(t('en', 'premiumTrialGranted', { tier: t('en', 'premiumTierPremium') }));
+    expect(deValue).toContain(t('de', 'premiumTrialGranted', { tier: t('de', 'premiumTierPremium') }));
+    expect(enValue).toContain(t('en', 'premiumTrialGranted', { tier: t('en', 'premiumTierPremium') }));
 
     // Guard against a regression back to the hardcoded 'en' string.
     expect(deValue).not.toBe(enValue);
     expect(deValue).toContain('Testphase');
+  });
+
+  it('adds the localized multi-team hint to the trial callout', () => {
+    for (const language of ['en', 'de']) {
+      const embed = buildWelcomeEmbed({
+        detectedTimezone: 1,
+        timezoneOffset: 1,
+        trialGranted: true,
+        language,
+      });
+      expect(trialField(embed)?.value).toContain(t(language, 'premiumTrialTeamsHint'));
+    }
+  });
+
+  it('highlights multi-team support in the useful commands field', () => {
+    const embed = buildWelcomeEmbed({
+      detectedTimezone: 1,
+      timezoneOffset: 1,
+      trialGranted: false,
+      language: 'en',
+    });
+    const commands = embed.toJSON().fields?.find((f) => f.name.includes('Useful Commands'));
+    expect(commands?.value).toContain('/team list');
   });
 });

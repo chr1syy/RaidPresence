@@ -8,6 +8,7 @@ import { registerEntitlementHandlers } from './events/entitlementHandler';
 import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
 import { localeToLanguage } from './utils/localization';
 import { buildWelcomeEmbed } from './utils/welcomeEmbed';
+import { getDefaultTeam } from './services/teamService';
 
 config();
 
@@ -79,6 +80,14 @@ client.once(Events.ClientReady, async (c) => {
         timezoneOffset: timezoneOffset,
       },
     });
+
+    // Make sure every guild owns its default "Main" team. Never abort startup
+    // over this — the team is created lazily on first raid creation anyway.
+    try {
+      await getDefaultTeam(guildId);
+    } catch (error) {
+      console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
+    }
 
     // Log auto-detection
     if (shouldSetTimezone && detectedTimezone !== null) {
@@ -160,6 +169,13 @@ client.on(Events.GuildCreate, async (guild) => {
       timezoneOffset: timezoneOffset,
     },
   });
+
+  // Make sure the guild owns its default "Main" team right away.
+  try {
+    await getDefaultTeam(guild.id);
+  } catch (error) {
+    console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
+  }
 
   // Auto-grant a one-time 14-day Premium trial to brand-new servers.
   let trialGranted = false;

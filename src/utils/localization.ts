@@ -216,7 +216,6 @@ export interface Translations {
     premiumWeeklyLimitInfo: string;
     premiumTierFree: string;
     premiumTierPremium: string;
-    premiumTierPro: string;
     premiumExpired: string;
     premiumAttendanceCapped: string;
 
@@ -470,7 +469,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumWeeklyLimitInfo: 'You have {remaining} raids left this week.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',
-        premiumTierPro: 'Pro',
         premiumExpired: 'Your {tier} subscription has expired.',
         premiumAttendanceCapped: 'Showing last {count} raids. Upgrade to Premium for full history.',
 
@@ -712,7 +710,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumWeeklyLimitInfo: 'Du hast noch {remaining} Raids diese Woche übrig.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',
-        premiumTierPro: 'Pro',
         premiumExpired: 'Dein {tier}-Abonnement ist abgelaufen.',
         premiumAttendanceCapped: 'Zeige die letzten {count} Raids. Upgrade auf Premium für die vollständige Historie.',
 

@@ -6,10 +6,9 @@ import { VERSION } from '../utils/version';
 /** Gold accent used across all premium surfaces. */
 export const PREMIUM_COLOR = 0xf1c40f;
 
-const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremium' | 'premiumTierPro'> = {
+const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremium'> = {
   FREE: 'premiumTierFree',
   PREMIUM: 'premiumTierPremium',
-  PRO: 'premiumTierPro',
 };
 
 /** Feature → localization key for its human-readable display name. */

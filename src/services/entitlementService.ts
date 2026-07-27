@@ -21,14 +21,13 @@ export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
   'raid.recurring': 'PREMIUM',
   'stats.full_history': 'PREMIUM',
   'stats.analytics': 'PREMIUM',
-  'raid.template': 'PRO',
-  'stats.export': 'PRO',
-  'raid.integrations': 'PRO',
+  'raid.template': 'PREMIUM',
+  'stats.export': 'PREMIUM',
+  'raid.integrations': 'PREMIUM',
 };
 
 /** Maps a Discord SKU ID to its premium tier. */
 export function skuToTier(skuId: string): PremiumTier | null {
-  if (skuId === process.env.DISCORD_SKU_PRO) return 'PRO';
   if (skuId === process.env.DISCORD_SKU_PREMIUM) return 'PREMIUM';
   return null;
 }
@@ -36,7 +35,6 @@ export function skuToTier(skuId: string): PremiumTier | null {
 const TIER_RANK: Record<PremiumTier, number> = {
   FREE: 0,
   PREMIUM: 1,
-  PRO: 2,
 };
 
 const FREE_WEEKLY_RAID_LIMIT = 5;
@@ -131,7 +129,7 @@ export function hasFeature(tier: PremiumTier, feature: PremiumFeature): boolean 
 
 /**
  * Atomically checks and consumes a weekly raid slot for a guild.
- * Free tier: 5 raids/week. Premium/Pro: unlimited.
+ * Free tier: 5 raids/week. Premium: unlimited.
  * Auto-resets the counter when the 7-day window expires.
  *
  * Returns { allowed, remaining } — if allowed, the count has already been incremented.

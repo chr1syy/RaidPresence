@@ -6,7 +6,6 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  PermissionFlagsBits,
   Guild,
 } from 'discord.js';
 import prisma from '../database/client';
@@ -162,6 +161,11 @@ function parseRoleInput(input: string, guild: Guild): { validIds: string[]; inva
  *   /raid edit raid_id:abc123 title:"Updated Title"
  */
 const command: Command = {
+  // No setDefaultMemberPermissions here on purpose: authorization is enforced at
+  // runtime via canManageRaids (src/utils/permissions.ts). Raid leader roles live
+  // in the database (/config leader-roles), which setDefaultMemberPermissions
+  // cannot express - it would hide /raid from exactly those roles an admin just
+  // granted access to.
   data: new SlashCommandBuilder()
     .setName('raid')
     .setDescription('Manage raid events')
@@ -397,8 +401,7 @@ const command: Command = {
                 .setRequired(false)
             )
         )
-      )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
+      ) as SlashCommandBuilder,
 
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;

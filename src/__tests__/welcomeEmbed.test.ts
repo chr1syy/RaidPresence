@@ -97,6 +97,10 @@ describe('buildWelcomeEmbed()', () => {
     const date = createField?.value.match(/date:(\d{4}-\d{2}-\d{2})/)?.[1];
 
     expect(date).toBeDefined();
+    // The retired hardcoded sample must not reappear in any field.
+    for (const field of fields) {
+      expect(field.value).not.toContain('2026-01-15');
+    }
     // `/raid create` rejects past dates, so the sample must always be in the future.
     expect(new Date(`${date}T00:00:00Z`).getTime()).toBeGreaterThan(Date.now());
     // All required options must be present, otherwise the sample is not executable.

@@ -9,8 +9,14 @@ import { canManageRaids } from '../../utils/permissions';
 // Mock dependencies before imports that use them
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
+jest.mock('../../middleware/premiumGate', () => ({
+  gateFeature: jest.fn().mockResolvedValue(true),
+  premiumFooterHint: jest.fn().mockReturnValue('-# hint'),
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 
 import prisma from '../../database/client';
+import { freeTierHint } from '../../middleware/premiumGate';
 import command from '../raid';
 
 /**
@@ -53,6 +59,7 @@ function makeSourceRaid(overrides: Record<string, any> = {}) {
   return {
     id: 'source-raid-1',
     guildId: 'guild-123',
+    teamId: 'team-source',
     channelId: 'channel-123',
     raidDate: new Date('2026-03-01T18:00:00Z'),
     description: 'Mythic Raid Night',
@@ -115,6 +122,7 @@ function buildMockInteraction(optionOverrides: Record<string, any> = {}, extras:
 
   const mockInteraction: any = {
     isChatInputCommand: jest.fn().mockReturnValue(true),
+    guildId: 'guild-123',
     guild: {
       id: 'guild-123',
       name: 'Test Guild',
@@ -523,6 +531,72 @@ describe('handleCloneRaid()', () => {
     });
   });
 
+  describe('Team context', () => {
+    it('should keep the clone in the source raid team when no team option is given', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-source' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-source')).toBe(true);
+    });
+
+    it('should fall back to the default team for a pre-migration source raid', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: null }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-default',
+        guildId: 'guild-123',
+        name: 'Main',
+        isDefault: true,
+        createdBy: 'system',
+      });
+
+      const interaction = buildMockInteraction();
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-default' }) })
+      );
+    });
+
+    it('should let an explicit team option win over the source raid team', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-alts',
+        guildId: 'guild-123',
+        name: 'Alts',
+        isDefault: false,
+        createdBy: 'user-leader',
+      });
+
+      const interaction = buildMockInteraction({ team: { value: 'Alts' } });
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-alts' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-alts')).toBe(true);
+    });
+
+    it('should reject an unknown team without creating a raid', async () => {
+      setupPrismaMocks(makeSourceRaid({ teamId: 'team-source' }));
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const interaction = buildMockInteraction({ team: { value: 'Ghosts' } });
+      await command.execute(interaction);
+
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Ghosts') })
+      );
+    });
+  });
+
   describe('Edge cases', () => {
     it('should reject clone when source raid has no roles', async () => {
       const sourceRaid = makeSourceRaid({ roles: '' });
@@ -722,6 +796,33 @@ describe('handleCloneRaid()', () => {
           },
         })
       );
+    });
+  });
+
+  describe('success confirmation and free tier hint', () => {
+    const HINT = '\n-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.';
+
+    it('should resolve the deferred reply with a confirmation naming the raid', async () => {
+      const interaction = buildMockInteraction();
+
+      await command.execute(interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: '✅ Raid "Mythic Raid Night" cloned successfully with 1 members!',
+        })
+      );
+    });
+
+    it('should append the upsell hint for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      const interaction = buildMockInteraction();
+
+      await command.execute(interaction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      const content = (interaction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content.endsWith(HINT)).toBe(true);
     });
   });
 });

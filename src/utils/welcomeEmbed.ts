@@ -74,7 +74,8 @@ export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
         name: '📋 Useful Commands',
         value: '• `/config view` - View current settings\n' +
                '• `/raid list` - List upcoming raids\n' +
-               '• `/raid delete` - Delete a raid',
+               '• `/raid delete` - Delete a raid\n' +
+               '• `/team list` - Run several raid teams side by side (mains, alts, second group)',
         inline: false,
       }
     )
@@ -86,7 +87,8 @@ export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
   if (trialGranted) {
     welcomeEmbed.addFields({
       name: `🎁 ${TRIAL_DAYS}-Day Premium Trial`,
-      value: t(language, 'premiumTrialGranted', { tier: t(language, 'premiumTierPremium') }),
+      value: t(language, 'premiumTrialGranted', { tier: t(language, 'premiumTierPremium') }) +
+             `\n${t(language, 'premiumTrialTeamsHint')}`,
       inline: false,
     });
   }

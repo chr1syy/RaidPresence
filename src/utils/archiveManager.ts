@@ -12,6 +12,7 @@ export interface ArchiveSearchFilter {
   startDate?: Date;
   endDate?: Date;
   guildId: string;
+  teamId?: string; // Optional: restrict results to a single team of the guild
 }
 
 /**
@@ -291,7 +292,7 @@ export async function searchArchive(
   filters: ArchiveSearchFilter,
   pageSize: number = 25,
 ): Promise<ArchiveRaidSummary[]> {
-  const { guildId, query, startDate, endDate } = filters;
+  const { guildId, query, startDate, endDate, teamId } = filters;
 
   // Build where clause dynamically based on search parameters
   const where: any = {
@@ -300,6 +301,11 @@ export async function searchArchive(
       not: null,
     },
   };
+
+  // Optional team scope — omitted filters keep the previous guild-wide behaviour
+  if (teamId) {
+    where.teamId = teamId;
+  }
 
   // Add date range filter if provided
   if (startDate || endDate) {
@@ -378,12 +384,18 @@ export async function searchArchive(
 /**
  * Get archive stats for a guild (total archived, recent archives).
  * Uses database-level aggregation to avoid loading all raids into memory.
+ *
+ * @param guildId - The guild context
+ * @param teamId - Optional team scope; omitted counts stay guild-wide (all teams)
  */
-export async function getArchiveStats(guildId: string) {
+export async function getArchiveStats(guildId: string, teamId?: string) {
+   const teamScope = teamId ? { teamId } : {};
+
    // Get total count of archived raids
    const totalArchived = await prisma.raid.count({
      where: {
        guildId,
+       ...teamScope,
        archivedAt: { not: null }
      }
    });
@@ -391,11 +403,12 @@ export async function getArchiveStats(guildId: string) {
    // Get count of recently archived raids (last 30 days)
    const thirtyDaysAgo = new Date();
    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-   
+
    const recentArchived = await prisma.raid.count({
      where: {
        guildId,
-       archivedAt: { 
+       ...teamScope,
+       archivedAt: {
          not: null,
          gte: thirtyDaysAgo
        }

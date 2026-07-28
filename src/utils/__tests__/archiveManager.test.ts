@@ -373,6 +373,27 @@ describe('archiveManager', () => {
 
       expect(results).toHaveLength(0);
     });
+
+    it('should scope the query to a team when teamId is given', async () => {
+      (prisma.raid.findMany as any).mockResolvedValue([]);
+
+      await searchArchive({ guildId: 'guild-123', teamId: 'team-alts' });
+
+      expect(prisma.raid.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ guildId: 'guild-123', teamId: 'team-alts' }),
+        })
+      );
+    });
+
+    it('should stay guild-wide when no teamId is given', async () => {
+      (prisma.raid.findMany as any).mockResolvedValue([]);
+
+      await searchArchive({ guildId: 'guild-123' });
+
+      const where = (prisma.raid.findMany as any).mock.calls[0][0].where;
+      expect(where).not.toHaveProperty('teamId');
+    });
   });
 
   describe('getArchiveStats', () => {
@@ -400,6 +421,28 @@ describe('archiveManager', () => {
       expect(stats.totalArchived).toBe(0);
       expect(stats.recentArchived).toBe(0);
       expect(prisma.raid.count).toHaveBeenCalledTimes(2);
+    });
+
+    it('should scope both counts to a team when teamId is given', async () => {
+      (prisma.raid.count as any).mockResolvedValue(1);
+
+      await getArchiveStats('guild-123', 'team-alts');
+
+      for (const call of (prisma.raid.count as any).mock.calls) {
+        expect(call[0].where).toEqual(
+          expect.objectContaining({ guildId: 'guild-123', teamId: 'team-alts' })
+        );
+      }
+    });
+
+    it('should stay guild-wide when no teamId is given', async () => {
+      (prisma.raid.count as any).mockResolvedValue(1);
+
+      await getArchiveStats('guild-123');
+
+      for (const call of (prisma.raid.count as any).mock.calls) {
+        expect(call[0].where).not.toHaveProperty('teamId');
+      }
     });
   });
 });

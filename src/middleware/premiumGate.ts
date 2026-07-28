@@ -6,10 +6,9 @@ import { VERSION } from '../utils/version';
 /** Gold accent used across all premium surfaces. */
 export const PREMIUM_COLOR = 0xf1c40f;
 
-const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremium' | 'premiumTierPro'> = {
+const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremium'> = {
   FREE: 'premiumTierFree',
   PREMIUM: 'premiumTierPremium',
-  PRO: 'premiumTierPro',
 };
 
 /** Feature → localization key for its human-readable display name. */
@@ -22,6 +21,7 @@ const FEATURE_NAME_KEYS: Record<PremiumFeature, keyof Translations> = {
   'stats.full_history': 'featureStatsFullHistory',
   'stats.analytics': 'featureStatsAnalytics',
   'stats.export': 'featureStatsExport',
+  'team.multi': 'featureTeamMulti',
 };
 
 /** Localized display name for a tier (e.g. "Premium"). */
@@ -58,6 +58,8 @@ export function premiumUpsellEmbed(
     .addFields(
       { name: t(language, 'premiumUpsellCurrentPlan'), value: tierName(currentTier, language), inline: true },
       { name: t(language, 'premiumUpsellRequiredPlan'), value: requiredTierName, inline: true },
+      // Perks list so every upsell sells multi-team, regardless of which feature triggered it.
+      { name: `💎 ${requiredTierName}`, value: t(language, 'premiumUpsellPerks'), inline: false },
     )
     .setFooter({ text: `RaidPresence • v${VERSION}` });
 }
@@ -68,6 +70,21 @@ export function premiumUpsellEmbed(
  */
 export function premiumFooterHint(language: string): string {
   return t(language, 'premiumFooterHint');
+}
+
+/**
+ * Free-tier suffix for message content: the footer hint prefixed with a newline
+ * when the guild is on FREE, otherwise an empty string. Lets any call site do
+ * `content + await freeTierHint(interaction.guildId, lang)` without changing the
+ * response for premium guilds.
+ */
+export async function freeTierHint(guildId: string | null, language: string): Promise<string> {
+  if (!guildId) return '';
+
+  const tier = await getTier(guildId);
+  if (tier !== 'FREE') return '';
+
+  return `\n${premiumFooterHint(language)}`;
 }
 
 /**
@@ -90,8 +107,12 @@ export async function gateFeature(
 
   const embed = premiumUpsellEmbed(feature, tier, FEATURE_TIERS[feature], language);
 
-  if (interaction.replied || interaction.deferred) {
+  if (interaction.replied) {
     await interaction.followUp({ embeds: [embed], ephemeral: true });
+  } else if (interaction.deferred) {
+    // A pending deferral must be resolved, otherwise the "thinking…" placeholder never
+    // goes away and the upsell shows up as a second, orphaned message.
+    await interaction.editReply({ embeds: [embed] });
   } else {
     await interaction.reply({ embeds: [embed], ephemeral: true });
   }

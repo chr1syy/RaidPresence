@@ -8,7 +8,7 @@ import { canManageRaids } from '../../utils/permissions';
 
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
-jest.mock('../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockResolvedValue(true) }));
+jest.mock('../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockResolvedValue(true), freeTierHint: jest.fn().mockResolvedValue('') }));
 jest.mock('../../services/entitlementService', () => ({ getTier: jest.fn().mockResolvedValue('PREMIUM'), hasFeature: jest.fn().mockReturnValue(true), tryConsumeWeeklyRaid: jest.fn().mockResolvedValue({ allowed: true, remaining: 4 }), skuToTier: jest.fn(), FEATURE_TIERS: {} }));
 jest.mock('../../utils/attendanceAnalytics', () => {
   const actual = jest.requireActual('../../utils/attendanceAnalytics');
@@ -171,9 +171,9 @@ describe('/raid attendance command', () => {
     await command.execute(interaction);
 
     expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true });
-    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'month');
-    expect(getPlayerRoleDistribution).toHaveBeenCalledWith('user-target', 'guild-123');
-    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'month');
+    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'month', 'team-default');
+    expect(getPlayerRoleDistribution).toHaveBeenCalledWith('user-target', 'guild-123', 'team-default');
+    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'month', 'team-default');
 
     // Should editReply with an embed
     expect(interaction.editReply).toHaveBeenCalledTimes(1);
@@ -218,8 +218,8 @@ describe('/raid attendance command', () => {
 
     await command.execute(interaction);
 
-    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'month');
-    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'month');
+    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'month', 'team-default');
+    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'month', 'team-default');
   });
 
   it('should pass quarter period to analytics', async () => {
@@ -227,8 +227,8 @@ describe('/raid attendance command', () => {
 
     await command.execute(interaction);
 
-    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'quarter');
-    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'quarter');
+    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'quarter', 'team-default');
+    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'quarter', 'team-default');
   });
 
   it('should pass all period to analytics', async () => {
@@ -236,8 +236,8 @@ describe('/raid attendance command', () => {
 
     await command.execute(interaction);
 
-    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'all');
-    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'all');
+    expect(calculatePlayerStats).toHaveBeenCalledWith('user-target', 'guild-123', 'all', 'team-default');
+    expect(getPlayerAttendanceHistory).toHaveBeenCalledWith('user-target', 'guild-123', 'all', 'team-default');
   });
 
   // ── Embed Formatting ───────────────────────────────────────

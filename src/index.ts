@@ -8,8 +8,13 @@ import { registerEntitlementHandlers } from './events/entitlementHandler';
 import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
 import { localeToLanguage } from './utils/localization';
 import { buildWelcomeEmbed } from './utils/welcomeEmbed';
+import { getDefaultTeam } from './services/teamService';
+import { TEAM_OPTION_NAME } from './utils/teamContext';
 
 config();
+
+/** Commands that expose the shared, autocompleted `team` option. */
+const TEAM_AUTOCOMPLETE_COMMANDS = new Set(['raid', 'stats', 'team']);
 
 const client = new Client({
   intents: [
@@ -26,10 +31,12 @@ import raidCommand from './commands/raid';
 import configCommand from './commands/config';
 import setupCommand from './commands/setup';
 import statsCommand from './commands/stats';
+import teamCommand from './commands/team';
 client.commands.set(raidCommand.data.name, raidCommand);
 client.commands.set(configCommand.data.name, configCommand);
 client.commands.set(setupCommand.data.name, setupCommand);
 client.commands.set(statsCommand.data.name, statsCommand);
+client.commands.set(teamCommand.data.name, teamCommand);
 
 // Ready event
 client.once(Events.ClientReady, async (c) => {
@@ -78,6 +85,14 @@ client.once(Events.ClientReady, async (c) => {
       },
     });
 
+    // Make sure every guild owns its default "Main" team. Never abort startup
+    // over this — the team is created lazily on first raid creation anyway.
+    try {
+      await getDefaultTeam(guildId);
+    } catch (error) {
+      console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
+    }
+
     // Log auto-detection
     if (shouldSetTimezone && detectedTimezone !== null) {
       console.log(`🌍 Auto-detected timezone for ${guild.name}: ${getTimezoneName(detectedTimezone)} (locale: ${guild.preferredLocale})`);
@@ -122,6 +137,21 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.reply(errorMessage);
       }
     }
+  } else if (interaction.isAutocomplete()) {
+    // Shared `team` option autocomplete — every team-aware command uses the same handler.
+    const focused = interaction.options.getFocused(true);
+
+    if (
+      TEAM_AUTOCOMPLETE_COMMANDS.has(interaction.commandName) &&
+      focused.name === TEAM_OPTION_NAME
+    ) {
+      try {
+        const { teamAutocomplete } = await import('./utils/teamContext');
+        await teamAutocomplete(interaction);
+      } catch (error) {
+        console.error('Error handling team autocomplete:', error);
+      }
+    }
   } else if (interaction.isButton()) {
     // Import button handler
     const buttonHandler = await import('./events/buttonHandler');
@@ -158,6 +188,13 @@ client.on(Events.GuildCreate, async (guild) => {
       timezoneOffset: timezoneOffset,
     },
   });
+
+  // Make sure the guild owns its default "Main" team right away.
+  try {
+    await getDefaultTeam(guild.id);
+  } catch (error) {
+    console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
+  }
 
   // Auto-grant a one-time 14-day Premium trial to brand-new servers.
   let trialGranted = false;

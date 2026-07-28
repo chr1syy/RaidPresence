@@ -8,6 +8,7 @@ import {
 import prisma from '../database/client';
 import { Command } from '../types';
 import { VERSION } from '../utils/version';
+import { freeTierHint } from '../middleware/premiumGate';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -164,7 +165,8 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `Use /config to update any setting | v${VERSION}` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  const hint = await freeTierHint(interaction.guildId, guildData.language || 'en');
+  await interaction.editReply({ embeds: [embed], content: hint || undefined });
 }
 
 async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {

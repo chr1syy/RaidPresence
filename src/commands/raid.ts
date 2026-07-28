@@ -19,8 +19,45 @@ import { archiveRaid, unarchiveRaid, searchArchive } from '../utils/archiveManag
 import { formatArchiveSearchEmbed } from '../utils/archiveFormatter';
 import { isRateLimitError, handleRateLimitError, fetchMembersWithRateLimitHandling } from '../utils/rateLimitHandler';
 import { tryConsumeWeeklyRaid } from '../services/entitlementService';
-import { gateFeature, premiumFooterHint } from '../middleware/premiumGate';
+import { gateFeature, premiumFooterHint, freeTierHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
+import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
+import { countTeams } from '../services/teamService';
+
+/**
+ * Suffix that names the raid's team in a confirmation message.
+ *
+ * The raid-ID based subcommands (`delete`, `close`, `open`, `cancel`, `remind`, `refresh`)
+ * take no `team` option — the ID already pins the team — but on multi-team guilds the
+ * leader needs to see which team they just touched. `getTeamLabel()` returns `null` for
+ * single-team guilds, so their wording is unchanged.
+ * @param label Team name from {@link getTeamLabel}, or `null`
+ */
+function teamSuffix(label: string | null): string {
+  return label ? ` (Team: **${label}**)` : '';
+}
+
+/**
+ * Resolve the guild's default ("Main") team, creating it lazily for guilds that
+ * predate the multi-team migration or were onboarded without one.
+ *
+ * `raid create`, `raid list` and `raid clone` resolve their team via `resolveTeam()` from
+ * `src/utils/teamContext.ts`. This fallback remains only for `clone` without an explicit
+ * `team` option, where the source raid may predate the migration and carry no `teamId`.
+ * @param guildId Discord guild ID
+ * @returns The default team's ID
+ */
+async function resolveDefaultTeamId(guildId: string): Promise<string> {
+  const existing = await prisma.team.findFirst({
+    where: { guildId, isDefault: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.team.create({
+    data: { guildId, name: 'Main', isDefault: true, createdBy: 'system' },
+  });
+  return created.id;
+}
 
 /**
  * Build role mentions from role IDs or names
@@ -129,44 +166,48 @@ const command: Command = {
     .setName('raid')
     .setDescription('Manage raid events')
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('create')
-        .setDescription('Create a new raid event')
-        .addStringOption((option) =>
-          option
-            .setName('date')
-            .setDescription('Raid date (YYYY-MM-DD)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('time')
-            .setDescription('Raid time (HH:MM in 24h format)')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('title')
-            .setDescription('Raid title/name')
-            .setRequired(true)
-        )
-        .addStringOption((option) =>
-          option
-            .setName('roles')
-            .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
-            .setRequired(true)
-        )
-        .addBooleanOption((option) =>
-          option
-            .setName('ping_roles')
-            .setDescription('Ping the specified roles when creating the raid')
-            .setRequired(false)
-        )
+      addTeamOption(
+        subcommand
+          .setName('create')
+          .setDescription('Create a new raid event')
+          .addStringOption((option) =>
+            option
+              .setName('date')
+              .setDescription('Raid date (YYYY-MM-DD)')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('time')
+              .setDescription('Raid time (HH:MM in 24h format)')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('title')
+              .setDescription('Raid title/name')
+              .setRequired(true)
+          )
+          .addStringOption((option) =>
+            option
+              .setName('roles')
+              .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
+              .setRequired(true)
+          )
+          .addBooleanOption((option) =>
+            option
+              .setName('ping_roles')
+              .setDescription('Ping the specified roles when creating the raid')
+              .setRequired(false)
+          )
+      )
     )
     .addSubcommand((subcommand) =>
-      subcommand
-        .setName('list')
-        .setDescription('List all upcoming raids')
+      addTeamOption(
+        subcommand
+          .setName('list')
+          .setDescription('List all upcoming raids')
+      )
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -281,34 +322,36 @@ const command: Command = {
       )
      )
      .addSubcommand((subcommand) =>
-       subcommand
-         .setName('clone')
-         .setDescription('Clone an existing raid to create a new one')
-         .addStringOption((option) =>
-           option
-             .setName('raid_id')
-             .setDescription('The ID of the raid to clone')
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('date')
-             .setDescription('New raid date (YYYY-MM-DD)')
-             .setRequired(true)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('time')
-             .setDescription('New raid time (HH:MM in 24h format)')
-             .setRequired(false)
-         )
-         .addStringOption((option) =>
-           option
-             .setName('title')
-             .setDescription('New raid title (optional, defaults to original)')
-             .setRequired(false)
-         )
+       addTeamOption(
+         subcommand
+           .setName('clone')
+           .setDescription('Clone an existing raid to create a new one')
+           .addStringOption((option) =>
+             option
+               .setName('raid_id')
+               .setDescription('The ID of the raid to clone')
+               .setRequired(true)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('date')
+               .setDescription('New raid date (YYYY-MM-DD)')
+               .setRequired(true)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('time')
+               .setDescription('New raid time (HH:MM in 24h format)')
+               .setRequired(false)
+           )
+           .addStringOption((option) =>
+             option
+               .setName('title')
+               .setDescription('New raid title (optional, defaults to original)')
+               .setRequired(false)
+           )
        )
+      )
       .addSubcommand((subcommand) =>
         subcommand
           .setName('archive')
@@ -332,26 +375,28 @@ const command: Command = {
           )
       )
       .addSubcommand((subcommand) =>
-        subcommand
-          .setName('search')
-          .setDescription('Search archived raids')
-          .addStringOption((option) =>
-            option
-              .setName('query')
-              .setDescription('Search query (raid name, player, date)')
-              .setRequired(true)
-          )
-          .addStringOption((option) =>
-            option
-              .setName('period')
-              .setDescription('Time period to search')
-              .addChoices(
-                { name: 'Last 30 days', value: 'month' },
-                { name: 'Last 90 days', value: 'quarter' },
-                { name: 'All time', value: 'all' }
-              )
-              .setRequired(false)
-          )
+        addTeamOption(
+          subcommand
+            .setName('search')
+            .setDescription('Search archived raids')
+            .addStringOption((option) =>
+              option
+                .setName('query')
+                .setDescription('Search query (raid name, player, date)')
+                .setRequired(true)
+            )
+            .addStringOption((option) =>
+              option
+                .setName('period')
+                .setDescription('Time period to search')
+                .addChoices(
+                  { name: 'Last 30 days', value: 'month' },
+                  { name: 'Last 90 days', value: 'quarter' },
+                  { name: 'All time', value: 'all' }
+                )
+                .setRequired(false)
+            )
+        )
       )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageEvents) as SlashCommandBuilder,
 
@@ -555,7 +600,20 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     memberRolesMap,
   );
 
-  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input
+  // Resolve the target team before the weekly limit is consumed — an unknown team name is
+  // an input error and must not burn a raid slot.
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError === 'not_found') {
+    await interaction.editReply({
+      content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
+  // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input.
+  // Deliberately guild-wide, not per team: extra teams are a premium convenience and must not
+  // multiply the FREE tier's weekly raid allowance.
   const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
   if (!allowed) {
     const lang = guildData.language || 'en';
@@ -573,6 +631,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const raid = await prisma.raid.create({
     data: {
       guildId: interaction.guild.id,
+      teamId: team.id,
       channelId: interaction.channel.id,
       raidDate,
       description: title,
@@ -587,6 +646,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: raid.id,
+      // Denormalised from the raid we just created — read from the resolved team rather
+      // than the create result so it is never undefined.
+      teamId: team.id,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',
@@ -659,9 +721,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     data: { messageId: message.id },
   });
 
-  // Send ephemeral confirmation to command user
+  // Send ephemeral confirmation to command user — FREE guilds get the premium nudge appended.
   await interaction.editReply({
-    content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`,
+    content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`
+      + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
   });
 }
 
@@ -874,10 +937,25 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
+  const listGuildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+    select: { language: true },
+  });
+
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError === 'not_found') {
+    await interaction.editReply({
+      content: t(listGuildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
+
   const now = new Date();
   const raids = await prisma.raid.findMany({
     where: {
       guildId: interaction.guild.id,
+      teamId: team.id,
       raidDate: {
         gte: now,
       },
@@ -890,15 +968,24 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     },
   });
 
+  // Only disambiguate by team once the guild actually has more than one — single-team
+  // guilds keep the exact wording they had before multi-team support.
+  const isMultiTeam = (await countTeams(interaction.guild.id)) > 1;
+
+  // FREE guilds get the premium nudge on both successful list outcomes (empty and populated).
+  const listHint = await freeTierHint(interaction.guildId, listGuildData?.language || 'en');
+
   if (raids.length === 0) {
     await interaction.editReply({
-      content: '📅 No upcoming raids found.',
+      content: (isMultiTeam
+        ? `📅 No upcoming raids found for **${team.name}**.`
+        : '📅 No upcoming raids found.') + listHint,
     });
     return;
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('Upcoming Raids')
+    .setTitle(isMultiTeam ? `Upcoming Raids — ${team.name}` : 'Upcoming Raids')
     .setColor(0x00ae86)
     .setDescription(
       raids
@@ -913,7 +1000,7 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed] });
+  await interaction.editReply({ embeds: [embed], content: listHint || undefined });
 }
 
 async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
@@ -977,8 +1064,12 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     where: { id: raidId },
   });
 
+  const deleteTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }),
+    content:
+      t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }) +
+      teamSuffix(deleteTeamLabel),
   });
 }
 
@@ -1237,6 +1328,22 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // Get guild settings for timezone
   const guildData = sourceRaid.guild;
 
+  // An explicitly named team wins over the source raid's team. Resolved up front so an
+  // unknown name fails before the expensive member scanning, while the source-team
+  // fallback stays lazy further down (it may have to create the default team).
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
+  let explicitTeamId: string | undefined;
+  if (teamOption?.trim()) {
+    const { team, error: teamError } = await resolveTeam(interaction.guild!.id, teamOption);
+    if (teamError === 'not_found') {
+      await interaction.editReply({
+        content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption }),
+      });
+      return;
+    }
+    explicitTeamId = team.id;
+  }
+
   // Parse and validate date
   const dateParts = dateStr.split('-');
   const year = parseInt(dateParts[0], 10);
@@ -1365,10 +1472,16 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // Determine description
   const description = customTitle || sourceRaid.description || 'Cloned Raid';
 
+  // Without an explicit option the clone stays in the source raid's team; the default-team
+  // fallback covers source raids that predate the multi-team migration.
+  const targetTeamId =
+    explicitTeamId || sourceRaid.teamId || (await resolveDefaultTeamId(interaction.guild!.id));
+
   // Create cloned raid
   const newRaid = await prisma.raid.create({
     data: {
       guildId: interaction.guild!.id,
+      teamId: targetTeamId,
       channelId: interaction.channel.id,
       raidDate,
       description,
@@ -1385,6 +1498,8 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     const pref = prefsMap.get(userId);
     return {
       raidId: newRaid.id,
+      // Denormalised from the resolved team rather than the create result so it is never undefined.
+      teamId: targetTeamId,
       userId,
       guildId: interaction.guild!.id,
       username: member?.displayName || 'Unknown',
@@ -1438,6 +1553,12 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     where: { id: newRaid.id },
     data: { messageId: message.id },
   });
+
+  // Resolve the deferred ephemeral reply with a confirmation — FREE guilds get the premium nudge appended.
+  await interaction.editReply({
+    content: `✅ Raid "${description}" cloned successfully with ${eligibleMembers.size} members!`
+      + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
+  });
   return;
 }
 
@@ -1472,8 +1593,13 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
 
   try {
     await archiveRaid(raidId, interaction.guild!.id, interaction.client);
+    const archivedRaid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      select: { teamId: true },
+    });
+    const archiveTeamLabel = await getTeamLabel(interaction.guild.id, archivedRaid?.teamId);
     await interaction.editReply({
-      content: '✅ Raid archived successfully.',
+      content: `✅ Raid archived successfully.${teamSuffix(archiveTeamLabel)}`,
     });
   } catch (error) {
     console.error('Error archiving raid:', error);
@@ -1512,8 +1638,13 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
 
   try {
     await unarchiveRaid(raidId, interaction.guild!.id, interaction.client);
+    const restoredRaid = await prisma.raid.findUnique({
+      where: { id: raidId },
+      select: { teamId: true },
+    });
+    const unarchiveTeamLabel = await getTeamLabel(interaction.guild.id, restoredRaid?.teamId);
     await interaction.editReply({
-      content: '✅ Raid restored successfully.',
+      content: `✅ Raid restored successfully.${teamSuffix(unarchiveTeamLabel)}`,
     });
   } catch (error) {
     console.error('Error restoring raid:', error);
@@ -1555,10 +1686,19 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
 
   const query = interaction.options.get('query', true).value as string;
   const period = interaction.options.get('period', false)?.value as string || 'month';
+  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
 
   const guildData = await prisma.guild.findUnique({
     where: { id: interaction.guild.id },
   });
+
+  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  if (teamError) {
+    await interaction.editReply({
+      content: t(guildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+    });
+    return;
+  }
 
   const startDate = getStartDate(period);
 
@@ -1566,9 +1706,17 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
     guildId: interaction.guild.id,
     query,
     startDate,
+    teamId: team.id,
   });
 
   const embed = formatArchiveSearchEmbed(results, query, period, guildData?.language || 'en');
+
+  // Multi-team guilds: make the scope of these results explicit. Single-team guilds keep
+  // the previous title verbatim.
+  const searchTeamLabel = await getTeamLabel(interaction.guild.id, team.id);
+  if (searchTeamLabel) {
+    embed.setTitle(`${embed.data.title} — ${searchTeamLabel}`);
+  }
 
   await interaction.editReply({ embeds: [embed] });
 }
@@ -1645,8 +1793,10 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const closeTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been closed.',
+    content: `✅ Raid has been closed.${teamSuffix(closeTeamLabel)}`,
   });
 }
 
@@ -1750,8 +1900,10 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const openTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been opened.',
+    content: `✅ Raid has been opened.${teamSuffix(openTeamLabel)}`,
   });
 }
 
@@ -1827,8 +1979,10 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  const cancelTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   await interaction.editReply({
-    content: '✅ Raid has been cancelled.',
+    content: `✅ Raid has been cancelled.${teamSuffix(cancelTeamLabel)}`,
   });
 }
 
@@ -1909,11 +2063,18 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   const timestamp = Math.floor(raid.raidDate.getTime() / 1000);
   const trans = getTranslations(raid.guild.language || 'en');
 
+  const remindTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   // Build fields array
   const fields: { name: string; value: string; inline: boolean }[] = [
     { name: '📅 Date & Time', value: `<t:${timestamp}:F> (<t:${timestamp}:R>)`, inline: false },
     { name: '👥 Current Attendance', value: `${attendingCount} confirmed`, inline: false },
   ];
+
+  // Public reminder: on multi-team guilds spell out which team is being pinged.
+  if (remindTeamLabel) {
+    fields.push({ name: '🛡️ Team', value: remindTeamLabel, inline: false });
+  }
 
   if (customMessage) {
     // Truncate message to 1024 chars if needed (Discord embed field limit)
@@ -1955,7 +2116,7 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   });
 
   await interaction.editReply({
-    content: `✅ Reminder sent for **${raid.description}**.`,
+    content: `✅ Reminder sent for **${raid.description}**.${teamSuffix(remindTeamLabel)}`,
   });
 }
 
@@ -2108,6 +2269,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       const pref = prefsMap.get(userId);
       return {
         raidId: raid.id,
+        teamId: raid.teamId,
         userId,
         username: member?.displayName || 'Unknown',
         status: 'attending' as const,
@@ -2152,13 +2314,15 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Report changes
+  const refreshTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
+
   if (newMembers.length > 0 || membersToRemove.length > 0) {
     await interaction.editReply({
-      content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).`,
+      content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).${teamSuffix(refreshTeamLabel)}`,
     });
   } else {
     await interaction.editReply({
-      content: '✅ No roster changes needed.',
+      content: `✅ No roster changes needed.${teamSuffix(refreshTeamLabel)}`,
     });
   }
 }

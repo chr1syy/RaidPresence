@@ -9,10 +9,16 @@ import { canManageRaids } from '../../utils/permissions';
 // Mock dependencies before imports that use them
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
-jest.mock('../../middleware/premiumGate', () => ({ gateFeature: jest.fn().mockResolvedValue(true) }));
+jest.mock('../../middleware/premiumGate', () => ({
+  gateFeature: jest.fn().mockResolvedValue(true),
+  premiumFooterHint: jest.fn().mockReturnValue('-# hint'),
+  freeTierHint: jest.fn().mockResolvedValue(''),
+}));
 jest.mock('../../services/entitlementService', () => ({ getTier: jest.fn().mockResolvedValue('PREMIUM'), hasFeature: jest.fn().mockReturnValue(true), tryConsumeWeeklyRaid: jest.fn().mockResolvedValue({ allowed: true, remaining: 4 }), skuToTier: jest.fn(), FEATURE_TIERS: {} }));
 
 import prisma from '../../database/client';
+import { tryConsumeWeeklyRaid } from '../../services/entitlementService';
+import { freeTierHint } from '../../middleware/premiumGate';
 import command from '../raid';
 
 /**
@@ -57,6 +63,7 @@ describe('handleCreateRaid()', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (freeTierHint as jest.Mock).mockResolvedValue('');
 
     const rolesCache = new MockCollection<string, any>();
     rolesCache.set('role-raider', { id: 'role-raider', name: 'role-raider' });
@@ -122,6 +129,7 @@ describe('handleCreateRaid()', () => {
 
     mockInteraction = {
       guild: mockGuild,
+      guildId: 'guild-123',
       channel: mockChannel,
       member: mockMember,
       user: { id: 'user-123' },
@@ -455,5 +463,125 @@ describe('handleCreateRaid()', () => {
     );
     expect(rangedField.value).toContain('MagePlayer');
     expect(rangedField.value).toContain('HunterPlayer');
+  });
+
+  describe('team option', () => {
+    const defaultTeam = {
+      id: 'team-default',
+      guildId: 'guild-123',
+      name: 'Main',
+      isDefault: true,
+      createdBy: 'system',
+    };
+
+    /** Replaces the option getter, keeping the valid base options and adding `team`. */
+    function withTeamOption(team: string | undefined) {
+      const values: Record<string, any> = {
+        date: { value: futureDateStr() },
+        time: { value: '20:00' },
+        title: { value: 'Weekly Raid' },
+        roles: { value: 'role-raider' },
+        ping_roles: { value: false },
+      };
+      if (team !== undefined) values.team = { value: team };
+      mockInteraction.options.get = jest.fn((key: string, required?: boolean) =>
+        values[key] !== undefined ? values[key] : (required ? { value: null } : undefined)
+      );
+    }
+
+    it('should fall back to the default team when no team option is given', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(defaultTeam);
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-default' }) })
+      );
+      const attendance = (prisma.raidAttendance.createMany as jest.Mock).mock.calls[0][0].data;
+      expect(attendance.every((record: any) => record.teamId === 'team-default')).toBe(true);
+    });
+
+    it('should create the raid for the named team when the team option is given', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        ...defaultTeam,
+        id: 'team-alts',
+        name: 'Alts',
+        isDefault: false,
+      });
+      withTeamOption('Alts');
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.team.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            guildId: 'guild-123',
+            name: { equals: 'Alts', mode: 'insensitive' },
+          }),
+        })
+      );
+      expect(prisma.raid.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-alts' }) })
+      );
+    });
+
+    it('should reject an unknown team without consuming a weekly raid slot', async () => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue(null);
+      withTeamOption('Ghosts');
+
+      await command.execute(mockInteraction);
+
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('Ghosts') })
+      );
+      expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('free tier upsell hint', () => {
+    beforeEach(() => {
+      (prisma.team.findFirst as jest.Mock).mockResolvedValue({
+        id: 'team-default',
+        guildId: 'guild-123',
+        name: 'Main',
+        isDefault: true,
+        createdBy: 'system',
+      });
+    });
+
+    const HINT = '\n-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.';
+
+    it('should append the hint to the success confirmation for FREE guilds', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).toHaveBeenCalledWith('guild-123', 'en');
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('created successfully'),
+        })
+      );
+      const content = (mockInteraction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content.endsWith(HINT)).toBe(true);
+    });
+
+    it('should leave the success confirmation untouched for PREMIUM guilds', async () => {
+      await command.execute(mockInteraction);
+
+      const content = (mockInteraction.editReply as jest.Mock).mock.calls.at(-1)[0].content;
+      expect(content).toBe('✅ Raid "Weekly Raid" created successfully with 5 members!');
+    });
+
+    it('should not append the hint to the weekly limit reply (it already carries one)', async () => {
+      (freeTierHint as jest.Mock).mockResolvedValue(HINT);
+      (tryConsumeWeeklyRaid as jest.Mock).mockResolvedValue({ allowed: false, max: 5, resetAt: null });
+
+      await command.execute(mockInteraction);
+
+      expect(freeTierHint).not.toHaveBeenCalled();
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
   });
 });

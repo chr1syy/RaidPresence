@@ -23,6 +23,20 @@ Discord bot for WoW raid attendance management with reverse sign-up.
    npm run build
    ```
 
+## Commands
+
+| Command | Subcommands | Description |
+| --- | --- | --- |
+| `/raid` | `create`, `list`, `edit`, `delete`, `clone`, `close`, `open`, `cancel`, `remind`, `refresh`, `archive`, `unarchive`, `search` | Raid lifecycle and archiving |
+| `/team` | `create`, `list`, `delete` | Manage raid teams — one team per server on the free tier, unlimited with Premium |
+| `/stats` | `raid`, `guild`, `status`, `attendance`, `suggest` | Statistics and analytics |
+| `/config` | `view`, `leader-roles`, `timezone`, `language`, `archive-channel`, `auto-archive` | Server configuration |
+| `/setup` | – | Interactive server setup wizard |
+
+Every server starts with one default team. Commands that span multiple raids
+(`/raid create|list|clone|search`, `/stats guild|status|attendance`) take an optional
+`team:<name>` option and fall back to the default team when it is omitted.
+
 ## Documentation
 
 For detailed usage instructions and command references:

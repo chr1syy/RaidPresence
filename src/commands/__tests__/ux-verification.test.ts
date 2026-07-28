@@ -214,8 +214,10 @@ describe('UX: Slash Command Registration', () => {
       (opt: any) => opt.name === 'status'
     );
     expect(statusSub).toBeDefined();
-    // status has no options at all
-    expect(statusSub.options || []).toHaveLength(0);
+    // Only the shared optional `team` option — nothing the user must supply
+    const statusOptions = statusSub.options || [];
+    expect(statusOptions.filter((opt: any) => opt.required)).toHaveLength(0);
+    expect(statusOptions.map((opt: any) => opt.name)).toEqual(['team']);
   });
 
   it('remind subcommand includes message option', () => {

@@ -5,6 +5,7 @@ import {
   getTier,
   syncEntitlement,
   hasFeature,
+  FEATURE_TIERS,
   tryConsumeWeeklyRaid,
   grantTrialIfEligible,
   TRIAL_DAYS,
@@ -34,7 +35,7 @@ describe('getTier()', () => {
 
   it('returns FREE when subscription expired', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
-      premiumTier: 'PRO',
+      premiumTier: 'PREMIUM',
       premiumExpiresAt: new Date('2020-01-01'),
     } as any);
     expect(await getTier('guild1')).toBe('FREE');
@@ -95,30 +96,18 @@ describe('syncEntitlement()', () => {
 });
 
 describe('hasFeature()', () => {
-  const premiumFeatures: PremiumFeature[] = ['raid.optout_reason', 'raid.archive', 'raid.recurring', 'stats.full_history', 'stats.analytics'];
-  const proFeatures: PremiumFeature[] = ['raid.template', 'stats.export', 'raid.integrations'];
+  const allFeatures = Object.keys(FEATURE_TIERS) as PremiumFeature[];
 
   it('FREE tier has no gated features', () => {
-    for (const feature of [...premiumFeatures, ...proFeatures]) {
+    for (const feature of allFeatures) {
       expect(hasFeature('FREE', feature)).toBe(false);
     }
   });
 
-  it('PREMIUM tier has premium features', () => {
-    for (const feature of premiumFeatures) {
+  // Two-tier model: PREMIUM is the top tier, so it unlocks everything in FEATURE_TIERS.
+  it('PREMIUM tier has every gated feature', () => {
+    for (const feature of allFeatures) {
       expect(hasFeature('PREMIUM', feature)).toBe(true);
-    }
-  });
-
-  it('PREMIUM tier does not have PRO features', () => {
-    for (const feature of proFeatures) {
-      expect(hasFeature('PREMIUM', feature)).toBe(false);
-    }
-  });
-
-  it('PRO tier has all features', () => {
-    for (const feature of [...premiumFeatures, ...proFeatures]) {
-      expect(hasFeature('PRO', feature)).toBe(true);
     }
   });
 });
@@ -141,18 +130,6 @@ describe('tryConsumeWeeklyRaid()', () => {
     const result = await tryConsumeWeeklyRaid('guild1');
     expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: Infinity }));
     expect((prisma.guild.update as jest.Mock)).not.toHaveBeenCalled();
-  });
-
-  it('returns unlimited for PRO tier', async () => {
-    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
-      premiumTier: 'PRO',
-      premiumExpiresAt: null,
-      weeklyRaidCount: 99,
-      weeklyRaidCountResetAt: new Date(),
-    } as any);
-
-    const result = await tryConsumeWeeklyRaid('guild1');
-    expect(result).toEqual(expect.objectContaining({ allowed: true, remaining: Infinity }));
   });
 
   it('consumes a slot and returns remaining for FREE tier', async () => {
@@ -294,11 +271,11 @@ describe('grantTrialIfEligible()', () => {
 
   it('reports the current paid tier when the conditional grant matched nothing', async () => {
     (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 0 } as any);
-    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({ premiumTier: 'PRO' } as any);
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({ premiumTier: 'PREMIUM' } as any);
 
     const result = await grantTrialIfEligible('guild1');
     expect(result.granted).toBe(false);
-    expect(result.tier).toBe('PRO');
+    expect(result.tier).toBe('PREMIUM');
   });
 
   it('does not grant for an unknown guild', async () => {

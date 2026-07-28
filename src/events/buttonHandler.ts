@@ -109,7 +109,14 @@ async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string
 
   await prisma.raidAttendance.update({
     where: { raidId_userId: { raidId, userId: interaction.user.id } },
-    data: { status: 'opted_out', respondedAt: new Date(), optoutReason: null, notedAt: null },
+    data: {
+      status: 'opted_out',
+      respondedAt: new Date(),
+      optoutReason: null,
+      notedAt: null,
+      // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
+      ...(raid.teamId ? { teamId: raid.teamId } : {}),
+    },
   });
 
   await interaction.editReply({ content: trans.optoutReasonSubmitted });
@@ -175,6 +182,8 @@ async function handleOptIn(interaction: ButtonInteraction, raidId: string) {
     data: {
       status: 'attending',
       respondedAt: new Date(),
+      // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
+      ...(raid.teamId ? { teamId: raid.teamId } : {}),
     },
   });
 
@@ -245,6 +254,8 @@ async function handleRunningLate(interaction: ButtonInteraction, raidId: string)
     data: {
       status: 'late',
       respondedAt: new Date(),
+      // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
+      ...(raid.teamId ? { teamId: raid.teamId } : {}),
     },
   });
 
@@ -383,6 +394,8 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
       respondedAt: new Date(),
       optoutReason: reason || null,
       notedAt: reason ? new Date() : null,
+      // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
+      ...(raid.teamId ? { teamId: raid.teamId } : {}),
     },
   });
 

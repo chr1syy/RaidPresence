@@ -8,11 +8,15 @@ jest.mock('../archiveManager');
 jest.mock('../../commands/raid', () => ({
   createRaidEmbed: jest.fn(),
 }));
+jest.mock('../teamContext', () => ({
+  getTeamLabel: jest.fn(),
+}));
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import prisma from '../../database/client';
 import { archiveRaid } from '../archiveManager';
 import { createRaidEmbed } from '../../commands/raid';
+import { getTeamLabel } from '../teamContext';
 
 describe('raidScheduler', () => {
   let mockClient: any;
@@ -41,6 +45,9 @@ describe('raidScheduler', () => {
 
     // Setup createRaidEmbed mock
     (createRaidEmbed as jest.Mock<any>).mockResolvedValue({ title: 'Test Raid' });
+
+    // Default: single-team guild -> no team is named anywhere
+    (getTeamLabel as jest.Mock<any>).mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -225,6 +232,116 @@ describe('raidScheduler', () => {
 
       // Verify: archiveRaid should NOT be called
       expect(archiveRaid).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkAndCloseExpiredRaids - Team awareness', () => {
+    const raidId = 'raid-team';
+    const guildId = 'guild-team';
+
+    const makeExpiredRaid = (overrides: any = {}): any => ({
+      id: raidId,
+      guildId,
+      teamId: 'team-b',
+      description: 'Test Raid',
+      raidDate: new Date(Date.now() - 1000),
+      status: 'open',
+      messageId: 'message-123',
+      channelId: 'channel-123',
+      guild: {
+        id: guildId,
+        autoArchive: false,
+        archiveChannelId: null,
+        language: 'en',
+      },
+      ...overrides,
+    });
+
+    const mockChannelWithMessage = () => {
+      const mockMessage = { edit: jest.fn().mockResolvedValue(undefined) };
+      mockClient.channels.fetch.mockResolvedValue({
+        isTextBased: () => true,
+        messages: { fetch: jest.fn().mockResolvedValue(mockMessage) },
+      });
+      return mockMessage;
+    };
+
+    const loggedLines = (): string[] =>
+      logSpy.mock.calls.map((call: any[]) => String(call[0]));
+
+    it('scans raids across all teams - the query is not team-scoped', async () => {
+      (prisma.raid.findMany as jest.Mock<any>).mockResolvedValue([]);
+
+      const { checkAndCloseExpiredRaids } = require('../raidScheduler');
+      await checkAndCloseExpiredRaids(mockClient);
+
+      const where = (prisma.raid.findMany as jest.Mock<any>).mock.calls[0][0].where;
+      expect(where).not.toHaveProperty('teamId');
+      expect(where).toEqual({ status: 'open', raidDate: { lt: expect.any(Date) } });
+    });
+
+    it('names the team when closing a raid in a multi-team guild', async () => {
+      (getTeamLabel as jest.Mock<any>).mockResolvedValue('Team B');
+      (prisma.raid.findMany as jest.Mock<any>).mockResolvedValue([makeExpiredRaid()]);
+      (prisma.raid.update as jest.Mock<any>).mockResolvedValue(undefined);
+      mockChannelWithMessage();
+
+      const { checkAndCloseExpiredRaids } = require('../raidScheduler');
+      await checkAndCloseExpiredRaids(mockClient);
+
+      expect(getTeamLabel).toHaveBeenCalledWith(guildId, 'team-b');
+      expect(loggedLines()).toContain(`✅ Auto-closed raid: Test Raid (${raidId}) (Team: Team B)`);
+    });
+
+    it('keeps the wording unchanged for a single-team guild', async () => {
+      // getTeamLabel returns null for single-team guilds (see teamContext)
+      (prisma.raid.findMany as jest.Mock<any>).mockResolvedValue([makeExpiredRaid()]);
+      (prisma.raid.update as jest.Mock<any>).mockResolvedValue(undefined);
+      mockChannelWithMessage();
+
+      const { checkAndCloseExpiredRaids } = require('../raidScheduler');
+      await checkAndCloseExpiredRaids(mockClient);
+
+      expect(loggedLines()).toContain(`✅ Auto-closed raid: Test Raid (${raidId})`);
+    });
+
+    it('names the team on the auto-archive path too', async () => {
+      (getTeamLabel as jest.Mock<any>).mockResolvedValue('Team B');
+      (prisma.raid.findMany as jest.Mock<any>).mockResolvedValue([
+        makeExpiredRaid({
+          guild: {
+            id: guildId,
+            autoArchive: true,
+            archiveChannelId: 'archive-123',
+            language: 'en',
+          },
+        }),
+      ]);
+      (prisma.raid.update as jest.Mock<any>).mockResolvedValue(undefined);
+      (archiveRaid as jest.Mock<any>).mockResolvedValue(undefined);
+
+      const { checkAndCloseExpiredRaids } = require('../raidScheduler');
+      await checkAndCloseExpiredRaids(mockClient);
+
+      const lines = loggedLines();
+      expect(lines).toContain(`✅ Auto-archived raid: Test Raid (${raidId}) (Team: Team B)`);
+      expect(lines).toContain(
+        `✅ Auto-closed and archived raid: Test Raid (${raidId}) (Team: Team B)`
+      );
+    });
+
+    it('stays silent about teams when the raid has no team yet', async () => {
+      (prisma.raid.findMany as jest.Mock<any>).mockResolvedValue([
+        makeExpiredRaid({ teamId: null }),
+      ]);
+      (prisma.raid.update as jest.Mock<any>).mockResolvedValue(undefined);
+      mockChannelWithMessage();
+
+      const { checkAndCloseExpiredRaids } = require('../raidScheduler');
+      await checkAndCloseExpiredRaids(mockClient);
+
+      expect(getTeamLabel).toHaveBeenCalledWith(guildId, null);
+      expect(loggedLines()).toContain(`✅ Auto-closed raid: Test Raid (${raidId})`);
     });
   });
 

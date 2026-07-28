@@ -4,6 +4,7 @@ import raidCommand from './commands/raid';
 import configCommand from './commands/config';
 import setupCommand from './commands/setup';
 import statsCommand from './commands/stats';
+import teamCommand from './commands/team';
 
 config();
 
@@ -12,6 +13,7 @@ const commands = [
   configCommand.data.toJSON(),
   setupCommand.data.toJSON(),
   statsCommand.data.toJSON(),
+  teamCommand.data.toJSON(),
 ];
 
 const rest = new REST().setToken(process.env.DISCORD_TOKEN!);

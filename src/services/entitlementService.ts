@@ -12,7 +12,8 @@ export type PremiumFeature =
   | 'raid.integrations'
   | 'stats.full_history'
   | 'stats.analytics'
-  | 'stats.export';
+  | 'stats.export'
+  | 'team.multi';
 
 /** Feature → minimum tier required */
 export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
@@ -21,14 +22,14 @@ export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
   'raid.recurring': 'PREMIUM',
   'stats.full_history': 'PREMIUM',
   'stats.analytics': 'PREMIUM',
-  'raid.template': 'PRO',
-  'stats.export': 'PRO',
-  'raid.integrations': 'PRO',
+  'raid.template': 'PREMIUM',
+  'stats.export': 'PREMIUM',
+  'raid.integrations': 'PREMIUM',
+  'team.multi': 'PREMIUM',
 };
 
 /** Maps a Discord SKU ID to its premium tier. */
 export function skuToTier(skuId: string): PremiumTier | null {
-  if (skuId === process.env.DISCORD_SKU_PRO) return 'PRO';
   if (skuId === process.env.DISCORD_SKU_PREMIUM) return 'PREMIUM';
   return null;
 }
@@ -36,10 +37,12 @@ export function skuToTier(skuId: string): PremiumTier | null {
 const TIER_RANK: Record<PremiumTier, number> = {
   FREE: 0,
   PREMIUM: 1,
-  PRO: 2,
 };
 
 const FREE_WEEKLY_RAID_LIMIT = 5;
+
+/** Number of teams a FREE guild may have (just the default "Main" team). */
+export const FREE_TEAM_LIMIT = 1;
 
 /** In-memory tier cache with 30s TTL — keeps button interactions fast */
 const tierCache = new Map<string, { tier: PremiumTier; expiresAt: number }>();
@@ -130,8 +133,33 @@ export function hasFeature(tier: PremiumTier, feature: PremiumFeature): boolean 
 }
 
 /**
+ * Checks whether a guild may create another team.
+ *
+ * PREMIUM guilds have unlimited teams. FREE guilds are capped at
+ * `FREE_TEAM_LIMIT` (the default "Main" team) — a second team is the
+ * upsell trigger for the `team.multi` feature.
+ */
+export async function canCreateAdditionalTeam(
+  guildId: string,
+  currentTeamCount: number,
+): Promise<boolean> {
+  if (hasFeature(await getTier(guildId), 'team.multi')) return true;
+  return currentTeamCount < FREE_TEAM_LIMIT;
+}
+
+/**
+ * Total number of teams the guild's current tier allows, or `null` for unlimited.
+ *
+ * Handed to `createTeamWithinLimit()` so the limit is enforced inside the insert's
+ * transaction instead of only in the command's pre-check.
+ */
+export async function teamLimitFor(guildId: string): Promise<number | null> {
+  return hasFeature(await getTier(guildId), 'team.multi') ? null : FREE_TEAM_LIMIT;
+}
+
+/**
  * Atomically checks and consumes a weekly raid slot for a guild.
- * Free tier: 5 raids/week. Premium/Pro: unlimited.
+ * Free tier: 5 raids/week. Premium: unlimited.
  * Auto-resets the counter when the 7-day window expires.
  *
  * Returns { allowed, remaining } — if allowed, the count has already been incremented.

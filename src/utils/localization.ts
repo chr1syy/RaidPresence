@@ -216,7 +216,6 @@ export interface Translations {
     premiumWeeklyLimitInfo: string;
     premiumTierFree: string;
     premiumTierPremium: string;
-    premiumTierPro: string;
     premiumExpired: string;
     premiumAttendanceCapped: string;
 
@@ -226,10 +225,12 @@ export interface Translations {
     premiumUpsellCurrentPlan: string;
     premiumUpsellRequiredPlan: string;
     premiumUpsellHowTo: string;
+    premiumUpsellPerks: string;
     premiumFooterHint: string;
 
     // Premium trial (Phase 1.6)
     premiumTrialGranted: string;
+    premiumTrialTeamsHint: string;
 
     // Premium feature display names (localized upsell embed)
     featureRaidOptoutReason: string;
@@ -240,6 +241,20 @@ export interface Translations {
     featureStatsFullHistory: string;
     featureStatsAnalytics: string;
     featureStatsExport: string;
+    featureTeamMulti: string;
+
+    // Teams (Phase 3 — multi-team support)
+    teamCreated: string;
+    teamDeleted: string;
+    teamAlreadyExists: string;
+    teamNotFound: string;
+    teamCannotDeleteDefault: string;
+    teamListTitle: string;
+    teamListEmpty: string;
+    teamListEntry: string;
+    teamDefaultBadge: string;
+    teamInvalidName: string;
+    teamLimitReached: string;
 }
 
 /**
@@ -470,7 +485,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumWeeklyLimitInfo: 'You have {remaining} raids left this week.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',
-        premiumTierPro: 'Pro',
         premiumExpired: 'Your {tier} subscription has expired.',
         premiumAttendanceCapped: 'Showing last {count} raids. Upgrade to Premium for full history.',
 
@@ -480,10 +494,12 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumUpsellCurrentPlan: 'Your Plan',
         premiumUpsellRequiredPlan: 'Required Plan',
         premiumUpsellHowTo: 'Tap the bot\'s profile → **Store**, or open **Server Settings → Subscriptions** to upgrade.',
-        premiumFooterHint: '-# 💎 Upgrade to Premium to unlock archives, analytics & unlimited raids.',
+        premiumUpsellPerks: '• **Multiple teams** — run mains, alts and second groups side by side\n• Unlimited raids per week\n• Raid archives & full history\n• Attendance analytics & trends',
+        premiumFooterHint: '-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.',
 
         // Premium trial (Phase 1.6)
         premiumTrialGranted: '🎁 **Your 14-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
+        premiumTrialTeamsHint: 'During your trial you can create as many teams as you like.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Opt-Out Reasons',
@@ -494,6 +510,20 @@ const translations: Record<SupportedLanguage, Translations> = {
         featureStatsFullHistory: 'Full Attendance History',
         featureStatsAnalytics: 'Attendance Analytics',
         featureStatsExport: 'Statistics Export',
+        featureTeamMulti: 'Multiple Teams',
+
+        // Teams (Phase 3 — multi-team support)
+        teamCreated: '✅ Team **{name}** created.',
+        teamDeleted: '🗑️ Team **{name}** deleted.',
+        teamAlreadyExists: '⚠️ A team named **{name}** already exists.',
+        teamNotFound: '❌ No team named **{name}** found.',
+        teamCannotDeleteDefault: '❌ The default team cannot be deleted.',
+        teamListTitle: '👥 Teams',
+        teamListEmpty: 'No teams yet.',
+        teamListEntry: '• **{name}** — {count} raids',
+        teamDefaultBadge: 'default',
+        teamInvalidName: '❌ Please provide a valid team name (1-50 characters).',
+        teamLimitReached: 'You\'ve reached the free limit of {max} team. Upgrade to Premium for unlimited teams.',
     },
 
   de: {
@@ -712,7 +742,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumWeeklyLimitInfo: 'Du hast noch {remaining} Raids diese Woche übrig.',
         premiumTierFree: 'Free',
         premiumTierPremium: 'Premium',
-        premiumTierPro: 'Pro',
         premiumExpired: 'Dein {tier}-Abonnement ist abgelaufen.',
         premiumAttendanceCapped: 'Zeige die letzten {count} Raids. Upgrade auf Premium für die vollständige Historie.',
 
@@ -722,10 +751,12 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumUpsellCurrentPlan: 'Dein Plan',
         premiumUpsellRequiredPlan: 'Benötigter Plan',
         premiumUpsellHowTo: 'Tippe auf das Bot-Profil → **Shop**, oder öffne **Servereinstellungen → Abonnements**, um zu upgraden.',
-        premiumFooterHint: '-# 💎 Upgrade auf Premium für Archive, Analysen & unbegrenzte Raids.',
+        premiumUpsellPerks: '• **Mehrere Teams** – Mains, Twinks und Zweitgruppen parallel führen\n• Unbegrenzte Raids pro Woche\n• Raid-Archive & vollständige Historie\n• Anwesenheits-Analysen & Trends',
+        premiumFooterHint: '-# 💎 Upgrade auf Premium für mehrere Teams, Archive, Analysen & unbegrenzte Raids.',
 
         // Premium trial (Phase 1.6)
         premiumTrialGranted: '🎁 **Deine 14-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
+        premiumTrialTeamsHint: 'Während der Testphase kannst du beliebig viele Teams anlegen.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Abmeldungsgründe',
@@ -736,6 +767,20 @@ const translations: Record<SupportedLanguage, Translations> = {
         featureStatsFullHistory: 'Vollständige Anwesenheitshistorie',
         featureStatsAnalytics: 'Anwesenheitsanalysen',
         featureStatsExport: 'Statistik-Export',
+        featureTeamMulti: 'Mehrere Teams',
+
+        // Teams (Phase 3 — multi-team support)
+        teamCreated: '✅ Team **{name}** erstellt.',
+        teamDeleted: '🗑️ Team **{name}** gelöscht.',
+        teamAlreadyExists: '⚠️ Ein Team mit dem Namen **{name}** existiert bereits.',
+        teamNotFound: '❌ Kein Team mit dem Namen **{name}** gefunden.',
+        teamCannotDeleteDefault: '❌ Das Standard-Team kann nicht gelöscht werden.',
+        teamListTitle: '👥 Teams',
+        teamListEmpty: 'Noch keine Teams vorhanden.',
+        teamListEntry: '• **{name}** — {count} Raids',
+        teamDefaultBadge: 'Standard',
+        teamInvalidName: '❌ Bitte gib einen gültigen Team-Namen an (1-50 Zeichen).',
+        teamLimitReached: 'Du hast das kostenlose Limit von {max} Team erreicht. Upgrade auf Premium für unbegrenzt viele Teams.',
     },
 };
 

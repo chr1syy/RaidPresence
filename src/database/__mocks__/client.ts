@@ -6,6 +6,7 @@ const prisma: Record<string, any> = {
     update: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   raidAttendance: {
     findMany: jest.fn(),
@@ -30,6 +31,16 @@ const prisma: Record<string, any> = {
     update: jest.fn(),
     updateMany: jest.fn(),
     upsert: jest.fn(),
+  },
+  team: {
+    // Default team resolution succeeds out of the box so raid fixtures get a teamId
+    findFirst: jest.fn().mockResolvedValue({ id: 'team-default', guildId: 'guild-1', name: 'Main', isDefault: true, createdBy: 'system' }),
+    findUnique: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
   },
   userRolePreference: {
     findMany: jest.fn().mockResolvedValue([]),

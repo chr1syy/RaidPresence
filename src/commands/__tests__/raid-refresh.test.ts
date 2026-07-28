@@ -270,4 +270,44 @@ describe('handleRefreshRaid()', () => {
       })
     );
   });
+
+  it('should name the raid team on multi-team guilds', async () => {
+    // Drop any `mockResolvedValueOnce` queue left over from the previous test —
+    // `clearAllMocks()` clears recorded calls but not queued one-shot results.
+    (prisma.raid.findUnique as jest.Mock).mockReset();
+    (prisma.raid.findUnique as jest.Mock).mockResolvedValue({
+      id: 'raid-123',
+      guildId: 'guild-123',
+      teamId: 'team-alts',
+      roles: 'Raider',
+      status: 'open',
+      messageId: 'msg-123',
+      channelId: 'channel-123',
+      raidDate: new Date(),
+      description: 'Weekly Raid',
+      guild: { raidRoles: 'Raider', language: 'en' },
+      attendance: [
+        { id: 'att-1', userId: 'user-1', guildId: 'guild-123', status: 'attending' },
+        { id: 'att-2', userId: 'user-2', guildId: 'guild-123', status: 'attending' },
+        { id: 'att-3', userId: 'user-3', guildId: 'guild-123', status: 'attending' },
+      ],
+    });
+
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      id: 'guild-123',
+      raidRoles: 'Raider',
+      language: 'en',
+    });
+    (prisma.userPreference.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.team.count as jest.Mock).mockResolvedValue(2);
+    (prisma.team.findUnique as jest.Mock).mockResolvedValue({ id: 'team-alts', name: 'Alts' });
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: '✅ No roster changes needed. (Team: **Alts**)',
+      })
+    );
+  });
 });

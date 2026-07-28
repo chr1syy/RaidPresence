@@ -42,6 +42,37 @@ describe('backfillTrials', () => {
     expect(guildMock.updateMany).toHaveBeenCalledTimes(2);
   });
 
+  it('attempts the grant exactly once per guild id on the first run', async () => {
+    guildMock.findMany.mockResolvedValue([
+      { id: 'g1', name: 'Alpha' },
+      { id: 'g2', name: 'Beta' },
+      { id: 'g3', name: 'Gamma' },
+    ]);
+    guildMock.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await backfillTrials();
+
+    expect(result).toEqual({ scanned: 3, granted: 3, skipped: 0 });
+    expect(guildMock.updateMany).toHaveBeenCalledTimes(3);
+    // One grant attempt per distinct guild — no guild is processed twice.
+    const grantedIds = guildMock.updateMany.mock.calls.map(
+      (call: any[]) => call[0].where.id,
+    );
+    expect(grantedIds.sort()).toEqual(['g1', 'g2', 'g3']);
+  });
+
+  it('is a no-op on a second run when no candidates are left', async () => {
+    // Idempotency: after the first run every former candidate has trialStartedAt set,
+    // so the pre-selection query returns nothing and the backfill never writes.
+    guildMock.findMany.mockResolvedValue([]);
+
+    const result = await backfillTrials();
+
+    expect(result).toEqual({ scanned: 0, granted: 0, skipped: 0 });
+    expect(guildMock.updateMany).not.toHaveBeenCalled();
+    expect(guildMock.update).not.toHaveBeenCalled();
+  });
+
   it('delegates the eligibility decision to grantTrialIfEligible instead of writing itself', async () => {
     guildMock.findMany.mockResolvedValue([{ id: 'g1', name: 'Alpha' }]);
     guildMock.updateMany.mockResolvedValue({ count: 1 });
@@ -75,6 +106,24 @@ describe('backfillTrials', () => {
     const result = await backfillTrials();
 
     expect(result).toEqual({ scanned: 2, granted: 0, skipped: 2 });
+  });
+
+  it('counts a partially ineligible batch without aborting the run', async () => {
+    guildMock.findMany.mockResolvedValue([
+      { id: 'g1', name: 'Alpha' },
+      { id: 'g2', name: 'Beta' },
+      { id: 'g3', name: 'Gamma' },
+    ]);
+    // g2 lost the race against a concurrent guildCreate that already granted the trial.
+    guildMock.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
+    guildMock.findUnique.mockResolvedValue({ premiumTier: 'PREMIUM' });
+
+    const result = await backfillTrials();
+
+    expect(result).toEqual({ scanned: 3, granted: 2, skipped: 1 });
   });
 
   it('keeps running when a single guild fails', async () => {

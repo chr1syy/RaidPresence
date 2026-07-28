@@ -1,5 +1,6 @@
 import { EmbedBuilder, Colors } from 'discord.js';
 import { getTimezoneName } from './timezoneHelper';
+import { exampleRaidDate } from './exampleDate';
 import { t } from './localization';
 import { TRIAL_DAYS } from '../services/entitlementService';
 import { VERSION } from './version';
@@ -52,9 +53,12 @@ export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
         inline: false,
       },
       {
-        name: '2️⃣ Configure Raid Attendance Roles',
-        value: 'Run: `/config raid-roles roles:Raider,Member,Trial`\n' +
-               'Members with these roles will be automatically added to raid rosters.',
+        name: '2️⃣ Raid Attendance Roles',
+        value: 'These are set per raid, not in the config: `/raid create` has a required ' +
+               '`roles:` option.\n' +
+               'Pass role names or role IDs, comma-separated without spaces after the comma ' +
+               '(e.g. `roles:Raider,Member,Trial`).\n' +
+               'Members with those roles are automatically added to that raid\'s roster.',
         inline: false,
       },
       {
@@ -65,7 +69,7 @@ export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
       },
       {
         name: '4️⃣ Create Your First Raid',
-        value: 'Run: `/raid create date:2026-01-15 time:20:00 title:Heroic Raid Night`',
+        value: `Run: \`/raid create date:${exampleRaidDate()} time:20:00 title:Heroic Raid Night roles:Raider,Member,Trial\``,
         inline: false,
       }
     )

@@ -8,6 +8,7 @@ import {
   FEATURE_TIERS,
   tryConsumeWeeklyRaid,
   grantTrialIfEligible,
+  syncEntitlementsOnStartup,
   TRIAL_DAYS,
   clearTierCache,
   PremiumTier,
@@ -285,5 +286,87 @@ describe('grantTrialIfEligible()', () => {
     const result = await grantTrialIfEligible('unknown');
     expect(result.granted).toBe(false);
     expect(result.tier).toBe('FREE');
+  });
+});
+
+describe('syncEntitlementsOnStartup()', () => {
+  const OLD_SKU = process.env.DISCORD_SKU_PREMIUM;
+
+  const clientWith = (overrides: {
+    appId?: string | undefined;
+    get?: jest.Mock;
+  }) => ({
+    application: overrides.appId === undefined ? null : { id: overrides.appId },
+    rest: { get: overrides.get ?? jest.fn().mockResolvedValue([]) },
+  }) as any;
+
+  beforeEach(() => {
+    process.env.DISCORD_SKU_PREMIUM = 'sku-premium';
+    (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
+  });
+
+  afterAll(() => {
+    process.env.DISCORD_SKU_PREMIUM = OLD_SKU;
+  });
+
+  it('reports ok when every entitlement synced', async () => {
+    const get = jest.fn().mockResolvedValue([
+      { id: 'ent1', sku_id: 'sku-premium', guild_id: 'g1', ends_at: '2099-01-01T00:00:00Z' },
+    ]);
+
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: 'app1', get }));
+
+    expect(result).toEqual({ ok: true });
+    expect(prisma.guild.update).toHaveBeenCalled();
+  });
+
+  it('reports ok when there is nothing to sync', async () => {
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: 'app1' }));
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('reports ok when entitlements are skipped for an unknown SKU', async () => {
+    const get = jest.fn().mockResolvedValue([
+      { id: 'ent1', sku_id: 'some-other-sku', guild_id: 'g1' },
+    ]);
+
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: 'app1', get }));
+
+    expect(result).toEqual({ ok: true });
+    expect(prisma.guild.update).not.toHaveBeenCalled();
+  });
+
+  it('reports not-ok when the application ID is unavailable', async () => {
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: undefined }));
+    expect(result).toEqual({ ok: false });
+  });
+
+  it('reports not-ok when the Discord REST call fails', async () => {
+    const get = jest.fn().mockRejectedValue(new Error('503 Service Unavailable'));
+
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: 'app1', get }));
+
+    expect(result).toEqual({ ok: false });
+  });
+
+  it('reports not-ok when a DB write fails mid-sync', async () => {
+    // The paid entitlement never lands in the DB — exactly the state the trial backfill
+    // must not act on, since the guild still looks FREE with a NULL entitlementId.
+    const get = jest.fn().mockResolvedValue([
+      { id: 'ent1', sku_id: 'sku-premium', guild_id: 'g1' },
+      { id: 'ent2', sku_id: 'sku-premium', guild_id: 'g2' },
+    ]);
+    (prisma.guild.update as jest.Mock).mockRejectedValueOnce(new Error('connection lost'));
+
+    const result = await syncEntitlementsOnStartup(clientWith({ appId: 'app1', get }));
+
+    expect(result).toEqual({ ok: false });
+  });
+
+  it('does not throw on failure — startup must continue', async () => {
+    const get = jest.fn().mockRejectedValue(new Error('boom'));
+    await expect(
+      syncEntitlementsOnStartup(clientWith({ appId: 'app1', get })),
+    ).resolves.toEqual({ ok: false });
   });
 });

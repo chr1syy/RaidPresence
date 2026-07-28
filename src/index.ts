@@ -10,7 +10,7 @@ import { localeToLanguage } from './utils/localization';
 import { buildWelcomeEmbed } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
 import { TEAM_OPTION_NAME } from './utils/teamContext';
-import { backfillTrials } from './scripts/backfillTrials';
+import { runStartupTrialBackfill } from './scripts/backfillTrials';
 
 config();
 
@@ -109,7 +109,7 @@ client.once(Events.ClientReady, async (c) => {
   registerEntitlementHandlers(c);
 
   // Sync existing entitlements from Discord
-  await syncEntitlementsOnStartup(c);
+  const entitlementSync = await syncEntitlementsOnStartup(c);
 
   // Backfill the one-time Premium trial for guilds that installed the bot before the
   // trial existed — they never fired guildCreate on an eligible code path. Runs last so
@@ -120,12 +120,11 @@ client.once(Events.ClientReady, async (c) => {
   // idempotent by construction. Once the first run has granted the trials, the candidate
   // query returns nothing and every later boot is a no-op with granted=0 — and even a
   // stale candidate is rejected atomically by the WHERE clause inside grantTrialIfEligible.
-  // Awaited (nothing after it depends on it) but wrapped, so a failure never blocks startup.
-  try {
-    await backfillTrials();
-  } catch (error) {
-    console.error('❌ Trial backfill failed:', error);
-  }
+  // Awaited (nothing after it depends on it), and gated on a clean entitlement sync so a
+  // paying guild whose entitlementId failed to write is never mistaken for a FREE trial
+  // candidate. The guard swallows both the skip and any backfill error — see
+  // runStartupTrialBackfill() — so startup is never blocked.
+  await runStartupTrialBackfill(entitlementSync);
 });
 
 // Interaction handler

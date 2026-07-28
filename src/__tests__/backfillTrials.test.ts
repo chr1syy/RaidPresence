@@ -1,7 +1,7 @@
 jest.mock('../database/client');
 
 import prisma from '../database/client';
-import { backfillTrials } from '../scripts/backfillTrials';
+import { backfillTrials, runStartupTrialBackfill } from '../scripts/backfillTrials';
 import { clearTierCache } from '../services/entitlementService';
 
 const guildMock = (prisma as any).guild;
@@ -152,5 +152,53 @@ describe('backfillTrials', () => {
     expect(result).toEqual({ scanned: 2, granted: 0, skipped: 0 });
     expect(guildMock.updateMany).not.toHaveBeenCalled();
     expect(guildMock.update).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Regression guard for the Codex MAJOR finding: syncEntitlementsOnStartup() catches its
+ * own errors and used to return void, so the startup backfill ran even after a failed
+ * sync. A paying guild whose entitlementId had not been written would then be picked up
+ * as a FREE candidate and handed a trial instead of its paid tier.
+ */
+describe('runStartupTrialBackfill()', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('does not touch the database when the entitlement sync failed', async () => {
+    const result = await runStartupTrialBackfill({ ok: false });
+
+    expect(result).toBeNull();
+    expect(guildMock.findMany).not.toHaveBeenCalled();
+    expect(guildMock.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('logs why the backfill was skipped', async () => {
+    await runStartupTrialBackfill({ ok: false });
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Trial backfill skipped'),
+    );
+  });
+
+  it('runs the backfill when the entitlement sync completed cleanly', async () => {
+    guildMock.findMany.mockResolvedValue([{ id: 'g1', name: 'Alpha' }]);
+    guildMock.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await runStartupTrialBackfill({ ok: true });
+
+    expect(result).toEqual({ scanned: 1, granted: 1, skipped: 0 });
+    expect(guildMock.findMany).toHaveBeenCalled();
+  });
+
+  it('swallows a backfill failure so startup is never blocked', async () => {
+    guildMock.findMany.mockRejectedValue(new Error('db down'));
+
+    await expect(runStartupTrialBackfill({ ok: true })).resolves.toBeNull();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('Trial backfill failed'),
+      expect.any(Error),
+    );
   });
 });

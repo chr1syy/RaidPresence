@@ -89,6 +89,37 @@ export async function backfillTrials(
   return { scanned, granted, skipped };
 }
 
+/**
+ * Startup wrapper around {@link backfillTrials} with the entitlement-sync guard.
+ *
+ * `syncEntitlementsOnStartup()` swallows its own errors, so a (partially) failed sync is
+ * indistinguishable from a clean one at the call site unless its result is inspected.
+ * That matters here: the backfill's candidate query treats a NULL `entitlementId` as
+ * "never paid". A guild that IS paying but whose entitlement failed to write would be
+ * picked up as a FREE candidate and handed a trial over its paid tier. So we only run
+ * when the sync completed cleanly; otherwise we skip and let the next boot retry, which
+ * is safe because the backfill is idempotent.
+ *
+ * Never throws — startup must continue regardless.
+ *
+ * @returns the backfill result, or `null` when the backfill was skipped or failed.
+ */
+export async function runStartupTrialBackfill(
+  entitlementSync: { ok: boolean },
+): Promise<BackfillTrialsResult | null> {
+  if (!entitlementSync.ok) {
+    console.warn('⏭️ Trial backfill skipped: entitlement sync did not complete cleanly');
+    return null;
+  }
+
+  try {
+    return await backfillTrials();
+  } catch (error) {
+    console.error('❌ Trial backfill failed:', error);
+    return null;
+  }
+}
+
 if (require.main === module) {
   backfillTrials({ dryRun: process.argv.includes('--dry-run') })
     .then((result) => {

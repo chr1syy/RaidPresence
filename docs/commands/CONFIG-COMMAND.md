@@ -8,26 +8,7 @@ All configuration commands require Administrator permission or server ownership.
 
 ## Subcommands
 
-### `raid-roles` - Set Raid-Eligible Roles
-**Permission:** Administrator
-**Description:** Configures which Discord roles are scanned for raid membership. Only members with these roles will be automatically signed up for raids.
-
-**Usage:**
-```
-/config raid-roles
-  roles: [Role mentions, e.g., @Raider @Trial]
-```
-
-**Example:**
-```
-/config raid-roles
-  roles: @Raider @Trial @Social
-```
-
-**Notes:**
-- Multiple roles can be specified
-- Members must have at least one of these roles to be included in raids
-- Changes affect future raids only
+> **Note:** Raid-eligible roles are no longer configured server-wide. They are chosen per raid via the `required roles:` option of `/raid create`.
 
 ### `leader-roles` - Set Raid Leader Roles
 **Permission:** Administrator

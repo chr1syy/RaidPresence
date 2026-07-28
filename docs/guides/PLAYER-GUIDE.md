@@ -226,7 +226,7 @@ This separation helps leaders understand class distribution and make informed de
 
 ### Per-Raid Roles (New)
 
-**Previous:** Raid roles were set globally for the server via `/config raid-roles`
+**Previous:** Raid roles were set globally for the server via a `/config` subcommand (removed)
 
 **Now:** Each raid specifies its own roles when created
 

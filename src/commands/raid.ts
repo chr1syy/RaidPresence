@@ -161,11 +161,12 @@ function parseRoleInput(input: string, guild: Guild): { validIds: string[]; inva
  *   /raid edit raid_id:abc123 title:"Updated Title"
  */
 const command: Command = {
-  // No setDefaultMemberPermissions here on purpose: authorization is enforced at
-  // runtime via canManageRaids (src/utils/permissions.ts). Raid leader roles live
-  // in the database (/config leader-roles), which setDefaultMemberPermissions
-  // cannot express - it would hide /raid from exactly those roles an admin just
-  // granted access to.
+  // No default member permission gate here on purpose: authorization is enforced
+  // at runtime via canManageRaids (src/utils/permissions.ts). Raid leader roles
+  // live in the database (/config leader-roles), which Discord's static
+  // command-level permission flag cannot express - it would hide /raid from
+  // exactly those roles an admin just granted access to. Guarded by the
+  // default_member_permissions assertion in __tests__/raid-visibility.test.ts.
   data: new SlashCommandBuilder()
     .setName('raid')
     .setDescription('Manage raid events')

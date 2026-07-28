@@ -23,7 +23,8 @@
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version",
     "postinstall": "prisma generate",
-    "e2e:test": "tsx scripts/e2e-test.ts"
+    "e2e:test": "tsx scripts/e2e-test.ts",
+    "backfill:trials": "tsx src/scripts/backfillTrials.ts"
   },
   "keywords": [
     "discord",

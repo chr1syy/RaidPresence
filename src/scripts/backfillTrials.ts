@@ -1,0 +1,102 @@
+/**
+ * One-off backfill that starts the 14-day Premium trial for guilds that predate it.
+ *
+ * WHY THIS EXISTS: `grantTrialIfEligible()` was only ever wired into the `guildCreate`
+ * event handler, and only since v0.5.0. Every guild that installed the bot before that
+ * release never fired the event on an eligible code path, so their `trialStartedAt` is
+ * still NULL and they never received the trial they were entitled to.
+ *
+ * WHY IT IS IDEMPOTENT: this module does not reimplement the grant. It only pre-selects
+ * likely candidates to cut down on write attempts and then delegates every actual
+ * decision to `grantTrialIfEligible()`, whose eligibility predicate (`trialStartedAt`
+ * null, `entitlementId` null, `premiumTier` FREE) lives inside the WHERE clause of a
+ * single atomic `updateMany`. A second run therefore matches zero rows and reports
+ * `granted: false`; guilds with a paid entitlement or a non-FREE tier are never touched,
+ * and existing trials are never extended.
+ */
+import prisma from '../database/client';
+import { grantTrialIfEligible } from '../services/entitlementService';
+
+/** How many guilds are processed concurrently — small on purpose, this is a rare batch job. */
+const BATCH_SIZE = 5;
+
+export interface BackfillTrialsResult {
+  scanned: number;
+  granted: number;
+  skipped: number;
+}
+
+/**
+ * Grants the one-time Premium trial to every legacy guild that is still eligible.
+ *
+ * @param options.dryRun When true, only the candidate query runs — no grants are attempted.
+ */
+export async function backfillTrials(
+  options: { dryRun?: boolean } = {},
+): Promise<BackfillTrialsResult> {
+  const dryRun = options.dryRun ?? false;
+
+  // Pre-selection only: this narrows the write attempts. The authoritative eligibility
+  // check still happens atomically inside grantTrialIfEligible().
+  const candidates = await prisma.guild.findMany({
+    where: {
+      trialStartedAt: null,
+      entitlementId: null,
+      premiumTier: 'FREE',
+    },
+    select: { id: true, name: true },
+  });
+
+  const scanned = candidates.length;
+
+  if (dryRun) {
+    console.log(`🎁 Trial backfill: scanned=${scanned} granted=0 skipped=0 (dryRun=true)`);
+    if (scanned > 0) {
+      console.log(`🎁 Trial backfill candidates: ${candidates.map((g) => g.id).join(', ')}`);
+    }
+    return { scanned, granted: 0, skipped: 0 };
+  }
+
+  let granted = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async (guild) => {
+        try {
+          const result = await grantTrialIfEligible(guild.id);
+          return result.granted;
+        } catch (error) {
+          // A single failing guild must not abort the whole backfill.
+          console.error(`❌ Trial backfill failed for guild ${guild.id} (${guild.name}):`, error);
+          return false;
+        }
+      }),
+    );
+
+    for (const wasGranted of results) {
+      if (wasGranted) {
+        granted++;
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  console.log(`🎁 Trial backfill: scanned=${scanned} granted=${granted} skipped=${skipped} (dryRun=false)`);
+
+  return { scanned, granted, skipped };
+}
+
+if (require.main === module) {
+  backfillTrials({ dryRun: process.argv.includes('--dry-run') })
+    .then((result) => {
+      console.log(`✅ Trial backfill finished: ${JSON.stringify(result)}`);
+    })
+    .catch((error) => {
+      console.error('❌ Trial backfill aborted:', error);
+      process.exitCode = 1;
+    })
+    .finally(() => prisma.$disconnect());
+}

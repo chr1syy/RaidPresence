@@ -27,6 +27,7 @@ const prisma: Record<string, any> = {
   },
   guild: {
     findUnique: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
     create: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),

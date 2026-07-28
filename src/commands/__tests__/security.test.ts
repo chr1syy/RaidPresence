@@ -164,6 +164,9 @@ describe('Security & Data Integrity', () => {
       { subcommand: 'cancel', options: { raid_id: { value: 'raid-123' } } },
       { subcommand: 'refresh', options: { raid_id: { value: 'raid-123' } } },
       { subcommand: 'edit', options: { raid_id: { value: 'raid-123' }, title: { value: 'New Title' } } },
+      // search-archive is read-only but exposes historical attendance data, so it is
+      // restricted like the management commands.
+      { subcommand: 'search', options: { query: { value: 'Naxx' } } },
     ];
 
     it.each(managementCommands)(

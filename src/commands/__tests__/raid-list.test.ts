@@ -14,6 +14,7 @@ jest.mock('../../middleware/premiumGate', () => ({
 
 import prisma from '../../database/client';
 import { freeTierHint } from '../../middleware/premiumGate';
+import { canManageRaids } from '../../utils/permissions';
 import command from '../raid';
 
 describe('handleListRaids()', () => {
@@ -106,6 +107,18 @@ describe('handleListRaids()', () => {
           }),
         ]),
       })
+    );
+  });
+
+  it('should list raids for members without raid leader permission (read-only)', async () => {
+    (canManageRaids as jest.Mock).mockResolvedValue(false);
+    (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
+
+    await command.execute(mockInteraction);
+
+    expect(prisma.raid.findMany).toHaveBeenCalled();
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.not.stringContaining('permission') })
     );
   });
 

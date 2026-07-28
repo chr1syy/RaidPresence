@@ -132,6 +132,17 @@ describe('archive subcommands with team context', () => {
       const embed = mockInteraction.editReply.mock.calls[0][0].embeds[0];
       expect(embed.data.title).not.toContain('—');
     });
+
+    it('should deny members without raid leader permission without searching', async () => {
+      (canManageRaids as jest.Mock).mockResolvedValue(false);
+
+      await command.execute(mockInteraction);
+
+      expect(searchArchive).not.toHaveBeenCalled();
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.stringContaining('permission') })
+      );
+    });
   });
 
   describe('archive', () => {

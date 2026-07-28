@@ -929,6 +929,10 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
     return embed;
 }
 
+// Intentionally open to every member: `/raid list` is purely read-only, replies
+// ephemerally and only shows upcoming raids of the caller's own guild/team — exactly
+// the information participants need in order to sign up. Authorization for every
+// mutating subcommand is enforced at runtime via canManageRaids.
 async function handleListRaids(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     await interaction.reply({
@@ -1686,6 +1690,16 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
   if (!(await gateFeature(interaction, 'raid.archive', searchGuildData?.language || 'en'))) return;
 
   await interaction.deferReply({ ephemeral: true });
+
+  // Check permissions: unlike `/raid list`, the archive search exposes historical
+  // attendance data, so it stays limited to raid leaders/admins.
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({
+      content: '❌ You do not have permission to search the raid archive. Ask your server admin to configure raid leader roles.',
+    });
+    return;
+  }
 
   const query = interaction.options.get('query', true).value as string;
   const period = interaction.options.get('period', false)?.value as string || 'month';

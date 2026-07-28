@@ -83,6 +83,47 @@ describe('setup command', () => {
     );
   });
 
+  it('should use a runtime-generated future date in the /raid create example', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await command.execute(mockInteraction);
+
+    const embed = mockInteraction.editReply.mock.calls[0][0].embeds[0];
+    const createField = embed.data.fields.find((f: any) => f.name.includes('Create Your First Raid'));
+
+    const match = createField.value.match(/date:(\d{4}-\d{2}-\d{2})/);
+    expect(match).not.toBeNull();
+    // The sample must stay copy-pasteable: /raid create rejects dates in the past.
+    expect(new Date(`${match[1]}T23:59:59Z`).getTime()).toBeGreaterThan(Date.now());
+    expect(createField.value).not.toContain('2026-01-15');
+  });
+
+  it('should only reference slash commands that are actually registered', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await command.execute(mockInteraction);
+
+    const embed = mockInteraction.editReply.mock.calls[0][0].embeds[0];
+    const allText = embed.data.fields.map((f: any) => f.value).join('\n');
+
+    const registered = [
+      '/config view',
+      '/config leader-roles',
+      '/raid create',
+      '/raid list',
+      '/raid delete',
+    ];
+    const referenced = [...allText.matchAll(/\/(config|raid|team)\s+([a-z-]+)/g)].map(
+      (m: any) => `/${m[1]} ${m[2]}`
+    );
+
+    expect(referenced.length).toBeGreaterThan(0);
+    for (const cmd of referenced) {
+      expect(registered).toContain(cmd);
+    }
+    expect(allText).not.toContain('/config raid-roles');
+  });
+
   it('should show "Not configured" when roles are empty', async () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',

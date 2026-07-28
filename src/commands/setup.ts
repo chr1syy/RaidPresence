@@ -9,6 +9,7 @@ import {
 import prisma from '../database/client';
 import { Command } from '../types';
 import { VERSION } from '../utils/version';
+import { exampleRaidDate } from '../utils/exampleDate';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -63,7 +64,7 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
       },
       {
         name: '2️⃣ Create Your First Raid',
-        value: '```/raid create date:2026-01-15 time:20:00 title:Heroic Night roles:Raider,Member```\n' +
+        value: `\`\`\`/raid create date:${exampleRaidDate()} time:20:00 title:Heroic Night roles:Raider,Member\`\`\`\n` +
                '**What happens:** Bot creates a raid message with all eligible members listed as attending.',
         inline: false,
       },

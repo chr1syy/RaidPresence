@@ -272,14 +272,30 @@ export async function grantTrialIfEligible(guildId: string): Promise<TrialGrantR
 }
 
 /**
+ * Result of the startup entitlement sync.
+ *
+ * `ok` is false whenever the sync did not complete cleanly (missing application ID,
+ * failed REST call, or a failed DB write). Callers that make decisions based on the
+ * *absence* of a paid entitlement — most importantly the trial backfill — must skip
+ * their work when `ok` is false: a guild whose paid entitlement failed to write would
+ * otherwise look like a FREE guild and be handed a trial instead of its paid tier.
+ */
+export interface StartupSyncResult {
+  ok: boolean;
+}
+
+/**
  * Syncs all active entitlements from Discord on startup.
  * Ensures the DB reflects current subscription state even after restarts.
+ *
+ * Never throws — errors are logged and reported via the returned `ok` flag so startup
+ * continues, while downstream steps can still tell a clean sync from a broken one.
  */
-export async function syncEntitlementsOnStartup(client: Client): Promise<void> {
+export async function syncEntitlementsOnStartup(client: Client): Promise<StartupSyncResult> {
   const appId = client.application?.id;
   if (!appId) {
     console.warn('⚠️ Could not sync entitlements: application ID not available');
-    return;
+    return { ok: false };
   }
 
   try {
@@ -315,7 +331,9 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<void> {
     }
 
     console.log(`💎 Startup entitlement sync: ${synced} synced, ${skipped} skipped`);
+    return { ok: true };
   } catch (error) {
     console.error('❌ Failed to sync entitlements on startup:', error);
+    return { ok: false };
   }
 }

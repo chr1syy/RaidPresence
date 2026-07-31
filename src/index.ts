@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, Events, ActivityType } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, Events, ActivityType, MessageFlags } from 'discord.js';
 import { config } from 'dotenv';
 import { BotClient, Command } from './types';
 import prisma from './database/client';
@@ -11,6 +11,7 @@ import { buildWelcomeEmbed } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
 import { TEAM_OPTION_NAME } from './utils/teamContext';
 import { runStartupTrialBackfill } from './scripts/backfillTrials';
+import { logInteraction, commandLabel } from './utils/interactionLog';
 
 config();
 
@@ -128,24 +129,58 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 // Interaction handler
+//
+// Every interaction except autocomplete emits one structured line via logInteraction()
+// so activity is visible in stdout without DB queries. Autocomplete is excluded on
+// purpose: it fires on every keystroke and would drown out the signal.
 client.on(Events.InteractionCreate, async (interaction) => {
+  const startedAt = Date.now();
+
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
+    const label = commandLabel(interaction);
 
     if (!command) {
       console.error(`Command ${interaction.commandName} not found`);
+      logInteraction({
+        kind: 'CMD',
+        guildId: interaction.guildId,
+        name: label,
+        ok: false,
+        ms: Date.now() - startedAt,
+        err: 'CommandNotFound',
+      });
       return;
     }
 
     try {
       await command.execute(interaction);
+      logInteraction({
+        kind: 'CMD',
+        guildId: interaction.guildId,
+        name: label,
+        ok: true,
+        ms: Date.now() - startedAt,
+      });
     } catch (error) {
+      // The structured line carries the error class; the stack trace stays in the
+      // existing console.error so debugging information is not lost.
+      logInteraction({
+        kind: 'CMD',
+        guildId: interaction.guildId,
+        name: label,
+        ok: false,
+        ms: Date.now() - startedAt,
+        err: error,
+      });
       console.error('Error executing command:', error);
 
+      // `as const` keeps `flags` from widening to the whole MessageFlags enum, which
+      // discord.js's reply options reject.
       const errorMessage = {
         content: '❌ There was an error executing this command!',
-        ephemeral: true,
-      };
+        flags: MessageFlags.Ephemeral,
+      } as const;
 
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp(errorMessage);
@@ -168,18 +203,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
         console.error('Error handling team autocomplete:', error);
       }
     }
-  } else if (interaction.isButton()) {
-    // Import button handler
-    const buttonHandler = await import('./events/buttonHandler');
-    await buttonHandler.handleButton(interaction);
-  } else if (interaction.isModalSubmit()) {
-    // Import modal handler
-    const buttonHandler = await import('./events/buttonHandler');
-    await buttonHandler.handleModalSubmit(interaction);
-  } else if (interaction.isStringSelectMenu()) {
-    // Import select menu handler
-    const selectHandler = await import('./events/selectHandler');
-    await selectHandler.handleSelectMenu(interaction);
+  } else if (interaction.isButton() || interaction.isModalSubmit() || interaction.isStringSelectMenu()) {
+    // Buttons carry the attendance flow (opt-in/opt-out), modals the opt-out reason,
+    // select menus the class/spec picks — all three are activity signals worth logging.
+    const kind = interaction.isButton() ? 'BTN' : interaction.isModalSubmit() ? 'MODAL' : 'SELECT';
+
+    try {
+      if (interaction.isButton()) {
+        const buttonHandler = await import('./events/buttonHandler');
+        await buttonHandler.handleButton(interaction);
+      } else if (interaction.isModalSubmit()) {
+        const buttonHandler = await import('./events/buttonHandler');
+        await buttonHandler.handleModalSubmit(interaction);
+      } else {
+        const selectHandler = await import('./events/selectHandler');
+        await selectHandler.handleSelectMenu(interaction);
+      }
+
+      logInteraction({
+        kind,
+        guildId: interaction.guildId,
+        name: interaction.customId,
+        ok: true,
+        ms: Date.now() - startedAt,
+      });
+    } catch (error) {
+      // These handlers previously ran unguarded, so a throw surfaced only as an
+      // unhandledRejection. Log it in the structured format plus the stack, then
+      // rethrow so no existing behaviour changes.
+      logInteraction({
+        kind,
+        guildId: interaction.guildId,
+        name: interaction.customId,
+        ok: false,
+        ms: Date.now() - startedAt,
+        err: error,
+      });
+      console.error(`Error handling ${kind} interaction:`, error);
+      throw error;
+    }
   }
 });
 

@@ -291,14 +291,17 @@ describe('/raid visibility & authorization gating', () => {
 
       await command.execute(interaction);
 
-      expect(interaction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('do not have permission') })
+      // Rejected via `reply`, not `editReply`: the permission gate now runs before
+      // deferReply() so the guided-modal branch can call showModal() first (#38).
+      // Rejections stay ephemeral so they never leak into the raid channel — now
+      // asserted on the reply itself, since there is no deferral on this path.
+      expect(interaction.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('do not have permission'),
+          ephemeral: true,
+        })
       );
       expect(prisma.raid.create).not.toHaveBeenCalled();
-      // Rejections stay ephemeral so they never leak into the raid channel.
-      expect(interaction.deferReply).toHaveBeenCalledWith(
-        expect.objectContaining({ ephemeral: true })
-      );
     });
 
     it('rejects a member holding only ManageEvents once leader roles are configured', async () => {

@@ -193,18 +193,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
         console.error('Error handling timezone autocomplete:', error);
       }
     }
-  } else if (interaction.isButton() || interaction.isModalSubmit() || interaction.isStringSelectMenu()) {
-    // Buttons carry the attendance flow (opt-in/opt-out), modals the opt-out reason,
-    // select menus the class/spec picks — all three are activity signals worth logging.
-    const kind = interaction.isButton() ? 'BTN' : interaction.isModalSubmit() ? 'MODAL' : 'SELECT';
+  } else if (
+    interaction.isButton() ||
+    interaction.isModalSubmit() ||
+    interaction.isStringSelectMenu() ||
+    interaction.isRoleSelectMenu()
+  ) {
+    // Buttons carry the attendance flow (opt-in/opt-out) and the guided raid-create
+    // confirmation, modals the opt-out reason and the raid-create details, string
+    // selects the class/spec picks, role selects the raid roster roles. All are
+    // activity signals worth logging — the guided flow especially, since the whole
+    // point of #38 is being able to see where people drop out.
+    const kind = interaction.isButton()
+      ? 'BTN'
+      : interaction.isModalSubmit()
+      ? 'MODAL'
+      : 'SELECT';
 
     try {
+      const flow = await import('./events/raidCreateFlow');
+
       if (interaction.isButton()) {
-        const buttonHandler = await import('./events/buttonHandler');
-        await buttonHandler.handleButton(interaction);
+        if (flow.isFlowButton(interaction.customId)) {
+          await flow.routeFlowButton(interaction);
+        } else {
+          const buttonHandler = await import('./events/buttonHandler');
+          await buttonHandler.handleButton(interaction);
+        }
       } else if (interaction.isModalSubmit()) {
-        const buttonHandler = await import('./events/buttonHandler');
-        await buttonHandler.handleModalSubmit(interaction);
+        if (flow.isFlowModal(interaction.customId)) {
+          await flow.routeFlowModal(interaction);
+        } else {
+          const buttonHandler = await import('./events/buttonHandler');
+          await buttonHandler.handleModalSubmit(interaction);
+        }
+      } else if (interaction.isRoleSelectMenu()) {
+        if (flow.isFlowRoleSelect(interaction.customId)) {
+          await flow.handleRoleSelect(interaction);
+        }
       } else {
         const selectHandler = await import('./events/selectHandler');
         await selectHandler.handleSelectMenu(interaction);

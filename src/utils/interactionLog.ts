@@ -65,18 +65,26 @@ export function sanitizeValue(value: unknown): string {
  * which is personal data and must not be logged. Every `_`-separated segment that
  * looks like a snowflake is replaced with `<id>`, so the *shape* of the interaction
  * stays greppable while the identity does not survive.
+ *
+ * The guided raid-create flow (`events/raidCreateFlow.ts`) uses `handler:<draftId>`
+ * instead. The draft id is not personal data, but it is unique per flow, so leaving
+ * it in would give every line a distinct name and make drop-off rates impossible to
+ * count. Everything after the first `:` is therefore masked as well — the point of
+ * the log is which *step* people abandon, not which draft.
  */
 export function sanitizeCustomId(customId: unknown): string {
   if (customId === null || customId === undefined) return '-';
   const raw = String(customId).replace(UNSAFE_VALUE, '-');
   if (raw.length === 0) return '-';
 
-  const masked = raw
+  const [handler, ...payload] = raw.split(':');
+
+  const masked = handler
     .split('_')
     .map((segment) => (SNOWFLAKE.test(segment) ? '<id>' : segment))
     .join('_');
 
-  return clamp(masked);
+  return clamp(payload.length > 0 ? `${masked}:<id>` : masked);
 }
 
 /** Extract a stable, non-personal error class name. Never throws. */

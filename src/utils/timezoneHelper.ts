@@ -1,96 +1,288 @@
 /**
- * Maps Discord locales to timezone offsets (in hours)
- * This is a best-effort mapping - not all locales map perfectly to a single timezone
+ * IANA timezone handling for raid scheduling.
+ *
+ * The bot deliberately does NOT try to detect a guild's timezone. Discord exposes
+ * `guild.preferredLocale`, which is a *language* setting, not a location — guessing
+ * a zone from it produced confidently wrong results (an English-language German
+ * server was scheduled as US Eastern). Default is UTC until a raid leader sets a
+ * zone explicitly via `/config timezone`.
+ *
+ * Display is not the problem this module solves: every user-facing timestamp is a
+ * Discord `<t:unix:F>` tag, which each viewer's client renders in their own local
+ * time. The guild zone is needed at exactly one point — interpreting the wall-clock
+ * time a raid leader types ("20:00") as an instant.
  */
-const LOCALE_TO_TIMEZONE: Record<string, number> = {
-  // Central European Time (CET/CEST - UTC+1/+2, but we use standard time UTC+1)
-  'de': 1,           // German
-  'de-AT': 1,        // Austrian German
-  'de-CH': 1,        // Swiss German
-  'fr': 1,           // French
-  'nl': 1,           // Dutch
-  'it': 1,           // Italian
-  'pl': 1,           // Polish
-  'cs': 1,           // Czech
-  'hu': 1,           // Hungarian
-  'hr': 1,           // Croatian
-  'ro': 1,           // Romanian
-  'da': 1,           // Danish
-  'sv-SE': 1,        // Swedish
-  'no': 1,           // Norwegian
 
-  // UK/Ireland (GMT/BST - UTC+0/+1, we use UTC+0)
-  'en-GB': 0,        // British English
+/** Zones offered by `/config timezone` autocomplete, roughly ordered by expected use. */
+export const COMMON_TIMEZONES: readonly string[] = [
+  'UTC',
+  'Europe/Berlin',
+  'Europe/Vienna',
+  'Europe/Zurich',
+  'Europe/London',
+  'Europe/Dublin',
+  'Europe/Paris',
+  'Europe/Madrid',
+  'Europe/Rome',
+  'Europe/Amsterdam',
+  'Europe/Brussels',
+  'Europe/Copenhagen',
+  'Europe/Oslo',
+  'Europe/Stockholm',
+  'Europe/Helsinki',
+  'Europe/Warsaw',
+  'Europe/Prague',
+  'Europe/Budapest',
+  'Europe/Bucharest',
+  'Europe/Athens',
+  'Europe/Lisbon',
+  'Europe/Kyiv',
+  'Europe/Moscow',
+  'Europe/Istanbul',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Phoenix',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'America/Toronto',
+  'America/Vancouver',
+  'America/Sao_Paulo',
+  'America/Mexico_City',
+  'America/Bogota',
+  'America/Argentina/Buenos_Aires',
+  'Asia/Jerusalem',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Bangkok',
+  'Asia/Singapore',
+  'Asia/Hong_Kong',
+  'Asia/Shanghai',
+  'Asia/Seoul',
+  'Asia/Tokyo',
+  'Australia/Perth',
+  'Australia/Brisbane',
+  'Australia/Adelaide',
+  'Australia/Sydney',
+  'Australia/Melbourne',
+  'Pacific/Auckland',
+  'Africa/Cairo',
+  'Africa/Johannesburg',
+  'Africa/Lagos',
+];
 
-  // Eastern European Time (EET - UTC+2/+3)
-  'bg': 2,           // Bulgarian
-  'el': 2,           // Greek
-  'fi': 2,           // Finnish
-  'et': 2,           // Estonian
-  'lv': 2,           // Latvian
-  'lt': 2,           // Lithuanian
-  'uk': 2,           // Ukrainian
+/** Default zone for guilds that have never configured one. */
+export const DEFAULT_TIMEZONE = 'UTC';
 
-  // Moscow Time (MSK - UTC+3)
-  'ru': 3,           // Russian
-
-  // Eastern Time (EST/EDT - UTC-5/-4, we use UTC-5)
-  'en-US': -5,       // US English (defaults to Eastern, but US has multiple zones)
-
-  // Other major English-speaking regions
-  'en-AU': 10,       // Australian English (Sydney/Melbourne - AEST/AEDT UTC+10/+11)
-
-  // Asian timezones
-  'ja': 9,           // Japanese (JST - UTC+9)
-  'ko': 9,           // Korean (KST - UTC+9)
-  'zh-CN': 8,        // Chinese Simplified (CST - UTC+8)
-  'zh-TW': 8,        // Chinese Traditional (CST - UTC+8)
-
-  // South American
-  'pt-BR': -3,       // Brazilian Portuguese (BRT - UTC-3)
-  'es-ES': 1,        // Spanish (CET - UTC+1)
-  'es-MX': -6,       // Mexican Spanish (CST - UTC-6)
-
-  // Turkish Time (TRT - UTC+3)
-  'tr': 3,           // Turkish
-};
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const TIME_PATTERN = /^(\d{1,2}):(\d{2})$/;
 
 /**
- * Maps Discord locale strings to timezone offsets for scheduling purposes.
+ * Checks whether a string is a timezone identifier the runtime's ICU data knows.
  *
- * Parameters:
- *   - locale: string | null - The Discord locale string (e.g., "en-US", "de")
- *
- * Returns:
- *   number | null - Timezone offset in hours from UTC, or null if locale is not supported
- *
- * Example:
- *   const offset = getTimezoneFromLocale('en-US'); // Returns -5 for Eastern Time
+ * Accepts anything `Intl` accepts — so real IANA names beyond COMMON_TIMEZONES
+ * (and fixed-offset `Etc/GMT+X` zones) work too. `Intl.DateTimeFormat` throws a
+ * RangeError for unknown identifiers, which is the only reliable way to ask.
  */
-export function getTimezoneFromLocale(locale: string | null): number | null {
-  if (!locale) return null;
-
-  // Try exact match first
-  if (locale in LOCALE_TO_TIMEZONE) {
-    return LOCALE_TO_TIMEZONE[locale];
+export function isValidTimezone(timeZone: string | null | undefined): boolean {
+  if (!timeZone || typeof timeZone !== 'string') return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone });
+    return true;
+  } catch {
+    return false;
   }
-
-  // Try without region code (e.g., "en-US" -> "en")
-  const baseLocale = locale.split('-')[0];
-  if (baseLocale in LOCALE_TO_TIMEZONE) {
-    return LOCALE_TO_TIMEZONE[baseLocale];
-  }
-
-  return null;
 }
 
 /**
- * Gets a human-readable timezone name from offset
+ * Normalizes user input to the canonical casing used by COMMON_TIMEZONES.
+ *
+ * Discord autocomplete lets users submit free text, and IANA identifiers are
+ * case-sensitive in some runtimes. Returns null if the zone is not valid.
  */
-export function getTimezoneName(offset: number): string {
-  if (offset >= 0) {
-    return `GMT+${offset}`;
-  } else {
-    return `GMT${offset}`;
+export function normalizeTimezone(input: string | null | undefined): string | null {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const known = COMMON_TIMEZONES.find(
+    (zone) => zone.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (known) return known;
+
+  return isValidTimezone(trimmed) ? trimmed : null;
+}
+
+/** Reads the wall-clock fields an instant has in `timeZone`. */
+function getZonedParts(instant: Date, timeZone: string): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  // `en-CA` + 2-digit options gives stable, zero-padded numeric parts across runtimes.
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+
+  const lookup: Record<string, number> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      lookup[part.type] = parseInt(part.value, 10);
+    }
   }
+
+  return {
+    year: lookup.year,
+    month: lookup.month,
+    day: lookup.day,
+    hour: lookup.hour === 24 ? 0 : lookup.hour,
+    minute: lookup.minute,
+    second: lookup.second,
+  };
+}
+
+/**
+ * Returns the UTC offset of `timeZone` at `instant`, in milliseconds.
+ *
+ * Positive east of Greenwich (Europe/Berlin in summer → +7_200_000). Derived by
+ * formatting the instant in the zone and re-reading those fields as if they were
+ * UTC — the difference is the offset in effect at that moment, DST included.
+ */
+export function getTimezoneOffsetMs(instant: Date, timeZone: string): number {
+  const p = getZonedParts(instant, timeZone);
+  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  // Strip sub-second precision from the instant so the difference is a clean offset.
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/**
+ * Converts a wall-clock date/time in `timeZone` to the UTC instant it denotes.
+ *
+ * This replaces the old `new Date("YYYY-MM-DDTHH:MM:00")` + fixed-hour-shift
+ * arithmetic, which parsed in the *host process* timezone and therefore only
+ * worked when the container happened to run with TZ=UTC.
+ *
+ * Two passes are required: the offset itself depends on the instant, so the first
+ * pass produces a candidate instant and the second re-reads the offset actually in
+ * effect there. Around DST transitions:
+ *   - Spring-forward gap (e.g. 02:30 on the last Sunday of March in Europe/Berlin
+ *     does not exist): resolves to the corresponding instant after the jump.
+ *   - Autumn-fallback overlap (02:30 happens twice): resolves to the second,
+ *     standard-time occurrence.
+ *
+ * Returns null for malformed input, an unknown zone, or a calendar-invalid date
+ * such as 2026-02-30.
+ */
+export function zonedDateTimeToUtc(
+  dateStr: string,
+  timeStr: string,
+  timeZone: string
+): Date | null {
+  if (!isValidTimezone(timeZone)) return null;
+
+  const dateMatch = DATE_PATTERN.exec((dateStr ?? '').trim());
+  const timeMatch = TIME_PATTERN.exec((timeStr ?? '').trim());
+  if (!dateMatch || !timeMatch) return null;
+
+  const year = parseInt(dateMatch[1], 10);
+  const month = parseInt(dateMatch[2], 10);
+  const day = parseInt(dateMatch[3], 10);
+  const hour = parseInt(timeMatch[1], 10);
+  const minute = parseInt(timeMatch[2], 10);
+
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59) return null;
+
+  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+
+  // Date.UTC rolls overflow silently (Feb 30 → Mar 2); reject instead of guessing.
+  const rolled = new Date(naiveUtc);
+  if (
+    rolled.getUTCFullYear() !== year ||
+    rolled.getUTCMonth() !== month - 1 ||
+    rolled.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  const firstGuess = naiveUtc - getTimezoneOffsetMs(new Date(naiveUtc), timeZone);
+  const offset = getTimezoneOffsetMs(new Date(firstGuess), timeZone);
+  return new Date(naiveUtc - offset);
+}
+
+/**
+ * Renders an instant as the `YYYY-MM-DD` / `HH:MM` wall-clock pair seen in `timeZone`.
+ *
+ * Used to pre-fill forms (raid clone/edit) with the time a raid leader originally
+ * typed, rather than its UTC representation.
+ */
+export function formatInTimezone(
+  instant: Date,
+  timeZone: string
+): { date: string; time: string } {
+  const zone = isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
+  const p = getZonedParts(instant, zone);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    date: `${p.year}-${pad(p.month)}-${pad(p.day)}`,
+    time: `${pad(p.hour)}:${pad(p.minute)}`,
+  };
+}
+
+/**
+ * Human-readable label for a zone, e.g. `Europe/Berlin (GMT+2)`.
+ *
+ * The offset is evaluated at `at` (default: now) because it changes with DST —
+ * the label is a snapshot, not a property of the zone.
+ */
+export function formatTimezoneLabel(timeZone: string, at: Date = new Date()): string {
+  if (!isValidTimezone(timeZone)) return timeZone;
+
+  const offsetMinutes = getTimezoneOffsetMs(at, timeZone) / 60000;
+  const sign = offsetMinutes < 0 ? '-' : '+';
+  const abs = Math.abs(offsetMinutes);
+  const hours = Math.floor(abs / 60);
+  const minutes = abs % 60;
+  const suffix = minutes === 0 ? `${hours}` : `${hours}:${String(minutes).padStart(2, '0')}`;
+
+  return `${timeZone} (GMT${sign}${suffix})`;
+}
+
+/**
+ * Filters COMMON_TIMEZONES for a `/config timezone` autocomplete query.
+ *
+ * Matches on the identifier and on the city segment so "berlin" finds
+ * `Europe/Berlin`. Capped at 25, Discord's hard limit for autocomplete choices.
+ */
+export function searchTimezones(query: string, limit = 25): string[] {
+  const q = (query ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+  const pool = COMMON_TIMEZONES;
+
+  if (!q) return pool.slice(0, limit) as string[];
+
+  const startsWith: string[] = [];
+  const contains: string[] = [];
+
+  for (const zone of pool) {
+    const lower = zone.toLowerCase();
+    const city = lower.split('/').pop() ?? '';
+    if (lower.startsWith(q) || city.startsWith(q)) {
+      startsWith.push(zone);
+    } else if (lower.includes(q)) {
+      contains.push(zone);
+    }
+  }
+
+  return [...startsWith, ...contains].slice(0, limit);
 }

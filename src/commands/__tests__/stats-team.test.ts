@@ -75,7 +75,7 @@ describe('/stats team awareness', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
     (prisma.team.findFirst as jest.Mock).mockResolvedValue(DEFAULT_TEAM);
     (prisma.team.count as jest.Mock).mockResolvedValue(1);
@@ -244,7 +244,7 @@ describe('/stats team awareness', () => {
       description: 'Mythic Night',
       raidDate: new Date('2026-03-01T18:00:00Z'),
       attendance: [],
-      guild: { id: 'guild-123', language: 'en', timezoneOffset: 0 },
+      guild: { id: 'guild-123', language: 'en', timezone: 'UTC' },
     };
 
     it('shows the raid\'s team in the stats title on multi-team guilds', async () => {

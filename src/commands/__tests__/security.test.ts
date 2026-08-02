@@ -77,7 +77,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
     guild: {
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
       raidLeaderRoles: 'role-leader',
       raidRoles: 'role-raider',
     },
@@ -199,7 +199,7 @@ describe('Security & Data Integrity', () => {
         (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
           id: 'guild-123',
           language: 'en',
-          timezoneOffset: 0,
+          timezone: 'UTC',
           raidRoles: 'role-raider',
         });
         (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);

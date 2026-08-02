@@ -1,15 +1,10 @@
 import { EmbedBuilder, Colors } from 'discord.js';
-import { getTimezoneName } from './timezoneHelper';
 import { exampleRaidDate } from './exampleDate';
 import { t } from './localization';
 import { TRIAL_DAYS } from '../services/entitlementService';
 import { VERSION } from './version';
 
 export interface WelcomeEmbedParams {
-  /** Timezone auto-detected from the guild locale, or null if detection failed. */
-  detectedTimezone: number | null;
-  /** Effective timezone offset applied to the guild (defaults to UTC/0). */
-  timezoneOffset: number;
   /** Whether a Premium trial was just granted — surfaces the trial callout. */
   trialGranted: boolean;
   /** Resolved bot language for this guild (derived from its Discord locale). */
@@ -24,31 +19,26 @@ export interface WelcomeEmbedParams {
  * German server sees German copy instead of a hardcoded English string.
  */
 export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
-  const { detectedTimezone, timezoneOffset, trialGranted, language } = params;
+  const { trialGranted, language } = params;
 
-  const timezoneNote = detectedTimezone !== null
-    ? `🌍 Timezone auto-detected as **${getTimezoneName(timezoneOffset)}**`
-    : '⚠️ Could not auto-detect timezone - defaulting to **UTC**';
-
-  const timezoneInstructions = detectedTimezone !== null && timezoneOffset !== 1
-    ? `\n⚠️ **If this is incorrect**, run: \`/config timezone offset:1\` for GMT+1`
-    : detectedTimezone === null
-    ? `\n**Please set your timezone:** \`/config timezone offset:1\` for GMT+1`
-    : '';
+  // No timezone is claimed here: Discord does not expose a guild's location, and the
+  // old locale-based guess was routinely wrong. Every server starts on UTC and picks
+  // its own zone in step 1.
+  const timezoneNote = '🌍 Raid times are read as **UTC** until you set your zone';
 
   const welcomeEmbed = new EmbedBuilder()
     .setTitle('🎉 Thanks for adding RaidPresence!')
     .setColor(Colors.Green)
     .setDescription(
       'I help manage WoW raid attendance with a **reverse sign-up system** - everyone is automatically signed up and must opt-out if they can\'t attend.\n\n' +
-      `${timezoneNote}${timezoneInstructions}\n\n` +
+      `${timezoneNote}\n\n` +
       '**Quick Setup Required:**'
     )
     .addFields(
       {
-        name: '1️⃣ Set Timezone (if not GMT+1)',
-        value: 'Run: `/config timezone offset:1` for GMT+1\n' +
-               'Or: `/config timezone offset:<hours>` for your timezone\n' +
+        name: '1️⃣ Set Timezone',
+        value: 'Run: `/config timezone zone:Europe/Berlin`\n' +
+               'Start typing a city and pick from the list — daylight saving is handled for you.\n' +
                '**This ensures raid times are created correctly!**',
         inline: false,
       },

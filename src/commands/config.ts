@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder,
   CommandInteraction,
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
 } from 'discord.js';
@@ -9,6 +10,12 @@ import prisma from '../database/client';
 import { Command } from '../types';
 import { VERSION } from '../utils/version';
 import { freeTierHint } from '../middleware/premiumGate';
+import {
+  DEFAULT_TIMEZONE,
+  formatTimezoneLabel,
+  normalizeTimezone,
+  searchTimezones,
+} from '../utils/timezoneHelper';
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -48,14 +55,13 @@ const command: Command = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName('timezone')
-        .setDescription('Set the timezone offset for raid times')
-        .addIntegerOption((option) =>
+        .setDescription('Set the timezone raid times are entered in')
+        .addStringOption((option) =>
           option
-            .setName('offset')
-            .setDescription('Timezone offset in hours (e.g., 1 for GMT+1, -5 for GMT-5)')
+            .setName('zone')
+            .setDescription('IANA timezone, e.g. Europe/Berlin — start typing a city to search')
             .setRequired(true)
-            .setMinValue(-12)
-            .setMaxValue(14)
+            .setAutocomplete(true)
         )
     )
     .addSubcommand((subcommand) =>
@@ -127,8 +133,8 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
 
   const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
   const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
-  const timezoneOffset = guildData.timezoneOffset;
-  const timezoneDisplay = timezoneOffset >= 0 ? `GMT+${timezoneOffset}` : `GMT${timezoneOffset}`;
+  const timezone = guildData.timezone || DEFAULT_TIMEZONE;
+  const timezoneDisplay = formatTimezoneLabel(timezone);
   const archiveChannel = guildData.archiveChannelId ? `<#${guildData.archiveChannelId}>` : 'Not configured';
   const autoArchiveStatus = guildData.autoArchive ? '✅ Enabled' : '❌ Disabled';
 
@@ -148,7 +154,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
       },
       {
         name: 'Timezone',
-        value: `\`${timezoneDisplay}\`\n\nRaid times will be created in this timezone.`,
+        value: `\`${timezoneDisplay}\`\n\nTimes you type in \`/raid create\` are read as local time in this zone. Daylight saving is applied automatically.`,
         inline: false,
       },
       {
@@ -261,11 +267,18 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
 
   await interaction.deferReply({ ephemeral: true });
 
-  const offset = interaction.options.get('offset', true).value as number;
+  const rawZone = interaction.options.get('zone', true).value as string;
 
-  if (offset < -12 || offset > 14) {
+  // Autocomplete is a suggestion, not a constraint — Discord submits whatever the
+  // user typed, so the value has to be validated here regardless.
+  const timezone = normalizeTimezone(rawZone);
+
+  if (!timezone) {
     await interaction.editReply({
-      content: '❌ Invalid timezone offset. Must be between -12 and +14.',
+      content:
+        `❌ \`${rawZone}\` is not a known timezone.\n\n` +
+        'Pick one from the autocomplete list, or pass an IANA identifier such as ' +
+        '`Europe/Berlin`, `America/New_York` or `UTC`.',
     });
     return;
   }
@@ -273,20 +286,39 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   // Update in database
   await prisma.guild.upsert({
     where: { id: interaction.guild.id },
-    update: { timezoneOffset: offset },
+    update: { timezone },
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
       raidLeaderRoles: '',
       language: 'en',
-      timezoneOffset: offset,
+      timezone,
     },
   });
 
-   const timezoneDisplay = offset >= 0 ? `GMT+${offset}` : `GMT${offset}`;
-   await interaction.editReply({
-     content: `✅ Timezone updated to: \`${timezoneDisplay}\`\n\nRaid times will now be created in this timezone.`,
-   });
+  await interaction.editReply({
+    content:
+      `✅ Timezone updated to: \`${formatTimezoneLabel(timezone)}\`\n\n` +
+      'Times you type in `/raid create` are now read as local time in this zone, ' +
+      'with daylight saving applied automatically.',
+  });
+}
+
+/**
+ * Autocomplete for `/config timezone zone:` — filters the common-zone list.
+ *
+ * Registered from the interaction dispatcher in `index.ts` alongside the shared
+ * `team` autocomplete.
+ */
+export async function timezoneAutocomplete(
+  interaction: AutocompleteInteraction
+): Promise<void> {
+  const focused = interaction.options.getFocused();
+  const matches = searchTimezones(focused);
+
+  await interaction.respond(
+    matches.map((zone) => ({ name: formatTimezoneLabel(zone), value: zone }))
+  );
 }
 
 async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction) {

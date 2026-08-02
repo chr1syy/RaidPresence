@@ -232,6 +232,19 @@ export interface Translations {
     premiumTrialGranted: string;
     premiumTrialTeamsHint: string;
 
+    // Onboarding welcome (#39) — three lines and two buttons, not a manual
+    welcomeTitle: string;
+    welcomeCoreBenefit: string;
+    welcomeNextStep: string;
+    welcomeButtonSetup: string;
+    welcomeButtonFirstRaid: string;
+    welcomeTrialTitle: string;
+    welcomeSetupIntro: string;
+    welcomeSetupTimezonePlaceholder: string;
+    welcomeSetupTimezoneSaved: string;
+    welcomeSetupLeaderRolesHint: string;
+    welcomeOpenInServer: string;
+
     // Premium feature display names (localized upsell embed)
     featureRaidOptoutReason: string;
     featureRaidArchive: string;
@@ -501,6 +514,19 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumTrialGranted: '🎁 **Your {days}-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
         premiumTrialTeamsHint: 'During your trial you can create as many teams as you like.',
 
+        // Onboarding welcome (#39)
+        welcomeTitle: '🎉 RaidPresence is ready',
+        welcomeCoreBenefit: 'RaidPresence tracks **absences**, not sign-ups — your raid roster is full by default, and people only speak up when they *can\'t* make it.',
+        welcomeNextStep: 'Two buttons below, and your first raid is up.',
+        welcomeButtonSetup: 'Start setup',
+        welcomeButtonFirstRaid: 'Create first raid',
+        welcomeTrialTitle: '🎁 {days}-day Premium trial',
+        welcomeSetupIntro: '**Which timezone are your raid times in?**\nPick it below — daylight saving is handled automatically.',
+        welcomeSetupTimezonePlaceholder: 'Select your timezone',
+        welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.\n\nThat is the only required setting — you can create a raid right now.',
+        welcomeSetupLeaderRolesHint: 'Optional: use `/config leader-roles` to choose who may create raids. Without it, anyone with the *Manage Events* permission can.',
+        welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
+
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Opt-Out Reasons',
         featureRaidArchive: 'Raid Archive',
@@ -757,6 +783,19 @@ const translations: Record<SupportedLanguage, Translations> = {
         // Premium trial (Phase 1.6)
         premiumTrialGranted: '🎁 **Deine {days}-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
         premiumTrialTeamsHint: 'Während der Testphase kannst du beliebig viele Teams anlegen.',
+
+        // Onboarding welcome (#39)
+        welcomeTitle: '🎉 RaidPresence ist startklar',
+        welcomeCoreBenefit: 'RaidPresence trägt **Abwesenheiten** ein statt Anmeldungen – dein Raid ist standardmäßig voll, und melden muss sich nur, wer *nicht* kann.',
+        welcomeNextStep: 'Zwei Knöpfe, dann steht dein erster Raid.',
+        welcomeButtonSetup: 'Setup starten',
+        welcomeButtonFirstRaid: 'Ersten Raid anlegen',
+        welcomeTrialTitle: '🎁 {days} Tage Premium testen',
+        welcomeSetupIntro: '**In welcher Zeitzone sind eure Raid-Zeiten?**\nUnten auswählen – die Sommerzeit wird automatisch berücksichtigt.',
+        welcomeSetupTimezonePlaceholder: 'Zeitzone auswählen',
+        welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.\n\nMehr ist nicht nötig – du kannst sofort einen Raid anlegen.',
+        welcomeSetupLeaderRolesHint: 'Optional: Mit `/config leader-roles` legst du fest, wer Raids anlegen darf. Ohne das darf jeder mit der Berechtigung *Events verwalten*.',
+        welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Abmeldungsgründe',

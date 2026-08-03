@@ -39,6 +39,7 @@ import {
   DEFAULT_TIMEZONE,
   formatInTimezone,
   formatTimezoneLabel,
+  guildTimezoneUpdate,
   normalizeTimezone,
   zonedDateTimeToUtc,
 } from '../utils/timezoneHelper';
@@ -442,7 +443,7 @@ export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): 
   // preview is that fixing it once fixes every future raid.
   await prisma.guild.update({
     where: { id: draft.guildId },
-    data: { timezone },
+    data: guildTimezoneUpdate(timezone),
   });
 
   draft.date = date;

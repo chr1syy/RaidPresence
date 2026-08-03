@@ -365,9 +365,11 @@ describe('guided /raid create flow', () => {
 
       await handleFixTimeSubmit(submit);
 
+      // The deprecated timezoneOffset column rides along until phase 2 of the IANA
+      // migration drops it — see guildTimezoneUpdate().
       expect(prisma.guild.update).toHaveBeenCalledWith({
         where: { id: GUILD_ID },
-        data: { timezone: 'America/New_York' },
+        data: { timezone: 'America/New_York', timezoneOffset: expect.any(Number) },
       });
     });
 

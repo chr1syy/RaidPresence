@@ -260,6 +260,52 @@ export function formatTimezoneLabel(timeZone: string, at: Date = new Date()): st
 }
 
 /**
+ * The fixed-offset zone that reproduces a legacy integer `timezoneOffset` exactly.
+ *
+ * Mirrors the backfill in `20260803090000_guild_timezone_iana_phase1/migration.sql`.
+ * Note the POSIX sign inversion: `Etc/GMT-1` is UTC+1, so a positive offset produces
+ * a minus sign. Offset 0 maps to 'UTC' rather than 'Etc/GMT+0' for readability — they
+ * are the same instant either way.
+ *
+ * Returns null outside -12..14, which has no representable Etc/GMT zone. The migration
+ * aborts on such rows for the same reason.
+ */
+export function legacyOffsetToFixedZone(offsetHours: number): string | null {
+  if (!Number.isInteger(offsetHours) || offsetHours < -12 || offsetHours > 14) return null;
+  if (offsetHours === 0) return DEFAULT_TIMEZONE;
+  return `Etc/GMT${offsetHours > 0 ? '-' : '+'}${Math.abs(offsetHours)}`;
+}
+
+/**
+ * The whole-hour UTC offset of `timeZone` at `at`, for the deprecated column only.
+ *
+ * Lossy by construction — a zone's offset changes with DST and some zones sit on a
+ * half or quarter hour (Asia/Kolkata is +5:30). That is acceptable because nothing
+ * reads the value: it exists so the legacy column stays roughly meaningful during the
+ * two-phase rollout, and it disappears with the column in phase 2. Sub-hour offsets
+ * truncate toward zero; the result is clamped into the range the column ever held.
+ */
+export function timezoneToLegacyOffset(timeZone: string, at: Date = new Date()): number {
+  if (!isValidTimezone(timeZone)) return 0;
+  const hours = Math.trunc(getTimezoneOffsetMs(at, timeZone) / 3_600_000);
+  return Math.min(14, Math.max(-12, hours));
+}
+
+/**
+ * Prisma payload for persisting a guild's timezone during the two-phase rollout.
+ *
+ * Every write site goes through this so the deprecated `timezoneOffset` column cannot
+ * drift away from `timezone` while both exist. Phase 2 deletes this function and the
+ * call sites collapse back to `{ timezone }`.
+ */
+export function guildTimezoneUpdate(
+  timeZone: string,
+  at: Date = new Date()
+): { timezone: string; timezoneOffset: number } {
+  return { timezone: timeZone, timezoneOffset: timezoneToLegacyOffset(timeZone, at) };
+}
+
+/**
  * Filters COMMON_TIMEZONES for a `/config timezone` autocomplete query.
  *
  * Matches on the identifier and on the city segment so "berlin" finds

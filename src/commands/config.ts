@@ -13,6 +13,7 @@ import { freeTierHint } from '../middleware/premiumGate';
 import {
   DEFAULT_TIMEZONE,
   formatTimezoneLabel,
+  guildTimezoneUpdate,
   normalizeTimezone,
   searchTimezones,
 } from '../utils/timezoneHelper';
@@ -283,16 +284,20 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Update in database
+  // Update in database. `guildTimezoneUpdate` also fills the deprecated
+  // `timezoneOffset` column, which phase 1 of the IANA migration keeps around as a
+  // rollback path — see prisma/migrations/20260803090000_guild_timezone_iana_phase1.
+  const timezoneData = guildTimezoneUpdate(timezone);
+
   await prisma.guild.upsert({
     where: { id: interaction.guild.id },
-    update: { timezone },
+    update: timezoneData,
     create: {
       id: interaction.guild.id,
       name: interaction.guild.name,
       raidLeaderRoles: '',
       language: 'en',
-      timezone,
+      ...timezoneData,
     },
   });
 

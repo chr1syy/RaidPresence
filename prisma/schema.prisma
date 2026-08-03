@@ -19,6 +19,7 @@ model Guild {
   raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
   language        String   @default("en") // Language for bot messages (en, de)
   timezone        String   @default("UTC") // IANA zone for interpreting typed raid times (e.g. "Europe/Berlin"). DST-aware; see utils/timezoneHelper.ts
+  timezoneOffset  Int      @default(0) // DEPRECATED, phase 1 of the IANA migration. Nothing reads this any more; it is kept written (guildTimezoneUpdate()) purely as a rollback path and is dropped in phase 2.
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

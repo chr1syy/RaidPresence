@@ -8,15 +8,21 @@
  * the conversion no longer depends on it.
  */
 
+import fs from 'fs';
+import path from 'path';
+
 import {
   COMMON_TIMEZONES,
   DEFAULT_TIMEZONE,
   formatInTimezone,
   formatTimezoneLabel,
   getTimezoneOffsetMs,
+  guildTimezoneUpdate,
   isValidTimezone,
+  legacyOffsetToFixedZone,
   normalizeTimezone,
   searchTimezones,
+  timezoneToLegacyOffset,
   zonedDateTimeToUtc,
 } from '../timezoneHelper';
 
@@ -336,6 +342,126 @@ describe('searchTimezones()', () => {
     for (const zone of COMMON_TIMEZONES) {
       expect(isValidTimezone(zone)).toBe(true);
     }
+  });
+});
+
+describe('offset-true migration of legacy integer offsets', () => {
+  // The whole point of the phase-1 backfill: an existing guild must keep the exact
+  // offset it had. Etc/GMT zones never observe DST, so the same offset has to come
+  // back out in January and in July.
+  const OFFSETS = Array.from({ length: 27 }, (_, i) => i - 12); // -12..14
+  const WINTER = new Date('2026-01-15T12:00:00Z');
+  const SUMMER = new Date('2026-07-15T12:00:00Z');
+
+  it.each(OFFSETS)('maps offset %d to a zone with exactly that offset, all year', (offset) => {
+    const zone = legacyOffsetToFixedZone(offset)!;
+    expect(zone).not.toBeNull();
+    expect(isValidTimezone(zone)).toBe(true);
+    expect(getTimezoneOffsetMs(WINTER, zone)).toBe(offset * HOUR);
+    expect(getTimezoneOffsetMs(SUMMER, zone)).toBe(offset * HOUR);
+  });
+
+  // POSIX inverts the sign inside Etc/GMT names. Getting this backwards would move
+  // every migrated guild by twice its offset, so it is asserted literally.
+  it('inverts the sign the way POSIX does, not the way it reads', () => {
+    expect(legacyOffsetToFixedZone(1)).toBe('Etc/GMT-1');
+    expect(legacyOffsetToFixedZone(10)).toBe('Etc/GMT-10');
+    expect(legacyOffsetToFixedZone(-5)).toBe('Etc/GMT+5');
+    expect(legacyOffsetToFixedZone(-12)).toBe('Etc/GMT+12');
+  });
+
+  it('reads Etc/GMT-1 as UTC+1 and Etc/GMT+5 as UTC-5', () => {
+    // 20:00 in a UTC+1 guild is 19:00 UTC — in summer too, unlike Europe/Berlin.
+    expect(zonedDateTimeToUtc('2026-07-15', '20:00', 'Etc/GMT-1')!.toISOString()).toBe(
+      '2026-07-15T19:00:00.000Z'
+    );
+    // 20:00 in a UTC-5 guild is 01:00 UTC the next day — unlike America/New_York,
+    // which would be 00:00 in July.
+    expect(zonedDateTimeToUtc('2026-07-15', '20:00', 'Etc/GMT+5')!.toISOString()).toBe(
+      '2026-07-16T01:00:00.000Z'
+    );
+  });
+
+  it('keeps offset 0 on UTC', () => {
+    expect(legacyOffsetToFixedZone(0)).toBe('UTC');
+  });
+
+  it('refuses offsets no Etc/GMT zone can express', () => {
+    // The migration aborts on these rather than silently rewriting them to UTC.
+    expect(legacyOffsetToFixedZone(-13)).toBeNull();
+    expect(legacyOffsetToFixedZone(15)).toBeNull();
+    expect(legacyOffsetToFixedZone(1.5)).toBeNull();
+  });
+
+  it('round-trips a legacy offset through the fixed zone and back', () => {
+    for (const offset of OFFSETS) {
+      const zone = legacyOffsetToFixedZone(offset)!;
+      expect(timezoneToLegacyOffset(zone, SUMMER)).toBe(offset);
+      expect(timezoneToLegacyOffset(zone, WINTER)).toBe(offset);
+    }
+  });
+});
+
+describe('dual-write of the deprecated timezoneOffset column', () => {
+  it('writes both columns from one call', () => {
+    expect(guildTimezoneUpdate('Etc/GMT-1', new Date('2026-07-15T12:00:00Z'))).toEqual({
+      timezone: 'Etc/GMT-1',
+      timezoneOffset: 1,
+    });
+  });
+
+  it('records the offset in effect at the given moment for a DST zone', () => {
+    expect(guildTimezoneUpdate('Europe/Berlin', new Date('2026-01-15T12:00:00Z')).timezoneOffset).toBe(1);
+    expect(guildTimezoneUpdate('Europe/Berlin', new Date('2026-07-15T12:00:00Z')).timezoneOffset).toBe(2);
+  });
+
+  it('truncates sub-hour zones toward zero rather than throwing', () => {
+    // Asia/Kolkata is +5:30 and Pacific/Marquesas is -9:30 — the integer column
+    // cannot hold either, which is exactly why nothing reads it any more.
+    expect(timezoneToLegacyOffset('Asia/Kolkata', new Date('2026-07-15T12:00:00Z'))).toBe(5);
+    expect(timezoneToLegacyOffset('Pacific/Marquesas', new Date('2026-07-15T12:00:00Z'))).toBe(-9);
+  });
+
+  it('falls back to 0 for a zone the runtime cannot resolve', () => {
+    expect(timezoneToLegacyOffset('Not/AZone')).toBe(0);
+  });
+});
+
+describe('phase-1 migration is additive and re-runnable', () => {
+  // These assertions guard the review outcome on PR #40: the migration must not drop
+  // the legacy column, and must survive a partial or repeated run.
+  const sql = fs.readFileSync(
+    path.join(
+      __dirname,
+      '../../../prisma/migrations/20260803090000_guild_timezone_iana_phase1/migration.sql'
+    ),
+    'utf8'
+  );
+
+  it('does not drop the legacy column in this phase', () => {
+    expect(sql).not.toMatch(/DROP\s+COLUMN/i);
+  });
+
+  it('adds the new column idempotently', () => {
+    expect(sql).toMatch(/ADD COLUMN IF NOT EXISTS "timezone"/i);
+  });
+
+  it('only backfills rows still on the default, so a re-run cannot clobber a set zone', () => {
+    expect(sql).toMatch(/WHERE "timezone" = 'UTC' AND "timezoneOffset" <> 0/);
+  });
+
+  it('maps to fixed-offset zones, never to a named DST zone', () => {
+    expect(sql).toMatch(/'Etc\/GMT'/);
+    expect(sql).not.toMatch(/Europe\/Berlin'|America\/New_York'|Australia\/Brisbane'/);
+  });
+
+  it('emits the POSIX sign inversion (positive offset produces a minus)', () => {
+    expect(sql).toMatch(/CASE WHEN "timezoneOffset" > 0 THEN '-' ELSE '\+' END/);
+  });
+
+  it('fails loudly on out-of-range offsets instead of defaulting them to UTC', () => {
+    expect(sql).toMatch(/RAISE EXCEPTION/);
+    expect(sql).not.toMatch(/ELSE 'UTC'/);
   });
 });
 

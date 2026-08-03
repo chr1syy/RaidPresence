@@ -301,7 +301,7 @@ describe('config command', () => {
 
       expect(prisma.guild.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'Europe/Berlin' },
+          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
@@ -317,11 +317,27 @@ describe('config command', () => {
 
       expect(prisma.guild.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'America/New_York' },
+          update: { timezone: 'America/New_York', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({ content: expect.stringContaining('America/New_York') })
+      );
+    });
+
+    it('should keep the deprecated timezoneOffset column in sync', async () => {
+      // Phase 1 of the IANA migration keeps the old integer column as a rollback
+      // path, so every write has to fill both. Etc/GMT-3 is UTC+3 (POSIX inversion),
+      // and being a fixed-offset zone it is stable regardless of when the suite runs.
+      mockInteraction.options.get = withZone('Etc/GMT-3');
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: { timezone: 'Etc/GMT-3', timezoneOffset: 3 },
+        })
       );
     });
 
@@ -333,7 +349,7 @@ describe('config command', () => {
 
       expect(prisma.guild.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'Europe/Berlin' },
+          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
         })
       );
     });

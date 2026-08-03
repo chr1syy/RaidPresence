@@ -88,7 +88,7 @@ RaidPresence/
 Five Prisma models in `prisma/schema.prisma`:
 
 ### Guild
-Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezone` (IANA zone, e.g. `Europe/Berlin`; default `UTC`), `archiveChannelId`, `autoArchive`, `premiumTier` (FREE/PREMIUM/PRO), `premiumExpiresAt`, `entitlementId`, `weeklyRaidCount`, `weeklyRaidCountResetAt`.
+Per-server configuration. Fields: `id`, `name`, `raidRoles` (deprecated), `raidLeaderRoles`, `language` (en/de), `timezone` (IANA zone, e.g. `Europe/Berlin`; default `UTC`), `timezoneOffset` (deprecated, write-only during the two-phase IANA migration — dropped in phase 2), `archiveChannelId`, `autoArchive`, `premiumTier` (FREE/PREMIUM/PRO), `premiumExpiresAt`, `entitlementId`, `weeklyRaidCount`, `weeklyRaidCountResetAt`.
 
 **Note:** `raidRoles` is deprecated as of PR #15. Raid roles are now specified per-raid via `/raid create roles:` parameter.
 

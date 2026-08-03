@@ -19,7 +19,12 @@ import {
 import prisma from '../database/client';
 import { canManageRaids } from '../utils/permissions';
 import { t } from '../utils/localization';
-import { COMMON_TIMEZONES, formatTimezoneLabel, normalizeTimezone } from '../utils/timezoneHelper';
+import {
+  COMMON_TIMEZONES,
+  formatTimezoneLabel,
+  guildTimezoneUpdate,
+  normalizeTimezone,
+} from '../utils/timezoneHelper';
 import { WELCOME_BUTTON_FIRST_RAID, WELCOME_BUTTON_SETUP } from '../utils/welcomeEmbed';
 
 export const WELCOME_SELECT_TIMEZONE = 'welcome-tz';
@@ -127,7 +132,7 @@ export async function handleTimezoneSelect(
 
   await prisma.guild.update({
     where: { id: guildId },
-    data: { timezone },
+    data: guildTimezoneUpdate(timezone),
   });
 
   await interaction.update({

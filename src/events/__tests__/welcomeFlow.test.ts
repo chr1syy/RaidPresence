@@ -193,9 +193,11 @@ describe('welcome buttons', () => {
 
       await handleTimezoneSelect(select);
 
+      // The deprecated timezoneOffset column rides along until phase 2 of the IANA
+      // migration drops it — see guildTimezoneUpdate().
       expect(prisma.guild.update).toHaveBeenCalledWith({
         where: { id: GUILD_ID },
-        data: { timezone: 'Europe/Berlin' },
+        data: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
       });
     });
 

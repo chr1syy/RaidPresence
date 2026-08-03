@@ -1,5 +1,5 @@
 /**
- * One-off backfill that starts the 14-day Premium trial for guilds that predate it.
+ * One-off backfill that starts the Premium trial for guilds that predate it.
  *
  * WHY THIS EXISTS: `grantTrialIfEligible()` was only ever wired into the `guildCreate`
  * event handler, and only since v0.5.0. Every guild that installed the bot before that

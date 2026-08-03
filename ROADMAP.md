@@ -15,7 +15,7 @@ limits, and Discord/Stripe-agnostic subscription sync.
 - [x] **1.5 — Reusable upsell embed + free-tier hint**
   - `premiumUpsellEmbed(feature, currentTier, requiredTier, language)` — polished, localized rich embed showing the feature, current plan, and required plan
   - `premiumFooterHint(language)` — subtle `-#` subtext nudge, wired into gated command responses consistently
-- [x] **1.6 — 14-day Premium trial** — auto-granted on `guildCreate` (`grantTrialIfEligible()`); idempotent across re-installs, never clobbers an active subscription; surfaced in the welcome embed
+- [x] **1.6 — Premium trial** (14 days at launch, 30 since 2026-08-03) — auto-granted on `guildCreate` (`grantTrialIfEligible()`); idempotent across re-installs, never clobbers an active subscription; surfaced in the welcome embed
 
 ## Phase 2: Enhanced Raid Management
 

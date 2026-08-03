@@ -91,7 +91,10 @@ export function buildWelcomeEmbed(params: WelcomeEmbedParams): EmbedBuilder {
   if (trialGranted) {
     welcomeEmbed.addFields({
       name: `🎁 ${TRIAL_DAYS}-Day Premium Trial`,
-      value: t(language, 'premiumTrialGranted', { tier: t(language, 'premiumTierPremium') }) +
+      value: t(language, 'premiumTrialGranted', {
+        days: String(TRIAL_DAYS),
+        tier: t(language, 'premiumTierPremium'),
+      }) +
              `\n${t(language, 'premiumTrialTeamsHint')}`,
       inline: false,
     });

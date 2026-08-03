@@ -214,8 +214,15 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
   });
 }
 
-/** Length of the auto-granted new-guild premium trial, in days. */
-export const TRIAL_DAYS = 14;
+/**
+ * Length of the auto-granted new-guild premium trial, in days.
+ *
+ * Raised from 14 to 30 on 2026-08-03: two weeks is not enough to see a raid cycle
+ * through on a server that only runs one or two nights a week. Changing this only
+ * affects guilds granted a trial *after* the change — `premiumExpiresAt` is stamped
+ * once at grant time. Trials already running are moved by `src/scripts/extendTrials.ts`.
+ */
+export const TRIAL_DAYS = 30;
 
 export interface TrialGrantResult {
   granted: boolean;
@@ -224,7 +231,7 @@ export interface TrialGrantResult {
 }
 
 /**
- * Grants a one-time 14-day PREMIUM trial to a guild, if eligible.
+ * Grants a one-time {@link TRIAL_DAYS}-day PREMIUM trial to a guild, if eligible.
  *
  * Eligible only when the guild has never had a trial (`trialStartedAt` is null),
  * is currently on FREE, and has no linked paid entitlement. This keeps the grant

@@ -2,6 +2,7 @@ jest.mock('../database/client');
 
 import { buildWelcomeEmbed } from '../utils/welcomeEmbed';
 import { t } from '../utils/localization';
+import { TRIAL_DAYS } from '../services/entitlementService';
 
 function trialField(embed: ReturnType<typeof buildWelcomeEmbed>) {
   return embed.toJSON().fields?.find((f) => f.name.includes('Premium Trial'));
@@ -36,8 +37,8 @@ describe('buildWelcomeEmbed()', () => {
     const deValue = trialField(de)?.value;
 
     // German locale must render the German trial copy, English the English copy.
-    expect(deValue).toContain(t('de', 'premiumTrialGranted', { tier: t('de', 'premiumTierPremium') }));
-    expect(enValue).toContain(t('en', 'premiumTrialGranted', { tier: t('en', 'premiumTierPremium') }));
+    expect(deValue).toContain(t('de', 'premiumTrialGranted', { days: String(TRIAL_DAYS), tier: t('de', 'premiumTierPremium') }));
+    expect(enValue).toContain(t('en', 'premiumTrialGranted', { days: String(TRIAL_DAYS), tier: t('en', 'premiumTierPremium') }));
 
     // Guard against a regression back to the hardcoded 'en' string.
     expect(deValue).not.toBe(enValue);

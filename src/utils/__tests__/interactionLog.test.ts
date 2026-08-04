@@ -42,6 +42,28 @@ describe('sanitizeValue', () => {
 });
 
 describe('sanitizeCustomId', () => {
+  // The guided raid-create flow (#38) carries a per-flow draft id after a colon.
+  // It must collapse to a constant, otherwise every step logs a unique name and
+  // "how many people abandon at the role picker?" becomes uncountable.
+  describe('guided raid-create flow', () => {
+    it('masks the per-flow draft id so steps aggregate', () => {
+      expect(sanitizeCustomId('rcflow-details:dm3x9a1')).toBe('rcflow-details:<id>');
+      expect(sanitizeCustomId('rcflow-roles:dm3x9a1')).toBe('rcflow-roles:<id>');
+      expect(sanitizeCustomId('rcflow-confirm:dm3x9a1')).toBe('rcflow-confirm:<id>');
+      expect(sanitizeCustomId('rcflow-fixtime:dm3x9a1')).toBe('rcflow-fixtime:<id>');
+    });
+
+    it('collapses two different drafts of the same step to one log name', () => {
+      expect(sanitizeCustomId('rcflow-confirm:dabc123')).toBe(
+        sanitizeCustomId('rcflow-confirm:dxyz789')
+      );
+    });
+
+    it('still distinguishes the steps from each other', () => {
+      expect(sanitizeCustomId('rcflow-roles:d1')).not.toBe(sanitizeCustomId('rcflow-confirm:d1'));
+    });
+  });
+
   it('keeps non-personal customIds fully greppable', () => {
     expect(sanitizeCustomId('raid_optout_raid-123')).toBe('raid_optout_raid-123');
     expect(sanitizeCustomId('raid_optin_raid-123')).toBe('raid_optin_raid-123');

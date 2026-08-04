@@ -6,6 +6,8 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ButtonInteraction,
+  ModalSubmitInteraction,
   Guild,
 } from 'discord.js';
 import prisma from '../database/client';
@@ -27,6 +29,15 @@ import {
   formatInTimezone,
   zonedDateTimeToUtc,
 } from '../utils/timezoneHelper';
+
+/**
+ * Any already-deferred interaction that can carry the raid-creation result back to
+ * the user: the slash command itself, or the confirm button of the modal flow.
+ */
+export type RepliableRaidInteraction =
+  | ChatInputCommandInteraction
+  | ButtonInteraction
+  | ModalSubmitInteraction;
 
 /**
  * Suffix that names the raid's team in a confirmation message.
@@ -179,30 +190,33 @@ const command: Command = {
       addTeamOption(
         subcommand
           .setName('create')
-          .setDescription('Create a new raid event')
+          .setDescription('Create a new raid event — run it without options for a guided setup')
+          // All four inputs are optional so `/raid create` on its own opens the guided
+          // modal flow. Supplying all of them keeps the original one-line behaviour
+          // byte-for-byte; anything in between pre-fills the modal.
           .addStringOption((option) =>
             option
               .setName('date')
-              .setDescription('Raid date (YYYY-MM-DD)')
-              .setRequired(true)
+              .setDescription('Raid date (YYYY-MM-DD) — leave empty for the guided setup')
+              .setRequired(false)
           )
           .addStringOption((option) =>
             option
               .setName('time')
               .setDescription('Raid time (HH:MM in 24h format)')
-              .setRequired(true)
+              .setRequired(false)
           )
           .addStringOption((option) =>
             option
               .setName('title')
               .setDescription('Raid title/name')
-              .setRequired(true)
+              .setRequired(false)
           )
           .addStringOption((option) =>
             option
               .setName('roles')
               .setDescription('Discord roles for this raid (@role mentions or comma-separated names/IDs)')
-              .setRequired(true)
+              .setRequired(false)
           )
           .addBooleanOption((option) =>
             option
@@ -453,22 +467,40 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  await interaction.deferReply({ ephemeral: true });
+  const dateStr = interaction.options.get('date', false)?.value as string | undefined;
+  const timeStr = interaction.options.get('time', false)?.value as string | undefined;
+  const title = interaction.options.get('title', false)?.value as string | undefined;
+  const rolesInput = interaction.options.get('roles', false)?.value as string | undefined;
+  const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
 
-  // Check permissions
+  // Permissions are checked before the fork: `showModal()` must be the very first
+  // response to the interaction (it cannot follow a deferReply), so the two branches
+  // cannot share a deferred reply.
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await interaction.reply({
       content: '❌ You do not have permission to create raids. Ask your server admin to configure raid leader roles.',
+      ephemeral: true,
     });
     return;
   }
 
-  const dateStr = interaction.options.get('date', true).value as string;
-  const timeStr = interaction.options.get('time', true).value as string;
-  const title = interaction.options.get('title', true).value as string;
-  const rolesInput = interaction.options.get('roles', true).value as string;
-  const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
+  // Anything short of the full four inputs opens the guided flow, pre-filled with
+  // whatever was supplied. Only a complete one-liner takes the direct path.
+  if (!dateStr || !timeStr || !title || !rolesInput) {
+    const { startGuidedRaidCreate } = await import('../events/raidCreateFlow');
+    await startGuidedRaidCreate(interaction, {
+      date: dateStr ?? null,
+      time: timeStr ?? null,
+      title: title ?? null,
+      roles: rolesInput ?? null,
+      pingRoles,
+      teamOption: (interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined) ?? null,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
 
   // Get guild settings first for timezone and default roles
   const guildData = await prisma.guild.findUnique({
@@ -537,20 +569,64 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  await createRaidWithRoster(interaction, {
+    guild: interaction.guild,
+    channel: interaction.channel,
+    createdBy: interaction.user.id,
+    title,
+    raidDate,
+    roleIds,
+    pingRoles,
+    teamOption: (interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined) ?? null,
+    language: guildData.language || 'en',
+    rolesLabel: effectiveRolesInput,
+  });
+}
+
+/**
+ * Shared tail of raid creation: resolve the roster, enforce the weekly limit, write
+ * the raid, post the public embed and confirm to the caller.
+ *
+ * Extracted so the one-line `/raid create` path and the interactive modal flow
+ * (`events/raidCreateFlow.ts`) produce byte-identical raids instead of drifting
+ * apart. Everything before this point differs only in *how* the four inputs were
+ * collected.
+ *
+ * The interaction must already be deferred ephemerally; this function owns the
+ * final `editReply`. Returns true when a raid was actually created.
+ */
+export async function createRaidWithRoster(
+  interaction: RepliableRaidInteraction,
+  params: {
+    guild: Guild;
+    channel: NonNullable<ChatInputCommandInteraction['channel']>;
+    createdBy: string;
+    title: string;
+    raidDate: Date;
+    roleIds: string[];
+    pingRoles: boolean;
+    teamOption: string | null;
+    language: string;
+    /** Human-readable role list, used only in the "no eligible members" message. */
+    rolesLabel: string;
+  }
+): Promise<boolean> {
+  const { guild, channel, createdBy, title, raidDate, roleIds, pingRoles, teamOption, language, rolesLabel } = params;
+
   let eligibleMembers = new Set<string>();
 
   // Fetch all members if not cached
   try {
-    await interaction.guild.members.fetch();
+    await guild.members.fetch();
   } catch (error) {
     if (isRateLimitError(error)) {
-      await handleRateLimitError(error, interaction, guildData.language || 'en');
-      return;
+      await handleRateLimitError(error, interaction as ChatInputCommandInteraction, language);
+      return false;
     }
     throw error;
   }
 
-  for (const [memberId, member] of interaction.guild.members.cache) {
+  for (const [memberId, member] of guild.members.cache) {
     if (member.user.bot) continue;
 
     const hasRaidRole = member.roles.cache.some((role) =>
@@ -564,20 +640,20 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
 
   if (eligibleMembers.size === 0) {
     await interaction.editReply({
-      content: `❌ No eligible members found with roles: ${effectiveRolesInput}. Verify that members have these roles (use role names or IDs, separated by commas).`,
+      content: `❌ No eligible members found with roles: ${rolesLabel}. Verify that members have these roles (use role names or IDs, separated by commas).`,
     });
-    return;
+    return false;
   }
 
   // Ensure all eligible members have UserPreference records (required for foreign key)
   for (const userId of eligibleMembers) {
-    const member = interaction.guild.members.cache.get(userId);
+    const member = guild.members.cache.get(userId);
     if (member) {
       await prisma.userPreference.upsert({
         where: {
           userId_guildId: {
             userId,
-            guildId: interaction.guild.id,
+            guildId: guild.id,
           },
         },
         update: {
@@ -585,7 +661,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
         },
         create: {
           userId,
-          guildId: interaction.guild.id,
+          guildId: guild.id,
           username: member.displayName,
         },
       });
@@ -595,35 +671,34 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // Get user preferences for class/spec (role-specific preferred over global)
   const memberRolesMap = new Map<string, string[]>();
   for (const userId of eligibleMembers) {
-    const member = interaction.guild.members.cache.get(userId);
+    const member = guild.members.cache.get(userId);
     if (member) {
       memberRolesMap.set(userId, Array.from(member.roles.cache.values()).map(r => r.id));
     }
   }
   const prefsMap = await getEffectivePrefsMap(
     Array.from(eligibleMembers),
-    interaction.guild.id,
+    guild.id,
     roleIds,
     memberRolesMap,
   );
 
   // Resolve the target team before the weekly limit is consumed — an unknown team name is
   // an input error and must not burn a raid slot.
-  const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
-  const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
+  const { team, error: teamError } = await resolveTeam(guild.id, teamOption);
   if (teamError === 'not_found') {
     await interaction.editReply({
-      content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
+      content: t(language, 'teamNotFound', { name: teamOption ?? '' }),
     });
-    return;
+    return false;
   }
 
   // Check weekly raid limit (free tier: 5/week) — after all validation so we don't waste a slot on invalid input.
   // Deliberately guild-wide, not per team: extra teams are a premium convenience and must not
   // multiply the FREE tier's weekly raid allowance.
-  const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(interaction.guild.id);
+  const { allowed, max, resetAt } = await tryConsumeWeeklyRaid(guild.id);
   if (!allowed) {
-    const lang = guildData.language || 'en';
+    const lang = language;
     const localeMap: Record<string, string> = { en: 'en-US', de: 'de-DE' };
     const resetDate = resetAt
       ? resetAt.toLocaleString(localeMap[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -631,25 +706,25 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     await interaction.editReply({
       content: `${t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate })}\n${premiumFooterHint(lang)}`,
     });
-    return;
+    return false;
   }
 
   // Create raid in database
   const raid = await prisma.raid.create({
     data: {
-      guildId: interaction.guild.id,
+      guildId: guild.id,
       teamId: team.id,
-      channelId: interaction.channel.id,
+      channelId: channel.id,
       raidDate,
       description: title,
       roles: roleIds.join(','),
-      createdBy: interaction.user.id,
+      createdBy,
     },
   });
 
   // Create attendance records for all eligible members with their saved class/spec
   const attendanceData = Array.from(eligibleMembers).map((userId) => {
-    const member = interaction.guild!.members.cache.get(userId);
+    const member = guild.members.cache.get(userId);
     const pref = prefsMap.get(userId);
     return {
       raidId: raid.id,
@@ -657,7 +732,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       // than the create result so it is never undefined.
       teamId: team.id,
       userId,
-      guildId: interaction.guild!.id,
+      guildId: guild.id,
       username: member?.displayName || 'Unknown',
       status: 'attending' as const,
       wowClass: pref?.wowClass || null,
@@ -670,10 +745,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   });
 
   // Create embed with guild's language
-  const embed = await createRaidEmbed(raid.id, guildData.language);
+  const embed = await createRaidEmbed(raid.id, language);
 
   // Get translations for buttons
-  const trans = getTranslations(guildData.language || 'en');
+  const trans = getTranslations(language);
 
   // Create buttons (2 rows due to Discord limit of 5 buttons per row)
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -699,24 +774,24 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   );
 
   // Send public raid message to channel
-  if (!interaction.channel || !('send' in interaction.channel)) {
+  if (!('send' in channel)) {
     await interaction.editReply({
       content: '❌ Cannot send message to this channel type.',
     });
-    return;
+    return false;
   }
 
   // Build role mentions if ping_roles is true
   let content = '';
   if (pingRoles) {
-    const roleMentions = buildRoleMentions(interaction.guild!, roleIds);
+    const roleMentions = buildRoleMentions(guild, roleIds);
     
     if (roleMentions) {
       content = `${roleMentions} - New raid created!`;
     }
   }
 
-  const message = await interaction.channel.send({
+  const message = await channel.send({
     content: content || undefined,
     embeds: [embed],
     components: [row1, row2],
@@ -731,8 +806,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // Send ephemeral confirmation to command user — FREE guilds get the premium nudge appended.
   await interaction.editReply({
     content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`
-      + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
+      + (await freeTierHint(guild.id, language)),
   });
+
+  return true;
 }
 
 export async function createRaidEmbed(raidId: string, language?: string): Promise<EmbedBuilder> {

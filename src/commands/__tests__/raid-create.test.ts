@@ -224,19 +224,38 @@ describe('handleCreateRaid()', () => {
     );
   });
 
+  // The permission check moved ahead of deferReply(): `showModal()` has to be the
+  // first response to an interaction, so the guided flow cannot share a deferred
+  // reply with the one-line path. The rejection is therefore a `reply`, not an
+  // `editReply` — and it must still fire before any raid work happens.
   it('should reject users without permission', async () => {
     (canManageRaids as jest.Mock).mockResolvedValue(false);
     await command.execute(mockInteraction);
-    expect(mockInteraction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('permission') })
+    expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('permission'), ephemeral: true })
     );
+    expect(prisma.raid.create).not.toHaveBeenCalled();
   });
 
   it('should reject when member is null', async () => {
     mockInteraction.member = null;
     await command.execute(mockInteraction);
-    expect(mockInteraction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('permission') })
+    expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('permission'), ephemeral: true })
+    );
+    expect(prisma.raid.create).not.toHaveBeenCalled();
+  });
+
+  it('should reject a user without permission before opening the guided modal', async () => {
+    (canManageRaids as jest.Mock).mockResolvedValue(false);
+    mockInteraction.showModal = jest.fn();
+    mockInteraction.options.get = jest.fn(() => undefined);
+
+    await command.execute(mockInteraction);
+
+    expect(mockInteraction.showModal).not.toHaveBeenCalled();
+    expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('permission'), ephemeral: true })
     );
   });
 
@@ -248,8 +267,10 @@ describe('handleCreateRaid()', () => {
     );
   });
 
-  it('should reject when no raid roles configured and none provided', async () => {
-    (prisma.guild.findUnique as jest.Mock).mockResolvedValueOnce({
+  // Previously this was a dead end ("Raid roles must be specified"). Missing inputs
+  // are now the entry point to the guided flow instead of an error (#38).
+  it('should open the guided modal when roles are missing rather than erroring', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       name: 'Test Guild',
       raidRoles: '',
@@ -257,20 +278,22 @@ describe('handleCreateRaid()', () => {
       language: 'en',
       timezone: 'UTC',
     });
-    // Override to provide no roles
-    mockInteraction.options.get = jest.fn((key: string, required?: boolean) => {
+    mockInteraction.showModal = jest.fn();
+    mockInteraction.options.get = jest.fn((key: string) => {
       const values: Record<string, any> = {
         date: { value: futureDateStr() },
         time: { value: '20:00' },
         title: { value: 'Weekly Raid' },
         ping_roles: { value: false },
       };
-      return values[key] !== undefined ? values[key] : (required ? { value: null } : undefined);
+      return values[key];
     });
+
     await command.execute(mockInteraction);
-    expect(mockInteraction.editReply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: expect.stringContaining('Raid roles must be specified') })
-    );
+
+    expect(mockInteraction.showModal).toHaveBeenCalled();
+    expect(mockInteraction.editReply).not.toHaveBeenCalled();
+    expect(prisma.raid.create).not.toHaveBeenCalled();
   });
 
   it('should reject invalid date/time format', async () => {

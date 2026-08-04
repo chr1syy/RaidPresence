@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-04
+
+### Added
+- Guided modal flow for `/raid create` — calling it without arguments opens a modal (title, date, time), followed by a role select and a confirmation preview rendered with Discord timestamps. The one-line form with all parameters keeps working unchanged
+- Welcome buttons `[Start setup]` and `[Create first raid]`, wired to the setup wizard and the new guided flow; both work when the welcome message is delivered by DM
+- `src/scripts/extendTrials.ts` — one-off data correction that moves already-running trials onto the current `TRIAL_DAYS`. Dry-run by default, idempotent, skips paying guilds
+
+### Changed
+- Guild timezones are IANA zones (`Guild.timezone`) instead of a bare hour offset, so DST is handled correctly. `/config timezone` takes a zone name with autocomplete
+- Locale-based timezone guessing removed — `guild.preferredLocale` is a language setting, not a location, and mapping `en-US` to UTC-5 mis-set every English-speaking server. New guilds default to UTC and confirm their zone through the raid preview
+- Welcome message cut from a five-field setup wall to one sentence and two buttons; the remaining setup detail moved into the flow it belongs to
+- Premium trial extended from 14 to 30 days
+
+### Fixed
+- Raid times are parsed in the guild's zone instead of the host process timezone
+
+### Migration
+- `20260803090000_guild_timezone_iana_phase1` is additive: it adds `Guild.timezone`, backfills it offset-true onto `Etc/GMT±X` (existing behaviour is reproduced exactly — no guild changes time), and leaves the legacy `timezoneOffset` in place, still written by the app. A later phase 2 drops it once production is verified. Re-runnable; aborts loudly on offsets outside -12..14 rather than silently defaulting to UTC
+
+## [0.6.0] - 2026-07-28
+
 ### Added
 - Multi-Team support (Premium) — servers can run several raid teams side by side via `/team create|list|delete`; raids, rosters, and statistics are scoped per team
 - Optional `team:<name>` option with autocomplete on `/raid create|list|clone|search` and `/stats guild|status|attendance`, defaulting to the server's default team

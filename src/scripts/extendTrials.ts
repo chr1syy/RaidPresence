@@ -15,6 +15,11 @@
  * the current `premiumExpiresAt`. Running it twice recomputes the same instant, so the
  * second run reports zero changes instead of granting another 30 days.
  *
+ * WHEN TO RUN IT: after a clean entitlement sync, in a quiet window. The paying-guild
+ * guard below can only see entitlements the sync has already written locally, so a
+ * payment that lands at Discord mid-run is not covered by it — see the note on the
+ * updateMany WHERE clause. Waiting for a clean sync closes that window.
+ *
  * Usage (dry-run is the default — nothing is written without --apply):
  *   npm run trials:extend
  *   npm run trials:extend -- --apply
@@ -143,6 +148,11 @@ export async function extendTrials(
     // expiry, and a single failure must not take the rest of the batch with it. The
     // WHERE clause re-asserts the target predicate so a guild that started paying
     // between the scan and the write is skipped by the database, not just by us.
+    // Note the limit of that guarantee: it holds against the *local* entitlement row,
+    // i.e. once the sync has written `entitlementId` — not against the external payment
+    // event that precedes it. A guild that pays at Discord mid-run still reads as a
+    // trial here until the sync catches up. Hence the runbook rule: run this after a
+    // clean entitlement sync, in a quiet window.
     const { count } = await prisma.guild.updateMany({
       where: { id: plan.guildId, trialStartedAt: { not: null }, entitlementId: null },
       data: { premiumExpiresAt: plan.to },

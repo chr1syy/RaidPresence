@@ -50,11 +50,20 @@ describe('isValidTimezone()', () => {
     }
   );
 
-  // Node's Intl also accepts ES2022 offset identifiers such as '+01:00'. That is
-  // harmless — it is a real, unambiguous zone, just one without DST rules — so it is
-  // deliberately not in the reject list below.
-  it('accepts an ES2022 offset identifier', () => {
-    expect(isValidTimezone('+01:00')).toBe(true);
+  // ES2022 offset identifiers such as '+01:00' are runtime-dependent: Node 20+ accepts
+  // them, Node 18 (what the Docker image and CI run) throws RangeError. isValidTimezone
+  // deliberately delegates that judgement to Intl rather than second-guessing it, so the
+  // contract under test is "agrees with Intl", not a fixed verdict. Either answer is
+  // correct — an offset identifier is a real zone without DST rules, and rejecting it on
+  // older runtimes only turns away an exotic input format nothing in the bot emits.
+  it('agrees with Intl on ES2022 offset identifiers', () => {
+    let intlAccepts = true;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: '+01:00' });
+    } catch {
+      intlAccepts = false;
+    }
+    expect(isValidTimezone('+01:00')).toBe(intlAccepts);
   });
 
   it.each([

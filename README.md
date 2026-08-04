@@ -66,6 +66,26 @@ npm run db:migrate:deploy
 npm run deploy:commands
 ```
 
+### Extending Running Trials
+
+One-off data correction that moves already-running Premium trials onto the current
+`TRIAL_DAYS` length. Dry-run is the default; nothing is written without `--apply`.
+
+```bash
+npm run trials:extend            # dry run — prints the plan, writes nothing
+npm run trials:extend -- --apply # writes the recomputed expiries
+```
+
+**Run it after a clean entitlement sync, in a quiet window.** The script skips paying
+guilds via `entitlementId = null`, and re-asserts that predicate in the WHERE clause of
+every write — but that check can only see what the entitlement sync has already written
+to the database. A guild whose payment lands at Discord *during* the run, before the sync
+has stamped its `entitlementId` locally, still looks like a plain trial to both the scan
+and the write. The window is small and the damage is limited to one overwritten
+`premiumExpiresAt`, which the next entitlement sync corrects — but waiting for a clean
+sync and picking a low-traffic window removes it. The script is idempotent (expiry is
+recomputed from `trialStartedAt`), so a re-run after the sync is always safe.
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.

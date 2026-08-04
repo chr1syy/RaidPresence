@@ -70,7 +70,7 @@ describe('/raid status command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
   });
 
@@ -231,7 +231,7 @@ describe('/raid status command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'de',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
 
     const raids = [makeRaid()];
@@ -250,7 +250,7 @@ describe('/raid status command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'de',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
     (prisma.raid.findMany as jest.Mock).mockResolvedValue([]);
 

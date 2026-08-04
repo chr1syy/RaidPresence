@@ -185,7 +185,7 @@ function embedRaid(id: string, teamId = TEAM_MAIN.id) {
     description: 'Weekly Raid',
     roles: 'role-raider',
     status: 'open',
-    guild: { id: GUILD_ID, language: 'en', timezoneOffset: 0 },
+    guild: { id: GUILD_ID, language: 'en', timezone: 'UTC' },
     attendance: [
       { userId: 'user-200', username: 'TankPlayer', status: 'attending', wowClass: 'Warrior', wowSpec: 'Protection' },
       { userId: 'user-201', username: 'HealerPlayer', status: 'attending', wowClass: 'Priest', wowSpec: 'Holy' },
@@ -212,7 +212,7 @@ describe('team scoping across raid and stats commands', () => {
       id: GUILD_ID,
       name: 'Test Guild',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
       raidRoles: 'role-raider',
       raidLeaderRoles: 'role-leader',
       premiumTier: 'PREMIUM',

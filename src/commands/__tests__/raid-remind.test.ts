@@ -54,7 +54,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
     guild: {
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
       raidLeaderRoles: 'role-leader',
       raidRoles: 'role-raider',
     },

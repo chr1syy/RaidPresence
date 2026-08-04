@@ -574,8 +574,8 @@
         {
           "name": "timezone",
           "required": false,
-          "format": "offset:<-12 to +14>",
-          "description": "Set the timezone offset in hours (e.g., 1 for GMT+1, -5 for EST)"
+          "format": "zone:<IANA timezone>",
+          "description": "Set the timezone raid times are entered in, as an IANA zone with autocomplete (e.g. Europe/Berlin, America/New_York). Daylight saving is applied automatically."
         },
         {
           "name": "archive-channel",

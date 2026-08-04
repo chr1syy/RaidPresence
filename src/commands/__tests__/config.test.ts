@@ -75,7 +75,7 @@ describe('config command', () => {
         raidRoles: 'Raider,Trial',
         raidLeaderRoles: 'Officer',
         language: 'en',
-        timezoneOffset: 1,
+        timezone: 'Europe/Berlin',
       });
 
       await command.execute(mockInteraction);
@@ -98,7 +98,7 @@ describe('config command', () => {
         id: 'guild-123',
         raidLeaderRoles: 'Officer',
         language: 'de',
-        timezoneOffset: 1,
+        timezone: 'Europe/Berlin',
       });
       (freeTierHint as jest.Mock).mockResolvedValue('\n-# upgrade hint');
 
@@ -113,7 +113,7 @@ describe('config command', () => {
         id: 'guild-123',
         raidLeaderRoles: 'Officer',
         language: 'en',
-        timezoneOffset: 1,
+        timezone: 'Europe/Berlin',
       });
 
       await command.execute(mockInteraction);
@@ -128,7 +128,7 @@ describe('config command', () => {
         raidRoles: null,
         raidLeaderRoles: null,
         language: 'en',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       });
 
       await command.execute(mockInteraction);
@@ -142,7 +142,7 @@ describe('config command', () => {
         raidRoles: 'Raider',
         raidLeaderRoles: '',
         language: 'de',
-        timezoneOffset: 1,
+        timezone: 'Europe/Berlin',
       });
 
       await command.execute(mockInteraction);
@@ -156,7 +156,7 @@ describe('config command', () => {
         raidRoles: 'Raider',
         raidLeaderRoles: '',
         language: 'en',
-        timezoneOffset: -5,
+        timezone: 'America/New_York',
       });
 
       await command.execute(mockInteraction);
@@ -290,70 +290,98 @@ describe('config command', () => {
       );
     });
 
-    it('should set positive timezone offset', async () => {
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'offset') return { value: 2 };
-        return null;
-      });
+    const withZone = (zone: unknown) =>
+      jest.fn((key: string) => (key === 'zone' ? { value: zone } : null));
+
+    it('should store an east-of-UTC IANA zone', async () => {
+      mockInteraction.options.get = withZone('Europe/Berlin');
       (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
       expect(prisma.guild.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezoneOffset: 2 },
+          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('GMT+2') })
+        expect.objectContaining({ content: expect.stringContaining('Europe/Berlin') })
       );
     });
 
-    it('should set negative timezone offset', async () => {
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'offset') return { value: -5 };
-        return null;
-      });
+    it('should store a west-of-UTC IANA zone', async () => {
+      mockInteraction.options.get = withZone('America/New_York');
       (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
       expect(prisma.guild.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezoneOffset: -5 },
+          update: { timezone: 'America/New_York', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('GMT-5') })
+        expect.objectContaining({ content: expect.stringContaining('America/New_York') })
       );
     });
 
-    it('should reject timezone below -12', async () => {
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'offset') return { value: -13 };
-        return null;
-      });
+    it('should keep the deprecated timezoneOffset column in sync', async () => {
+      // Phase 1 of the IANA migration keeps the old integer column as a rollback
+      // path, so every write has to fill both. Etc/GMT-3 is UTC+3 (POSIX inversion),
+      // and being a fixed-offset zone it is stable regardless of when the suite runs.
+      mockInteraction.options.get = withZone('Etc/GMT-3');
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('Invalid timezone') })
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: { timezone: 'Etc/GMT-3', timezoneOffset: 3 },
+        })
       );
     });
 
-    it('should reject timezone above 14', async () => {
-      mockInteraction.options.get = jest.fn((key: string) => {
-        if (key === 'offset') return { value: 15 };
-        return null;
-      });
+    it('should normalize casing to the canonical identifier', async () => {
+      mockInteraction.options.get = withZone('  europe/berlin  ');
+      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(mockInteraction.editReply).toHaveBeenCalledWith(
-        expect.objectContaining({ content: expect.stringContaining('Invalid timezone') })
+      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
+        })
       );
-     });
     });
+
+    // Autocomplete only suggests — Discord still submits whatever was typed, so the
+    // handler must reject free text rather than persisting an unusable zone.
+    it('should reject an unknown zone without writing to the database', async () => {
+      mockInteraction.options.get = withZone('Mordor/Barad-dur');
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('is not a known timezone'),
+        })
+      );
+    });
+
+    it('should reject a legacy numeric offset', async () => {
+      mockInteraction.options.get = withZone('2');
+
+      await command.execute(mockInteraction);
+
+      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: expect.stringContaining('is not a known timezone'),
+        })
+      );
+    });
+  });
 
   describe('archive-channel subcommand', () => {
     beforeEach(() => {

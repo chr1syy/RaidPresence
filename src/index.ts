@@ -3,7 +3,6 @@ import { config } from 'dotenv';
 import { BotClient, Command } from './types';
 import prisma from './database/client';
 import { startRaidScheduler } from './utils/raidScheduler';
-import { getTimezoneFromLocale, getTimezoneName } from './utils/timezoneHelper';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
 import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
 import { localeToLanguage } from './utils/localization';
@@ -58,32 +57,19 @@ client.once(Events.ClientReady, async (c) => {
 
   // Sync guild data
   for (const [guildId, guild] of c.guilds.cache) {
-    // Check if guild exists in database
-    const existingGuild = await prisma.guild.findUnique({
-      where: { id: guildId },
-    });
-
-    // Auto-detect timezone from Discord locale
-    const detectedTimezone = getTimezoneFromLocale(guild.preferredLocale);
-
-    // Only set timezone automatically if:
-    // 1. Guild is new (doesn't exist in DB), OR
-    // 2. Guild exists but has default timezone (0) and we detected a timezone
-    const shouldSetTimezone = !existingGuild || (existingGuild.timezoneOffset === 0 && detectedTimezone !== null);
-    const timezoneOffset = shouldSetTimezone && detectedTimezone !== null ? detectedTimezone : (existingGuild?.timezoneOffset ?? 0);
-
+    // No timezone detection: Discord's `preferredLocale` is a language setting, not
+    // a location, so deriving a zone from it produced confident nonsense. New guilds
+    // start at UTC and set their zone explicitly via `/config timezone`.
     await prisma.guild.upsert({
       where: { id: guildId },
       update: {
         name: guild.name,
-        ...(shouldSetTimezone && detectedTimezone !== null && { timezoneOffset: detectedTimezone })
       },
       create: {
         id: guildId,
         name: guild.name,
         raidRoles: process.env.RAID_ROLES || '',
         raidLeaderRoles: process.env.RAID_LEADER_ROLES || '',
-        timezoneOffset: timezoneOffset,
       },
     });
 
@@ -95,10 +81,6 @@ client.once(Events.ClientReady, async (c) => {
       console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
     }
 
-    // Log auto-detection
-    if (shouldSetTimezone && detectedTimezone !== null) {
-      console.log(`🌍 Auto-detected timezone for ${guild.name}: ${getTimezoneName(detectedTimezone)} (locale: ${guild.preferredLocale})`);
-    }
   }
 
   console.log('✅ Guild data synchronized');
@@ -202,6 +184,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } catch (error) {
         console.error('Error handling team autocomplete:', error);
       }
+    } else if (interaction.commandName === 'config' && focused.name === 'zone') {
+      // IANA zone picker for `/config timezone` — see utils/timezoneHelper.ts.
+      try {
+        const { timezoneAutocomplete } = await import('./commands/config');
+        await timezoneAutocomplete(interaction);
+      } catch (error) {
+        console.error('Error handling timezone autocomplete:', error);
+      }
     }
   } else if (interaction.isButton() || interaction.isModalSubmit() || interaction.isStringSelectMenu()) {
     // Buttons carry the attendance flow (opt-in/opt-out), modals the opt-out reason,
@@ -249,12 +239,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on(Events.GuildCreate, async (guild) => {
   console.log(`➕ Joined new guild: ${guild.name} (${guild.id})`);
 
-  // Auto-detect timezone from Discord locale
-  const detectedTimezone = getTimezoneFromLocale(guild.preferredLocale);
-  const timezoneOffset = detectedTimezone ?? 0; // fallback to UTC if not detected
-
   // Upsert so a re-install (where the guild row persists) never throws and
-  // never clobbers the server's existing configuration.
+  // never clobbers the server's existing configuration. New guilds default to
+  // UTC — see the guild-sync block above for why nothing is auto-detected.
   await prisma.guild.upsert({
     where: { id: guild.id },
     update: { name: guild.name },
@@ -263,7 +250,6 @@ client.on(Events.GuildCreate, async (guild) => {
       name: guild.name,
       raidRoles: process.env.RAID_ROLES || '',
       raidLeaderRoles: process.env.RAID_LEADER_ROLES || '',
-      timezoneOffset: timezoneOffset,
     },
   });
 
@@ -286,12 +272,7 @@ client.on(Events.GuildCreate, async (guild) => {
     console.error(`❌ Failed to grant trial for ${guild.name}:`, error);
   }
 
-  // Log auto-detection
-  if (detectedTimezone !== null) {
-    console.log(`🌍 Auto-detected timezone for ${guild.name}: ${getTimezoneName(timezoneOffset)} (locale: ${guild.preferredLocale})`);
-  } else {
-    console.log(`⚠️  Could not auto-detect timezone for ${guild.name} (locale: ${guild.preferredLocale}). Using UTC. Use /config timezone to set manually.`);
-  }
+  console.log(`🌍 ${guild.name} starts on UTC. Use /config timezone to set the server's zone.`);
 
   // Send welcome/setup message
   try {
@@ -301,8 +282,6 @@ client.on(Events.GuildCreate, async (guild) => {
     // have no `language` config row yet), so a German server gets German copy.
     const language = localeToLanguage(guild.preferredLocale);
     const welcomeEmbed = buildWelcomeEmbed({
-      detectedTimezone,
-      timezoneOffset,
       trialGranted,
       language,
     });

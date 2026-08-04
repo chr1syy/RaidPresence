@@ -84,7 +84,7 @@ function generateRaids(count: number, membersPerRaid: number) {
       guild: {
         id: 'guild-perf',
         language: 'en',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       },
       attendance: generateAttendance(membersPerRaid, raidId),
     };
@@ -265,7 +265,7 @@ describe('Phase 1 Performance Tests', () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-perf',
         language: 'en',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       });
       (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
 
@@ -334,7 +334,7 @@ describe('Phase 1 Performance Tests', () => {
         guild: {
           id: 'guild-perf',
           language: 'en',
-          timezoneOffset: 0,
+          timezone: 'UTC',
           raidLeaderRoles: 'role-leader',
         },
       };
@@ -513,7 +513,7 @@ describe('Phase 1 Performance Tests', () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-perf',
         language: 'en',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       });
       (prisma.raid.findMany as jest.Mock).mockResolvedValue(raids);
 

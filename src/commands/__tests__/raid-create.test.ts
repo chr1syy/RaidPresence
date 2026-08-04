@@ -164,7 +164,7 @@ describe('handleCreateRaid()', () => {
       raidRoles: 'Raider',
       raidLeaderRoles: 'Officer',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
 
     (prisma.userPreference.upsert as jest.Mock).mockResolvedValue({});
@@ -255,7 +255,7 @@ describe('handleCreateRaid()', () => {
       raidRoles: '',
       raidLeaderRoles: 'Officer',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
     // Override to provide no roles
     mockInteraction.options.get = jest.fn((key: string, required?: boolean) => {
@@ -394,21 +394,48 @@ describe('handleCreateRaid()', () => {
     );
   });
 
-  it('should apply timezone offset correctly', async () => {
-    (prisma.guild.findUnique as jest.Mock).mockResolvedValueOnce({
+  // The typed time is the only place the guild timezone is used at all — everything
+  // downstream is rendered as a Discord `<t:unix:F>` tag in each viewer's own zone.
+  // So this conversion is the one that has to be exactly right.
+  it('should interpret the typed time in the guild zone, with DST applied', async () => {
+    const guildInZone = (timezone: string) => ({
       id: 'guild-123',
       name: 'Test Guild',
       raidRoles: 'Raider',
       raidLeaderRoles: 'Officer',
       language: 'en',
-      timezoneOffset: 2, // GMT+2
+      timezone,
     });
 
-    await command.execute(mockInteraction);
+    // Same wall-clock 20:00, same zone, opposite seasons: Helsinki is UTC+2 under
+    // EET and UTC+3 under EEST, so the stored instants must differ by an hour.
+    // The old integer offset could not express this and was wrong for half the year.
+    const cases: Array<[string, string, string]> = [
+      ['Europe/Helsinki', '2035-01-17', '2035-01-17T18:00:00.000Z'],
+      ['Europe/Helsinki', '2035-07-17', '2035-07-17T17:00:00.000Z'],
+      ['UTC', '2035-01-17', '2035-01-17T20:00:00.000Z'],
+      ['America/New_York', '2035-01-17', '2035-01-18T01:00:00.000Z'],
+    ];
 
-    // Raid should have been created with timezone-adjusted date
-    const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
-    expect(createCall.data.raidDate).toBeDefined();
+    for (const [timezone, date, expected] of cases) {
+      (prisma.raid.create as jest.Mock).mockClear();
+      (prisma.guild.findUnique as jest.Mock).mockResolvedValueOnce(guildInZone(timezone));
+      mockInteraction.options.get = jest.fn((key: string) => {
+        const values: Record<string, any> = {
+          date: { value: date },
+          time: { value: '20:00' },
+          title: { value: 'Weekly Raid' },
+          roles: { value: 'role-raider' },
+          ping_roles: { value: false },
+        };
+        return values[key];
+      });
+
+      await command.execute(mockInteraction);
+
+      const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
+      expect(createCall.data.raidDate.toISOString()).toBe(expected);
+    }
   });
 
   it('should upsert UserPreference for each eligible member', async () => {

@@ -61,7 +61,7 @@ const db = {
     id: GUILD_ID,
     name: 'Multi Team Guild',
     language: 'en',
-    timezoneOffset: 0,
+    timezone: 'UTC',
     raidRoles: 'role-raider',
     raidLeaderRoles: 'role-leader',
     premiumTier: 'FREE',

@@ -10,8 +10,6 @@ function trialField(embed: ReturnType<typeof buildWelcomeEmbed>) {
 describe('buildWelcomeEmbed()', () => {
   it('omits the trial callout when no trial was granted', () => {
     const embed = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: false,
       language: 'en',
     });
@@ -20,14 +18,10 @@ describe('buildWelcomeEmbed()', () => {
 
   it('localizes the trial callout to the guild locale (not hardcoded English)', () => {
     const en = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: true,
       language: 'en',
     });
     const de = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: true,
       language: 'de',
     });
@@ -47,8 +41,6 @@ describe('buildWelcomeEmbed()', () => {
   it('adds the localized multi-team hint to the trial callout', () => {
     for (const language of ['en', 'de']) {
       const embed = buildWelcomeEmbed({
-        detectedTimezone: 1,
-        timezoneOffset: 1,
         trialGranted: true,
         language,
       });
@@ -58,8 +50,6 @@ describe('buildWelcomeEmbed()', () => {
 
   it('highlights multi-team support in the useful commands field', () => {
     const embed = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: false,
       language: 'en',
     });
@@ -69,8 +59,6 @@ describe('buildWelcomeEmbed()', () => {
 
   it('points at the required roles: option of /raid create instead of the deleted /config raid-roles', () => {
     const fields = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: false,
       language: 'en',
     }).toJSON().fields ?? [];
@@ -87,8 +75,6 @@ describe('buildWelcomeEmbed()', () => {
 
   it('uses a future example date in the /raid create sample so it is copy-pasteable', () => {
     const fields = buildWelcomeEmbed({
-      detectedTimezone: 1,
-      timezoneOffset: 1,
       trialGranted: false,
       language: 'en',
     }).toJSON().fields ?? [];

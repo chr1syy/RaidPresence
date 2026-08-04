@@ -85,7 +85,7 @@ function guildRow(overrides: Record<string, any> = {}) {
     raidRoles: 'Raider',
     raidLeaderRoles: 'Officer',
     language: 'en',
-    timezoneOffset: 0,
+    timezone: 'UTC',
     ...overrides,
   };
 }

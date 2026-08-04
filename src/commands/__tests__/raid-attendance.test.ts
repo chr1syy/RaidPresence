@@ -149,7 +149,7 @@ describe('/raid attendance command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
     (prisma.userPreference.findUnique as jest.Mock).mockResolvedValue({
       userId: 'user-target',
@@ -346,7 +346,7 @@ describe('/raid attendance command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'de',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
 
     const interaction = buildMockInteraction();
@@ -367,7 +367,7 @@ describe('/raid attendance command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'de',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
 
     const interaction = buildMockInteraction({ period: 'quarter' });

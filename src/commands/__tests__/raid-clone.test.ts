@@ -75,7 +75,7 @@ function makeSourceRaid(overrides: Record<string, any> = {}) {
     guild: {
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
       raidLeaderRoles: 'role-leader',
     },
     ...overrides,
@@ -452,82 +452,83 @@ describe('handleCloneRaid()', () => {
   });
 
   describe('Timezone handling', () => {
-    it('should apply positive timezone offset correctly', async () => {
-      const offsetHours = 2;
-      const sourceRaid = makeSourceRaid({
-        guild: {
-          id: 'guild-123',
-          language: 'en',
-          timezoneOffset: offsetHours, // UTC+2
-          raidLeaderRoles: 'role-leader',
-        },
-      });
-      setupPrismaMocks(sourceRaid);
+    // These expectations are absolute UTC instants, not offsets re-derived from the
+    // host clock. That is the point: the previous version of these tests computed
+    // `new Date("YYYY-MM-DDTHH:MM:00")`, which parses in the *host* zone, so they
+    // passed only because CI happens to run on UTC. Fixed far-future dates keep the
+    // literals valid (the command rejects raids in the past) without seasonal drift.
+    const guildInZone = (timezone: string) => ({
+      id: 'guild-123',
+      language: 'en',
+      timezone,
+      raidLeaderRoles: 'role-leader',
+    });
 
-      const dateStr = futureDateStr();
+    const storedRaidDate = (): Date =>
+      (prisma.raid.create as jest.Mock).mock.calls[0][0].data.raidDate;
+
+    it('should interpret the typed time in an east-of-UTC guild zone', async () => {
+      setupPrismaMocks(makeSourceRaid({ guild: guildInZone('Europe/Helsinki') }));
+
       const interaction = buildMockInteraction({
-        date: { value: dateStr },
+        date: { value: '2035-01-17' }, // winter: EET, UTC+2
         time: { value: '20:00' },
       });
 
       await command.execute(interaction);
 
-      // Code does: new Date(`${date}T20:00:00`) then subtracts offset*3600000
-      // The local parse depends on system TZ, so verify the offset was applied:
-      const localParsed = new Date(`${dateStr}T20:00:00`);
-      const expected = new Date(localParsed.getTime() - offsetHours * 60 * 60 * 1000);
+      expect(storedRaidDate().toISOString()).toBe('2035-01-17T18:00:00.000Z');
+    });
 
-      const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
-      const storedDate: Date = createCall.data.raidDate;
-      expect(storedDate.getTime()).toBe(expected.getTime());
+    it('should apply DST for a summer date in the same zone', async () => {
+      setupPrismaMocks(makeSourceRaid({ guild: guildInZone('Europe/Helsinki') }));
+
+      const interaction = buildMockInteraction({
+        date: { value: '2035-07-17' }, // summer: EEST, UTC+3
+        time: { value: '20:00' },
+      });
+
+      await command.execute(interaction);
+
+      expect(storedRaidDate().toISOString()).toBe('2035-07-17T17:00:00.000Z');
     });
 
     it('should extract time from source raid when time not provided', async () => {
-      // Source raid at 2026-03-01T18:00:00Z with offset=0 => extracted local time 18:00
-      const sourceRaid = makeSourceRaid();
-      setupPrismaMocks(sourceRaid);
+      // Source raid is 2026-03-01T18:00:00Z; in UTC that is 18:00 wall-clock, which
+      // is what gets carried over to the new date.
+      setupPrismaMocks(makeSourceRaid());
 
-      const dateStr = futureDateStr();
-      const interaction = buildMockInteraction({ date: { value: dateStr } });
+      const interaction = buildMockInteraction({ date: { value: '2035-06-10' } });
 
       await command.execute(interaction);
 
-      // With offset=0: code extracts 18:00 from source, then new Date(`${date}T18:00:00`) - 0
-      const localParsed = new Date(`${dateStr}T18:00:00`);
-
-      const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
-      const storedDate: Date = createCall.data.raidDate;
-      expect(storedDate.getTime()).toBe(localParsed.getTime());
+      expect(storedRaidDate().toISOString()).toBe('2035-06-10T18:00:00.000Z');
     });
 
-    it('should handle negative timezone offset', async () => {
-      const offsetHours = -5;
-      const sourceRaid = makeSourceRaid({
-        guild: {
-          id: 'guild-123',
-          language: 'en',
-          timezoneOffset: offsetHours, // UTC-5
-          raidLeaderRoles: 'role-leader',
-        },
-      });
-      setupPrismaMocks(sourceRaid);
+    it('should keep the source wall-clock time when cloning across a DST boundary', async () => {
+      // Source is 2026-03-01T18:00:00Z = 19:00 Berlin (CET, winter). Cloned into
+      // July it must stay 19:00 Berlin (CEST) — i.e. 17:00Z, not 18:00Z. The old
+      // fixed-offset arithmetic produced the wrong hour here.
+      setupPrismaMocks(makeSourceRaid({ guild: guildInZone('Europe/Berlin') }));
 
-      const dateStr = futureDateStr();
+      const interaction = buildMockInteraction({ date: { value: '2035-07-17' } });
+
+      await command.execute(interaction);
+
+      expect(storedRaidDate().toISOString()).toBe('2035-07-17T17:00:00.000Z');
+    });
+
+    it('should interpret the typed time in a west-of-UTC guild zone', async () => {
+      setupPrismaMocks(makeSourceRaid({ guild: guildInZone('America/New_York') }));
+
       const interaction = buildMockInteraction({
-        date: { value: dateStr },
+        date: { value: '2035-01-17' }, // winter: EST, UTC-5
         time: { value: '20:00' },
       });
 
       await command.execute(interaction);
 
-      // Code does: new Date(`${date}T20:00:00`) then subtracts offset*3600000
-      // -(-5) = +5, so stored is 5h later than local parse
-      const localParsed = new Date(`${dateStr}T20:00:00`);
-      const expected = new Date(localParsed.getTime() - offsetHours * 60 * 60 * 1000);
-
-      const createCall = (prisma.raid.create as jest.Mock).mock.calls[0][0];
-      const storedDate: Date = createCall.data.raidDate;
-      expect(storedDate.getTime()).toBe(expected.getTime());
+      expect(storedRaidDate().toISOString()).toBe('2035-01-18T01:00:00.000Z');
     });
   });
 

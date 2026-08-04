@@ -100,7 +100,7 @@ function makeRaid(overrides: Record<string, any> = {}) {
     guild: {
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     },
     attendance: makeAttendance(),
     ...overrides,
@@ -114,7 +114,7 @@ describe('/stats command', () => {
     (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
       id: 'guild-123',
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     });
   });
 
@@ -272,11 +272,11 @@ describe('/stats command', () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-123',
         language: 'de',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       });
 
       const raid = makeRaid({
-        guild: { id: 'guild-123', language: 'de', timezoneOffset: 0 },
+        guild: { id: 'guild-123', language: 'de', timezone: 'UTC' },
       });
       (prisma.raid.findUnique as jest.Mock).mockResolvedValue(raid);
 
@@ -414,7 +414,7 @@ describe('/stats command', () => {
       (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
         id: 'guild-123',
         language: 'de',
-        timezoneOffset: 0,
+        timezone: 'UTC',
       });
 
       const raids = [makeRaid()];

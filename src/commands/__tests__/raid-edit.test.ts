@@ -14,6 +14,7 @@ import {
   Client,
 } from 'discord.js';
 import { canManageRaids } from '../../utils/permissions';
+import { zonedDateTimeToUtc } from '../../utils/timezoneHelper';
 
 // Mock dependencies
 jest.mock('../../database/client');
@@ -290,18 +291,20 @@ describe('handleEditRaid()', () => {
       expect(testDate > now).toBe(true);
     });
 
-    it('should handle timezone-adjusted date calculations', () => {
-      // Create a date string and apply timezone offset
-      const dateStr = '2025-12-25';
-      const timeStr = '19:30';
-      const timezoneOffsetHours = 2; // UTC+2
-      
-      const dateTimeStr = `${dateStr}T${timeStr}:00`;
-      const localDate = new Date(dateTimeStr);
-      const utcDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
-      
-      expect(utcDate).toBeDefined();
-      expect(!isNaN(utcDate.getTime())).toBe(true);
+    it('should interpret the typed time in the guild zone, not the host zone', () => {
+      // Europe/Helsinki is UTC+2 in December. The expectation is an absolute instant,
+      // so this test fails if the parse ever falls back to the host process TZ.
+      const utcDate = zonedDateTimeToUtc('2025-12-25', '19:30', 'Europe/Helsinki');
+
+      expect(utcDate).not.toBeNull();
+      expect(utcDate!.toISOString()).toBe('2025-12-25T17:30:00.000Z');
+    });
+
+    it('should apply DST when the edited date falls in summer', () => {
+      // Same zone, same wall-clock time, six months later: UTC+3 under EEST.
+      const utcDate = zonedDateTimeToUtc('2026-07-15', '19:30', 'Europe/Helsinki');
+
+      expect(utcDate!.toISOString()).toBe('2026-07-15T16:30:00.000Z');
     });
   });
 

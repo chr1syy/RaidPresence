@@ -18,7 +18,8 @@ model Guild {
   raidRoles       String?  @default("") // DEPRECATED: Previously used for default raid attendance roles. No longer used as roles are now specified per-raid in /raid create. Keep only for backward compatibility with existing data. Consider removing in v2.0+
   raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
   language        String   @default("en") // Language for bot messages (en, de)
-  timezoneOffset  Int      @default(0) // Timezone offset in hours (e.g., +1 for GMT+1)
+  timezone        String   @default("UTC") // IANA zone for interpreting typed raid times (e.g. "Europe/Berlin"). DST-aware; see utils/timezoneHelper.ts
+  timezoneOffset  Int      @default(0) // DEPRECATED, phase 1 of the IANA migration. Nothing reads this any more; it is kept written (guildTimezoneUpdate()) purely as a rollback path and is dropped in phase 2.
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

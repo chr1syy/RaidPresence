@@ -20,7 +20,7 @@ const guildData = {
   id: 'guild-status-int',
   name: 'Status Guild',
   language: 'en',
-  timezoneOffset: 0,
+  timezone: 'UTC',
   raidLeaderRoles: 'role-leader',
   raidRoles: 'role-raider',
 };
@@ -78,7 +78,7 @@ function makeRaid(overrides: {
     guild: {
       id: guildId,
       language: 'en',
-      timezoneOffset: 0,
+      timezone: 'UTC',
     },
     createdAt: new Date(raidDate.getTime() - 86400000),
     closedAt: null,

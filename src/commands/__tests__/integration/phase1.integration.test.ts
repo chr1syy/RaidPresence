@@ -67,7 +67,7 @@ const guildData = {
   id: 'guild-int',
   name: 'Integration Guild',
   language: 'en',
-  timezoneOffset: 0,
+  timezone: 'UTC',
   raidLeaderRoles: 'role-leader',
   raidRoles: 'role-raider',
 };

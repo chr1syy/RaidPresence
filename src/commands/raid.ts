@@ -22,6 +22,11 @@ import { gateFeature, premiumFooterHint, freeTierHint } from '../middleware/prem
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
 import { countTeams } from '../services/teamService';
+import {
+  DEFAULT_TIMEZONE,
+  formatInTimezone,
+  zonedDateTimeToUtc,
+} from '../utils/timezoneHelper';
 
 /**
  * Suffix that names the raid's team in a confirmation message.
@@ -487,15 +492,13 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Parse and validate date/time with timezone offset
-  const dateTimeStr = `${dateStr}T${timeStr}:00`;
-  const localDate = new Date(dateTimeStr);
+  // Interpret the typed wall-clock time in the guild's IANA zone. This is DST-aware
+  // and, unlike the previous `new Date("...")` + fixed-offset arithmetic, does not
+  // depend on the host process's TZ.
+  const timezone = guildData.timezone || DEFAULT_TIMEZONE;
+  const raidDate = zonedDateTimeToUtc(dateStr, timeStr, timezone);
 
-  // Apply timezone offset (user enters local time, we store UTC)
-  const timezoneOffsetHours = guildData.timezoneOffset || 0;
-  const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
-
-  if (isNaN(raidDate.getTime())) {
+  if (!raidDate) {
     await interaction.editReply({
       content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
     });
@@ -1142,7 +1145,7 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
   }
 
   const guildData = raid.guild;
-  const timezoneOffsetHours = guildData.timezoneOffset || 0;
+  const timezone = guildData.timezone || DEFAULT_TIMEZONE;
 
   let newRaidDate: Date | undefined;
 
@@ -1155,18 +1158,17 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const dateTimeStr = `${dateStr}T${timeStr}:00`;
-    const localDate = new Date(dateTimeStr);
+    // Zone-aware parse of the typed wall-clock time (DST-correct, host-TZ independent).
+    const parsed = zonedDateTimeToUtc(dateStr, timeStr, timezone);
 
-    if (isNaN(localDate.getTime())) {
+    if (!parsed) {
       await interaction.editReply({
         content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
       });
       return;
     }
 
-    // Apply timezone offset (user enters local time, we store UTC)
-    newRaidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
+    newRaidDate = parsed;
 
     if (newRaidDate < new Date()) {
       await interaction.editReply({
@@ -1373,29 +1375,21 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Compute new raid date
-  const timezoneOffsetHours = guildData.timezoneOffset || 0;
+  const timezone = guildData.timezone || DEFAULT_TIMEZONE;
 
-  let localTimeStr: string;
-  if (timeStr) {
-    localTimeStr = timeStr;
-  } else {
-    // Extract time from source raid (convert UTC to local)
-    const sourceLocalDate = new Date(sourceRaid.raidDate.getTime() + (timezoneOffsetHours * 60 * 60 * 1000));
-    localTimeStr = sourceLocalDate.toISOString().split('T')[1].substring(0, 5); // HH:MM
-  }
+  // Without an explicit time, reuse the source raid's wall-clock time *in the guild
+  // zone*. Reading it back through the zone matters across a DST boundary: a 20:00
+  // summer raid cloned into winter must stay 20:00 local, not shift to 19:00.
+  const localTimeStr = timeStr || formatInTimezone(sourceRaid.raidDate, timezone).time;
 
-  const localDateTimeStr = `${dateStr}T${localTimeStr}:00`;
-  const localDate = new Date(localDateTimeStr);
+  const raidDate = zonedDateTimeToUtc(dateStr, localTimeStr, timezone);
 
-  if (isNaN(localDate.getTime())) {
+  if (!raidDate) {
     await interaction.editReply({
       content: '❌ Invalid date or time combination.',
     });
     return;
   }
-
-  // Apply timezone offset to store as UTC
-  const raidDate = new Date(localDate.getTime() - (timezoneOffsetHours * 60 * 60 * 1000));
 
   if (raidDate < new Date()) {
     await interaction.editReply({

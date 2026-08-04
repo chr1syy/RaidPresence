@@ -64,8 +64,11 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
       },
       {
         name: '2️⃣ Create Your First Raid',
-        value: `\`\`\`/raid create date:${exampleRaidDate()} time:20:00 title:Heroic Night roles:Raider,Member\`\`\`\n` +
-               '**What happens:** Bot creates a raid message with all eligible members listed as attending.',
+        value: '```/raid create```\n' +
+               '**What happens:** Run it with no options and the bot walks you through it — ' +
+               'name, date and time in a form, then a role picker, then a preview to confirm.\n' +
+               'Prefer one line? That still works:\n' +
+               `\`\`\`/raid create date:${exampleRaidDate()} time:20:00 title:Heroic Night roles:Raider,Member\`\`\``,
         inline: false,
       },
       {

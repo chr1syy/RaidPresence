@@ -6,7 +6,7 @@ import { startRaidScheduler } from './utils/raidScheduler';
 import { registerEntitlementHandlers } from './events/entitlementHandler';
 import { syncEntitlementsOnStartup, grantTrialIfEligible, TRIAL_DAYS } from './services/entitlementService';
 import { localeToLanguage } from './utils/localization';
-import { buildWelcomeEmbed } from './utils/welcomeEmbed';
+import { buildWelcomeMessage } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
 import { TEAM_OPTION_NAME } from './utils/teamContext';
 import { runStartupTrialBackfill } from './scripts/backfillTrials';
@@ -212,10 +212,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     try {
       const flow = await import('./events/raidCreateFlow');
+      const welcome = await import('./events/welcomeFlow');
 
       if (interaction.isButton()) {
         if (flow.isFlowButton(interaction.customId)) {
           await flow.routeFlowButton(interaction);
+        } else if (welcome.isWelcomeButton(interaction.customId)) {
+          await welcome.routeWelcomeButton(interaction);
         } else {
           const buttonHandler = await import('./events/buttonHandler');
           await buttonHandler.handleButton(interaction);
@@ -231,6 +234,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (flow.isFlowRoleSelect(interaction.customId)) {
           await flow.handleRoleSelect(interaction);
         }
+      } else if (welcome.isWelcomeSelect(interaction.customId)) {
+        await welcome.handleTimezoneSelect(interaction);
       } else {
         const selectHandler = await import('./events/selectHandler');
         await selectHandler.handleSelectMenu(interaction);
@@ -307,9 +312,12 @@ client.on(Events.GuildCreate, async (guild) => {
     // Localize the welcome embed to the guild's Discord locale (brand-new guilds
     // have no `language` config row yet), so a German server gets German copy.
     const language = localeToLanguage(guild.preferredLocale);
-    const welcomeEmbed = buildWelcomeEmbed({
+    // Buttons carry the guild id: the primary delivery path is a DM, where the
+    // interaction has no guild context of its own (#39).
+    const welcomeMessage = buildWelcomeMessage({
       trialGranted,
       language,
+      guildId: guild.id,
     });
 
     // Try to find who added the bot via audit logs
@@ -337,7 +345,7 @@ client.on(Events.GuildCreate, async (guild) => {
 
     if (botAdder) {
       try {
-        await botAdder.send({ embeds: [welcomeEmbed] });
+        await botAdder.send(welcomeMessage);
         messageSent = true;
         console.log(`📨 Sent welcome DM to ${botAdder.tag} (added the bot) in ${guild.name}`);
       } catch (error) {
@@ -347,7 +355,7 @@ client.on(Events.GuildCreate, async (guild) => {
 
     // Fallback: Try system channel
     if (!messageSent && guild.systemChannel && guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')) {
-      await guild.systemChannel.send({ embeds: [welcomeEmbed] });
+      await guild.systemChannel.send(welcomeMessage);
       messageSent = true;
       console.log(`📨 Sent welcome message to system channel in ${guild.name}`);
     }
@@ -356,7 +364,7 @@ client.on(Events.GuildCreate, async (guild) => {
     if (!messageSent) {
       try {
         const owner = await guild.fetchOwner();
-        await owner.send({ embeds: [welcomeEmbed] });
+        await owner.send(welcomeMessage);
         console.log(`📨 Sent welcome DM to owner of ${guild.name}`);
       } catch (error) {
         console.log(`❌ Could not send welcome message to ${guild.name}`);

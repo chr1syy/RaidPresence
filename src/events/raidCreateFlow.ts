@@ -139,8 +139,15 @@ function defaultDateTime(timezone: string, now: Date = new Date()): { date: stri
 // Step 1 — the modal
 // ---------------------------------------------------------------------------
 
+/**
+ * Entry point for the guided flow.
+ *
+ * Reached from `/raid create` and from the welcome message's [Create first raid]
+ * button (#39) — both are interactions that have not yet been replied to, which is
+ * all `showModal()` requires.
+ */
 export async function startGuidedRaidCreate(
-  interaction: ChatInputCommandInteraction,
+  interaction: ChatInputCommandInteraction | ButtonInteraction,
   prefill: {
     date: string | null;
     time: string | null;

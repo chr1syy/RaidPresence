@@ -225,7 +225,7 @@ describe('tryConsumeWeeklyRaid()', () => {
 });
 
 describe('grantTrialIfEligible()', () => {
-  it('grants a 14-day PREMIUM trial via a single atomic conditional update', async () => {
+  it('grants a TRIAL_DAYS-long PREMIUM trial via a single atomic conditional update', async () => {
     // Eligibility lives in the WHERE clause; the DB reports one row was updated.
     (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: 1 } as any);
 
@@ -251,7 +251,7 @@ describe('grantTrialIfEligible()', () => {
     expect(update.data.premiumTier).toBe('PREMIUM');
     expect(update.data.trialStartedAt).toBeInstanceOf(Date);
 
-    // Expiry is ~14 days out.
+    // Expiry is ~TRIAL_DAYS out.
     const expiryMs = (update.data.premiumExpiresAt as Date).getTime();
     const expectedMin = before + TRIAL_DAYS * 24 * 60 * 60 * 1000;
     const expectedMax = after + TRIAL_DAYS * 24 * 60 * 60 * 1000;

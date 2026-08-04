@@ -498,7 +498,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumFooterHint: '-# 💎 Upgrade to Premium for multiple teams, archives, analytics & unlimited raids.',
 
         // Premium trial (Phase 1.6)
-        premiumTrialGranted: '🎁 **Your 14-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
+        premiumTrialGranted: '🎁 **Your {days}-day {tier} trial is active!** Enjoy unlimited raids, archives and analytics — no card required. It ends automatically, nothing to cancel.',
         premiumTrialTeamsHint: 'During your trial you can create as many teams as you like.',
 
         // Premium feature display names (localized upsell embed)
@@ -755,7 +755,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         premiumFooterHint: '-# 💎 Upgrade auf Premium für mehrere Teams, Archive, Analysen & unbegrenzte Raids.',
 
         // Premium trial (Phase 1.6)
-        premiumTrialGranted: '🎁 **Deine 14-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
+        premiumTrialGranted: '🎁 **Deine {days}-tägige {tier}-Testphase ist aktiv!** Genieße unbegrenzte Raids, Archive und Analysen – ohne Kreditkarte. Sie endet automatisch, nichts zu kündigen.',
         premiumTrialTeamsHint: 'Während der Testphase kannst du beliebig viele Teams anlegen.',
 
         // Premium feature display names (localized upsell embed)

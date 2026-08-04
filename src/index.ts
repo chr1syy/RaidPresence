@@ -260,7 +260,7 @@ client.on(Events.GuildCreate, async (guild) => {
     console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
   }
 
-  // Auto-grant a one-time 14-day Premium trial to brand-new servers.
+  // Auto-grant a one-time Premium trial (TRIAL_DAYS) to brand-new servers.
   let trialGranted = false;
   try {
     const trial = await grantTrialIfEligible(guild.id);

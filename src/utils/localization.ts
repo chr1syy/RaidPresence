@@ -244,6 +244,11 @@ export interface Translations {
     welcomeSetupTimezoneSaved: string;
     welcomeOpenInServer: string;
 
+    // Guided /raid create — ping toggle in the preview (#49)
+    raidCreatePingOn: string;
+    raidCreatePingOff: string;
+    raidCreatePingEnabled: string;
+    raidCreatePingDisabled: string;
     // Welcome setup chain (#48) — timezone → language → leader roles
     welcomeSetupStep: string;
     welcomeSetupSkip: string;
@@ -544,6 +549,10 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.',
         welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
 
+        raidCreatePingOn: 'Ping: on',
+        raidCreatePingOff: 'Ping: off',
+        raidCreatePingEnabled: '🔔 These roles get pinged when the raid is posted: {roles}',
+        raidCreatePingDisabled: '🔕 No ping — the raid is posted without notifying anyone.',
         welcomeSetupStep: 'Step {current} of {total}',
         welcomeSetupSkip: 'Skip',
         welcomeSetupTimezoneSkipped: '⏭️ Timezone left at **{zone}**.',
@@ -831,6 +840,10 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.',
         welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
 
+        raidCreatePingOn: 'Ping: an',
+        raidCreatePingOff: 'Ping: aus',
+        raidCreatePingEnabled: '🔔 Diese Rollen werden beim Posten angepingt: {roles}',
+        raidCreatePingDisabled: '🔕 Kein Ping – der Raid wird gepostet, ohne jemanden zu benachrichtigen.',
         welcomeSetupStep: 'Schritt {current} von {total}',
         welcomeSetupSkip: 'Überspringen',
         welcomeSetupTimezoneSkipped: '⏭️ Zeitzone bleibt bei **{zone}**.',

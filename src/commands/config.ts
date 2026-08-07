@@ -110,6 +110,24 @@ const command: Command = {
   },
 };
 
+/**
+ * Renders `raidLeaderRoles` for `/config view`.
+ *
+ * The column holds names *or* IDs. Since #48 the welcome setup chain writes IDs
+ * (that is what a `RoleSelectMenu` yields), so a raw dump would show a row of
+ * meaningless numbers — snowflakes are rendered as role mentions instead, names
+ * stay in code ticks.
+ */
+export function formatLeaderRoles(raw: string | null): string {
+  const entries = cleanLeaderRoles(raw || '');
+  if (!entries) return '`Not configured (uses ManageEvents permission)`';
+
+  return entries
+    .split(',')
+    .map((entry) => (/^\d{17,20}$/.test(entry) ? `<@&${entry}>` : `\`${entry}\``))
+    .join(' ');
+}
+
 async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     await interaction.reply({
@@ -132,7 +150,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const leaderRoles = guildData.raidLeaderRoles || 'Not configured (uses ManageEvents permission)';
+  const leaderRoles = formatLeaderRoles(guildData.raidLeaderRoles);
   const language = guildData.language === 'de' ? 'Deutsch (German)' : 'English';
   const timezone = guildData.timezone || DEFAULT_TIMEZONE;
   const timezoneDisplay = formatTimezoneLabel(timezone);
@@ -145,7 +163,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .addFields(
       {
         name: 'Raid Leader Roles',
-        value: `\`${leaderRoles}\`\n\nMembers with these roles can create and delete raids.`,
+        value: `${leaderRoles}\n\nMembers with these roles can create and delete raids.`,
         inline: false,
       },
       {
@@ -176,6 +194,62 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   await interaction.editReply({ embeds: [embed], content: hint || undefined });
 }
 
+/**
+ * Normalises the comma-separated `raidLeaderRoles` column value.
+ *
+ * Entries may be role IDs or role names — `canManageRaids` matches either — so this
+ * only trims and drops empties. Returns `''` when nothing usable is left, which the
+ * callers treat as "reject" rather than "clear".
+ */
+export function cleanLeaderRoles(input: string): string {
+  return input
+    .split(',')
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .join(',');
+}
+
+/**
+ * The single write path for `Guild.raidLeaderRoles`.
+ *
+ * Shared with the welcome setup chain (#48) so the column has exactly one writer;
+ * the welcome flow can be triggered from a DM, where the guild name is only
+ * available from the client cache, hence the explicit `guildName` parameter.
+ */
+export async function setLeaderRoles(
+  guildId: string,
+  guildName: string,
+  cleanedRoles: string
+): Promise<void> {
+  await prisma.guild.upsert({
+    where: { id: guildId },
+    update: { raidLeaderRoles: cleanedRoles },
+    create: {
+      id: guildId,
+      name: guildName,
+      raidLeaderRoles: cleanedRoles,
+    },
+  });
+}
+
+/** The single write path for `Guild.language`. Shared with the welcome chain (#48). */
+export async function setLanguage(
+  guildId: string,
+  guildName: string,
+  language: 'en' | 'de'
+): Promise<void> {
+  await prisma.guild.upsert({
+    where: { id: guildId },
+    update: { language },
+    create: {
+      id: guildId,
+      name: guildName,
+      raidLeaderRoles: '',
+      language,
+    },
+  });
+}
+
 async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
     await interaction.reply({
@@ -188,13 +262,7 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
 
   const roles = interaction.options.get('roles', true).value as string;
-
-  // Validate and clean up the roles string
-  const cleanedRoles = roles
-    .split(',')
-    .map((r) => r.trim())
-    .filter(Boolean)
-    .join(',');
+  const cleanedRoles = cleanLeaderRoles(roles);
 
   if (!cleanedRoles) {
     await interaction.editReply({
@@ -203,16 +271,7 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { raidLeaderRoles: cleanedRoles },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: cleanedRoles,
-    },
-  });
+  await setLeaderRoles(interaction.guild.id, interaction.guild.name, cleanedRoles);
 
   await interaction.editReply({
     content: `✅ Raid leader roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles can now create and manage raids.`,
@@ -239,17 +298,7 @@ async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Update in database
-  await prisma.guild.upsert({
-    where: { id: interaction.guild.id },
-    update: { language },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      language,
-    },
-  });
+  await setLanguage(interaction.guild.id, interaction.guild.name, language);
 
   const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
   await interaction.editReply({

@@ -242,7 +242,6 @@ export interface Translations {
     welcomeSetupIntro: string;
     welcomeSetupTimezonePlaceholder: string;
     welcomeSetupTimezoneSaved: string;
-    welcomeSetupLeaderRolesHint: string;
     welcomeOpenInServer: string;
 
     // Guided /raid create — ping toggle in the preview (#49)
@@ -250,6 +249,24 @@ export interface Translations {
     raidCreatePingOff: string;
     raidCreatePingEnabled: string;
     raidCreatePingDisabled: string;
+    // Welcome setup chain (#48) — timezone → language → leader roles
+    welcomeSetupStep: string;
+    welcomeSetupSkip: string;
+    welcomeSetupTimezoneSkipped: string;
+    welcomeSetupLanguageIntro: string;
+    welcomeSetupLanguagePlaceholder: string;
+    welcomeSetupLanguageSaved: string;
+    welcomeSetupLanguageSkipped: string;
+    welcomeSetupLeaderRolesIntro: string;
+    welcomeSetupLeaderRolesPlaceholder: string;
+    welcomeSetupLeaderRolesSaved: string;
+    welcomeSetupLeaderRolesSkipped: string;
+    welcomeSetupSummaryTitle: string;
+    welcomeSetupSummaryTimezone: string;
+    welcomeSetupSummaryLanguage: string;
+    welcomeSetupSummaryLeaderRoles: string;
+    welcomeSetupSummaryLeaderRolesDefault: string;
+    welcomeSetupDone: string;
 
     // Premium feature display names (localized upsell embed)
     featureRaidOptoutReason: string;
@@ -529,14 +546,30 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeTrialTitle: '🎁 {days}-day Premium trial',
         welcomeSetupIntro: '**Which timezone are your raid times in?**\nPick it below — daylight saving is handled automatically.',
         welcomeSetupTimezonePlaceholder: 'Select your timezone',
-        welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.\n\nThat is the only required setting — you can create a raid right now.',
-        welcomeSetupLeaderRolesHint: 'Optional: use `/config leader-roles` to choose who may create raids. Without it, anyone with the *Manage Events* permission can.',
+        welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.',
         welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
 
         raidCreatePingOn: 'Ping: on',
         raidCreatePingOff: 'Ping: off',
         raidCreatePingEnabled: '🔔 These roles get pinged when the raid is posted: {roles}',
         raidCreatePingDisabled: '🔕 No ping — the raid is posted without notifying anyone.',
+        welcomeSetupStep: 'Step {current} of {total}',
+        welcomeSetupSkip: 'Skip',
+        welcomeSetupTimezoneSkipped: '⏭️ Timezone left at **{zone}**.',
+        welcomeSetupLanguageIntro: '**Which language should I speak here?**\nWe guessed **{detected}** from your server settings — correct it if that is wrong.',
+        welcomeSetupLanguagePlaceholder: 'Select a language',
+        welcomeSetupLanguageSaved: '✅ Language set to **{language}**.',
+        welcomeSetupLanguageSkipped: '⏭️ Language stays **{language}**.',
+        welcomeSetupLeaderRolesIntro: '**Who may create raids?**\nPick the roles below. Leave it out and anyone with the *Manage Events* permission can.',
+        welcomeSetupLeaderRolesPlaceholder: 'Select raid leader roles',
+        welcomeSetupLeaderRolesSaved: '✅ Raid leader roles: {roles}',
+        welcomeSetupLeaderRolesSkipped: '⏭️ No leader roles set — anyone with *Manage Events* can create raids.',
+        welcomeSetupSummaryTitle: '**Setup complete.**',
+        welcomeSetupSummaryTimezone: 'Timezone: **{zone}**',
+        welcomeSetupSummaryLanguage: 'Language: **{language}**',
+        welcomeSetupSummaryLeaderRoles: 'Raid leaders: {roles}',
+        welcomeSetupSummaryLeaderRolesDefault: 'Raid leaders: anyone with *Manage Events*',
+        welcomeSetupDone: 'Use `/config view` to check or change any of this later.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Opt-Out Reasons',
@@ -804,14 +837,30 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeTrialTitle: '🎁 {days} Tage Premium testen',
         welcomeSetupIntro: '**In welcher Zeitzone sind eure Raid-Zeiten?**\nUnten auswählen – die Sommerzeit wird automatisch berücksichtigt.',
         welcomeSetupTimezonePlaceholder: 'Zeitzone auswählen',
-        welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.\n\nMehr ist nicht nötig – du kannst sofort einen Raid anlegen.',
-        welcomeSetupLeaderRolesHint: 'Optional: Mit `/config leader-roles` legst du fest, wer Raids anlegen darf. Ohne das darf jeder mit der Berechtigung *Events verwalten*.',
+        welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.',
         welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
 
         raidCreatePingOn: 'Ping: an',
         raidCreatePingOff: 'Ping: aus',
         raidCreatePingEnabled: '🔔 Diese Rollen werden beim Posten angepingt: {roles}',
         raidCreatePingDisabled: '🔕 Kein Ping – der Raid wird gepostet, ohne jemanden zu benachrichtigen.',
+        welcomeSetupStep: 'Schritt {current} von {total}',
+        welcomeSetupSkip: 'Überspringen',
+        welcomeSetupTimezoneSkipped: '⏭️ Zeitzone bleibt bei **{zone}**.',
+        welcomeSetupLanguageIntro: '**In welcher Sprache soll ich hier schreiben?**\nWir haben **{detected}** aus den Server-Einstellungen erkannt – korrigiere es, falls das nicht stimmt.',
+        welcomeSetupLanguagePlaceholder: 'Sprache auswählen',
+        welcomeSetupLanguageSaved: '✅ Sprache auf **{language}** gesetzt.',
+        welcomeSetupLanguageSkipped: '⏭️ Sprache bleibt **{language}**.',
+        welcomeSetupLeaderRolesIntro: '**Wer darf Raids anlegen?**\nWähle unten die Rollen aus. Ohne Auswahl darf jeder mit der Berechtigung *Events verwalten*.',
+        welcomeSetupLeaderRolesPlaceholder: 'Raid-Leiter-Rollen auswählen',
+        welcomeSetupLeaderRolesSaved: '✅ Raid-Leiter-Rollen: {roles}',
+        welcomeSetupLeaderRolesSkipped: '⏭️ Keine Leiter-Rollen gesetzt – jeder mit *Events verwalten* darf Raids anlegen.',
+        welcomeSetupSummaryTitle: '**Einrichtung abgeschlossen.**',
+        welcomeSetupSummaryTimezone: 'Zeitzone: **{zone}**',
+        welcomeSetupSummaryLanguage: 'Sprache: **{language}**',
+        welcomeSetupSummaryLeaderRoles: 'Raid-Leiter: {roles}',
+        welcomeSetupSummaryLeaderRolesDefault: 'Raid-Leiter: jeder mit *Events verwalten*',
+        welcomeSetupDone: 'Mit `/config view` kannst du das alles später prüfen oder ändern.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Abmeldungsgründe',

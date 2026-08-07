@@ -233,9 +233,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else if (interaction.isRoleSelectMenu()) {
         if (flow.isFlowRoleSelect(interaction.customId)) {
           await flow.handleRoleSelect(interaction);
+        } else if (welcome.isWelcomeRoleSelect(interaction.customId)) {
+          await welcome.handleLeaderRolesSelect(interaction);
         }
       } else if (welcome.isWelcomeSelect(interaction.customId)) {
-        await welcome.handleTimezoneSelect(interaction);
+        await welcome.routeWelcomeSelect(interaction);
       } else {
         const selectHandler = await import('./events/selectHandler');
         await selectHandler.handleSelectMenu(interaction);

@@ -8,7 +8,11 @@
 
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
+// Only the write is stubbed. `buildRoleMentions` is a pure resolver over the guild's
+// role cache and the preview's ping line is only worth asserting against the real
+// one — a hand-written stand-in would drift from it.
 jest.mock('../../commands/raid', () => ({
+  ...jest.requireActual('../../commands/raid'),
   createRaidWithRoster: jest.fn().mockResolvedValue(true),
 }));
 
@@ -21,6 +25,7 @@ import {
   handleDetailsSubmit,
   handleFixTimeButton,
   handleFixTimeSubmit,
+  handlePingToggle,
   handleRoleSelect,
   isFlowButton,
   isFlowModal,
@@ -74,10 +79,22 @@ function buildRoleSelectInteraction(customId: string, values: string[], userId =
     values,
     user: { id: userId },
     guildId: GUILD_ID,
+    guild: { id: GUILD_ID, roles: roleCache() },
     isModalSubmit: () => false,
     update: jest.fn().mockResolvedValue(undefined),
     reply: jest.fn().mockResolvedValue(undefined),
   } as any;
+}
+
+/**
+ * Role cache the preview resolves mentions against — `buildRoleMentions` drops role
+ * ids the guild does not know, so the fixture has to carry them.
+ */
+function roleCache() {
+  const roles = new Map<string, any>();
+  roles.set('role-a', { id: 'role-a', name: 'Raider' });
+  roles.set('role-b', { id: 'role-b', name: 'Trial' });
+  return { cache: Object.assign(roles, { find: (fn: any) => [...roles.values()].find(fn) }) };
 }
 
 function buildButtonInteraction(customId: string, userId = USER_ID) {
@@ -89,7 +106,8 @@ function buildButtonInteraction(customId: string, userId = USER_ID) {
     user: { id: userId },
     guildId: GUILD_ID,
     member: {},
-    guild: { id: GUILD_ID, channels: { cache: channelCache } },
+    guild: { id: GUILD_ID, channels: { cache: channelCache }, roles: roleCache() },
+    isModalSubmit: () => false,
     showModal: jest.fn().mockResolvedValue(undefined),
     deferUpdate: jest.fn().mockResolvedValue(undefined),
     update: jest.fn().mockResolvedValue(undefined),
@@ -301,7 +319,7 @@ describe('guided /raid create flow', () => {
       expect(embed.description).toContain('Europe/Berlin');
     });
 
-    it('offers a confirm and a correct-time button', async () => {
+    it('offers a confirm, a correct-time and a ping button', async () => {
       const { draftId } = await runToRoleSelect();
       const select = buildRoleSelectInteraction(`rcflow-roles:${draftId}`, ['role-a']);
 
@@ -311,7 +329,21 @@ describe('guided /raid create flow', () => {
       expect(buttons.map((b: any) => b.custom_id)).toEqual([
         `rcflow-confirm:${draftId}`,
         `rcflow-fixtime:${draftId}`,
+        `rcflow-ping:${draftId}`,
       ]);
+    });
+
+    it('starts with the ping off — unchanged behaviour for the guided path', async () => {
+      const { draftId } = await runToRoleSelect();
+      const select = buildRoleSelectInteraction(`rcflow-roles:${draftId}`, ['role-a']);
+
+      await handleRoleSelect(select);
+
+      const update = select.update.mock.calls[0][0];
+      const pingButton = update.components[0].toJSON().components[2];
+      expect(pingButton.label).toBe('Ping: off');
+      expect(pingButton.disabled).toBe(false);
+      expect(update.embeds[0].toJSON().description).toContain('No ping');
     });
 
     it('converts the typed time using the guild zone, with DST applied', async () => {
@@ -335,6 +367,134 @@ describe('guided /raid create flow', () => {
 
       expect(new Date(winter * 1000).toISOString()).toBe('2035-01-17T19:00:00.000Z'); // CET
       expect(new Date(summer * 1000).toISOString()).toBe('2035-07-17T18:00:00.000Z'); // CEST
+    });
+  });
+
+  // Issue #49: the guided path could pick roles but not decide whether they get
+  // notified — the question only becomes answerable once the roles are chosen.
+  describe('step 3b — the ping toggle', () => {
+    /** Runs the flow up to a preview with the given roles and returns the draft id. */
+    async function runToPreview(roles: string[] = ['role-a']) {
+      const { draftId } = await runToRoleSelect();
+      const select = buildRoleSelectInteraction(`rcflow-roles:${draftId}`, roles);
+      await handleRoleSelect(select);
+      return { draftId, select };
+    }
+
+    it('flips the draft and re-renders the preview with the actual mentions', async () => {
+      const { draftId } = await runToPreview(['role-a', 'role-b']);
+      const button = buildButtonInteraction(`rcflow-ping:${draftId}`);
+
+      await handlePingToggle(button);
+
+      const update = button.update.mock.calls[0][0];
+      expect(update.components[0].toJSON().components[2].label).toBe('Ping: on');
+      const description = update.embeds[0].toJSON().description;
+      expect(description).toContain('pinged');
+      expect(description).toContain('<@&role-a>');
+      expect(description).toContain('<@&role-b>');
+    });
+
+    it('flips back off on a second press', async () => {
+      const { draftId } = await runToPreview();
+
+      await handlePingToggle(buildButtonInteraction(`rcflow-ping:${draftId}`));
+      const second = buildButtonInteraction(`rcflow-ping:${draftId}`);
+      await handlePingToggle(second);
+
+      expect(second.update.mock.calls[0][0].components[0].toJSON().components[2].label).toBe(
+        'Ping: off'
+      );
+    });
+
+    // Acceptance criterion: the slash option still sets the prefill and arrives as "on".
+    it('shows "on" when ping_roles:true came in on the command line', async () => {
+      const slash = buildSlashInteraction();
+      await startGuidedRaidCreate(slash, {
+        date: null,
+        time: null,
+        title: null,
+        roles: null,
+        pingRoles: true,
+        teamOption: null,
+      });
+
+      const draftId = draftIdFromModal(slash);
+      await handleDetailsSubmit(
+        buildModalInteraction(`rcflow-details:${draftId}`, {
+          title: 'Heroic Night',
+          date: futureDate(),
+          time: '20:00',
+        })
+      );
+      const select = buildRoleSelectInteraction(`rcflow-roles:${draftId}`, ['role-a']);
+      await handleRoleSelect(select);
+
+      const update = select.update.mock.calls[0][0];
+      expect(update.components[0].toJSON().components[2].label).toBe('Ping: on');
+      expect(update.embeds[0].toJSON().description).toContain('pinged');
+    });
+
+    // Acceptance criterion: without roles the toggle must not be operable — disabled
+    // rather than clickable-but-inconsequential.
+    it('renders disabled and refuses to flip when no role was picked', async () => {
+      const { draftId, select } = await runToPreview([]);
+
+      expect(select.update.mock.calls[0][0].components[0].toJSON().components[2].disabled).toBe(
+        true
+      );
+
+      const button = buildButtonInteraction(`rcflow-ping:${draftId}`);
+      await handlePingToggle(button);
+
+      expect(button.deferUpdate).toHaveBeenCalled();
+      expect(button.update).not.toHaveBeenCalled();
+    });
+
+    // The whole point: the flag has to survive to the post, not just to the preview.
+    it('carries through to the created raid', async () => {
+      const { draftId } = await runToPreview();
+
+      await handlePingToggle(buildButtonInteraction(`rcflow-ping:${draftId}`));
+      await handleConfirmButton(buildButtonInteraction(`rcflow-confirm:${draftId}`));
+
+      expect(createRaidWithRoster).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ pingRoles: true, roleIds: ['role-a'] })
+      );
+    });
+
+    it('posts without the ping when the toggle was never touched', async () => {
+      const { draftId } = await runToPreview();
+
+      await handleConfirmButton(buildButtonInteraction(`rcflow-confirm:${draftId}`));
+
+      expect(createRaidWithRoster).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ pingRoles: false })
+      );
+    });
+
+    it('clears the stale preview when the draft has expired', async () => {
+      const button = buildButtonInteraction('rcflow-ping:doesnotexist');
+
+      await handlePingToggle(button);
+
+      expect(button.update).toHaveBeenCalledWith(
+        expect.objectContaining({ components: [], embeds: [] })
+      );
+    });
+
+    // A custom ID is visible to anyone who can see the message.
+    it('ignores a toggle pressed by someone else', async () => {
+      const { draftId } = await runToPreview();
+      const button = buildButtonInteraction(`rcflow-ping:${draftId}`, 'someone-else');
+
+      await handlePingToggle(button);
+
+      expect(button.update).toHaveBeenCalledWith(
+        expect.objectContaining({ components: [], embeds: [] })
+      );
     });
   });
 

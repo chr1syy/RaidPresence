@@ -245,6 +245,12 @@ export interface Translations {
     welcomeSetupLeaderRolesHint: string;
     welcomeOpenInServer: string;
 
+    // Guided /raid create — ping toggle in the preview (#49)
+    raidCreatePingOn: string;
+    raidCreatePingOff: string;
+    raidCreatePingEnabled: string;
+    raidCreatePingDisabled: string;
+
     // Premium feature display names (localized upsell embed)
     featureRaidOptoutReason: string;
     featureRaidArchive: string;
@@ -527,6 +533,11 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupLeaderRolesHint: 'Optional: use `/config leader-roles` to choose who may create raids. Without it, anyone with the *Manage Events* permission can.',
         welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
 
+        raidCreatePingOn: 'Ping: on',
+        raidCreatePingOff: 'Ping: off',
+        raidCreatePingEnabled: '🔔 These roles get pinged when the raid is posted: {roles}',
+        raidCreatePingDisabled: '🔕 No ping — the raid is posted without notifying anyone.',
+
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Opt-Out Reasons',
         featureRaidArchive: 'Raid Archive',
@@ -796,6 +807,11 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.\n\nMehr ist nicht nötig – du kannst sofort einen Raid anlegen.',
         welcomeSetupLeaderRolesHint: 'Optional: Mit `/config leader-roles` legst du fest, wer Raids anlegen darf. Ohne das darf jeder mit der Berechtigung *Events verwalten*.',
         welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
+
+        raidCreatePingOn: 'Ping: an',
+        raidCreatePingOff: 'Ping: aus',
+        raidCreatePingEnabled: '🔔 Diese Rollen werden beim Posten angepingt: {roles}',
+        raidCreatePingDisabled: '🔕 Kein Ping – der Raid wird gepostet, ohne jemanden zu benachrichtigen.',
 
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Abmeldungsgründe',

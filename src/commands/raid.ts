@@ -82,7 +82,7 @@ async function resolveDefaultTeamId(guildId: string): Promise<string> {
  *          Returns empty string if no valid roles are found. 
  *          Invalid roles are logged as warnings and excluded from the result.
  */
-function buildRoleMentions(guild: Guild, roleIds: string[]): string {
+export function buildRoleMentions(guild: Guild, roleIds: string[]): string {
   const roleMentions = roleIds
     .map((roleIdOrName) => {
       const trimmed = roleIdOrName.trim();

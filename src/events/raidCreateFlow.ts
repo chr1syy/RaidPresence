@@ -33,8 +33,9 @@ import {
   TextInputStyle,
 } from 'discord.js';
 import prisma from '../database/client';
-import { createRaidWithRoster } from '../commands/raid';
+import { buildRoleMentions, createRaidWithRoster } from '../commands/raid';
 import { canManageRaids } from '../utils/permissions';
+import { t } from '../utils/localization';
 import {
   DEFAULT_TIMEZONE,
   formatInTimezone,
@@ -54,6 +55,7 @@ export const MODAL_FIXTIME = 'rcflow-fixtime-modal';
 export const SELECT_ROLES = 'rcflow-roles';
 export const BUTTON_CONFIRM = 'rcflow-confirm';
 export const BUTTON_FIXTIME = 'rcflow-fixtime';
+export const BUTTON_PING = 'rcflow-ping';
 
 interface RaidDraft {
   guildId: string;
@@ -118,6 +120,15 @@ export function __clearDrafts(): void {
 async function guildTimezone(guildId: string): Promise<string> {
   const guild = await prisma.guild.findUnique({ where: { id: guildId } });
   return guild?.timezone || DEFAULT_TIMEZONE;
+}
+
+/** Both settings the preview needs, in one query. */
+async function guildSettings(guildId: string): Promise<{ timezone: string; language: string }> {
+  const guild = await prisma.guild.findUnique({ where: { id: guildId } });
+  return {
+    timezone: guild?.timezone || DEFAULT_TIMEZONE,
+    language: guild?.language || 'en',
+  };
 }
 
 /**
@@ -309,21 +320,32 @@ export async function handleRoleSelect(interaction: RoleSelectMenuInteraction): 
  * self-correcting, and it is why issue #37 deferred this piece to this flow.
  */
 async function showPreview(
-  interaction: RoleSelectMenuInteraction | ModalSubmitInteraction,
+  interaction: RoleSelectMenuInteraction | ModalSubmitInteraction | ButtonInteraction,
   draftId: string,
   draft: RaidDraft
 ): Promise<void> {
-  const timezone = await guildTimezone(draft.guildId);
+  const { timezone, language } = await guildSettings(draft.guildId);
   const raidDate = zonedDateTimeToUtc(draft.date, draft.time, timezone)!;
   const unix = Math.floor(raidDate.getTime() / 1000);
+
+  const hasRoles = draft.roleIds.length > 0;
+
+  // Resolved against the guild so the preview shows exactly the mentions that will
+  // go out — a role deleted since the select drops out here rather than at post time.
+  const mentions = interaction.guild
+    ? buildRoleMentions(interaction.guild, draft.roleIds)
+    : draft.roleIds.map((id) => `<@&${id}>`).join(' ');
 
   const embed = new EmbedBuilder()
     .setTitle(`📋 ${draft.title}`)
     .setColor(0x00ae86)
     .setDescription(
       `**When:** <t:${unix}:F> (<t:${unix}:R>)\n` +
-      `**Roles:** ${draft.roleIds.map((id) => `<@&${id}>`).join(' ')}\n\n` +
-      `_Entered as ${draft.time} in ${formatTimezoneLabel(timezone)}. ` +
+      `**Roles:** ${draft.roleIds.map((id) => `<@&${id}>`).join(' ')}\n` +
+      (draft.pingRoles && hasRoles
+        ? `${t(language, 'raidCreatePingEnabled', { roles: mentions })}\n`
+        : `${t(language, 'raidCreatePingDisabled')}\n`) +
+      `\n_Entered as ${draft.time} in ${formatTimezoneLabel(timezone)}. ` +
       'The time above is shown in your own Discord timezone — if it looks wrong, ' +
       'fix the server timezone below._'
     );
@@ -336,7 +358,14 @@ async function showPreview(
     new ButtonBuilder()
       .setCustomId(`${BUTTON_FIXTIME}:${draftId}`)
       .setLabel('Fix time / timezone')
+      .setStyle(ButtonStyle.Secondary),
+    // Nothing to ping without roles, so the toggle is dead weight rather than a
+    // control that flips a flag with no effect.
+    new ButtonBuilder()
+      .setCustomId(`${BUTTON_PING}:${draftId}`)
+      .setLabel(t(language, draft.pingRoles ? 'raidCreatePingOn' : 'raidCreatePingOff'))
       .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!hasRoles)
   );
 
   const payload = { content: '', embeds: [embed], components: [buttons] };
@@ -346,6 +375,46 @@ async function showPreview(
   } else {
     await interaction.update(payload);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Step 3b — the ping toggle
+// ---------------------------------------------------------------------------
+
+/**
+ * Flips `draft.pingRoles` and re-renders the preview.
+ *
+ * The question — should the chosen roles get a notification? — only becomes
+ * answerable once the roles are chosen, and it has no defensible default: a regular
+ * weekly raid usually should not ping, a short-notice replacement mostly should. The
+ * slash option `ping_roles:true` still sets the prefill, so this toggle starts at
+ * whatever the command line said and can still be flipped.
+ *
+ * Touches the in-memory draft only — nothing is persisted before [Create raid].
+ */
+export async function handlePingToggle(interaction: ButtonInteraction): Promise<void> {
+  const draftId = interaction.customId.split(':')[1];
+  const draft = getDraft(draftId, interaction.user.id);
+
+  if (!draft) {
+    await interaction.update({
+      content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  // The button is rendered disabled without roles; this guards the case where the
+  // click and the render race each other.
+  if (draft.roleIds.length === 0) {
+    await interaction.deferUpdate();
+    return;
+  }
+
+  draft.pingRoles = !draft.pingRoles;
+
+  await showPreview(interaction, draftId, draft);
 }
 
 // ---------------------------------------------------------------------------
@@ -542,7 +611,11 @@ export function isFlowModal(customId: string): boolean {
 }
 
 export function isFlowButton(customId: string): boolean {
-  return customId.startsWith(`${BUTTON_CONFIRM}:`) || customId.startsWith(`${BUTTON_FIXTIME}:`);
+  return (
+    customId.startsWith(`${BUTTON_CONFIRM}:`) ||
+    customId.startsWith(`${BUTTON_FIXTIME}:`) ||
+    customId.startsWith(`${BUTTON_PING}:`)
+  );
 }
 
 export function isFlowRoleSelect(customId: string): boolean {
@@ -560,6 +633,8 @@ export async function routeFlowModal(interaction: ModalSubmitInteraction): Promi
 export async function routeFlowButton(interaction: ButtonInteraction): Promise<void> {
   if (interaction.customId.startsWith(`${BUTTON_CONFIRM}:`)) {
     await handleConfirmButton(interaction);
+  } else if (interaction.customId.startsWith(`${BUTTON_PING}:`)) {
+    await handlePingToggle(interaction);
   } else {
     await handleFixTimeButton(interaction);
   }

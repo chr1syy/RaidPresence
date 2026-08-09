@@ -78,6 +78,10 @@ export async function extendTrials(
   const dryRun = options.dryRun ?? true;
   const now = options.now ?? new Date();
 
+  // Deliberately not filtered on `leftAt`: this is a one-off correction that already ran
+  // on production, and it only rewrites `premiumExpiresAt` on rows that *already* hold a
+  // trial. Skipping departed guilds would change nothing about the live install base but
+  // would leave a re-installing guild sitting on the old, shorter expiry.
   const candidates = await prisma.guild.findMany({
     where: {
       trialStartedAt: { not: null },

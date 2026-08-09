@@ -43,6 +43,11 @@ export async function backfillTrials(
       trialStartedAt: null,
       entitlementId: null,
       premiumTier: 'FREE',
+      // Guilds the bot has been kicked from keep their row forever. Handing them the
+      // one-time trial would burn it on a server nobody is in — and since the grant is
+      // one-time, a later re-install would find it already spent. A returning guild has
+      // its `leftAt` cleared on guildCreate and becomes a candidate again on the next run.
+      leftAt: null,
     },
     select: { id: true, name: true },
   });

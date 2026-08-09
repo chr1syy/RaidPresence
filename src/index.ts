@@ -10,6 +10,7 @@ import { buildWelcomeMessage } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
 import { TEAM_OPTION_NAME } from './utils/teamContext';
 import { runStartupTrialBackfill } from './scripts/backfillTrials';
+import { syncGuildOnJoin, markGuildDeparted, reconcileDepartedGuilds } from './services/guildLifecycle';
 import { logInteraction, commandLabel } from './utils/interactionLog';
 
 config();
@@ -60,18 +61,9 @@ client.once(Events.ClientReady, async (c) => {
     // No timezone detection: Discord's `preferredLocale` is a language setting, not
     // a location, so deriving a zone from it produced confident nonsense. New guilds
     // start at UTC and set their zone explicitly via `/config timezone`.
-    await prisma.guild.upsert({
-      where: { id: guildId },
-      update: {
-        name: guild.name,
-      },
-      create: {
-        id: guildId,
-        name: guild.name,
-        raidRoles: process.env.RAID_ROLES || '',
-        raidLeaderRoles: process.env.RAID_LEADER_ROLES || '',
-      },
-    });
+    // Also clears `leftAt`: everything in the cache is a guild the bot is currently in,
+    // so a row that was marked departed while the bot was down is live again.
+    await syncGuildOnJoin({ id: guildId, name: guild.name });
 
     // Make sure every guild owns its default "Main" team. Never abort startup
     // over this — the team is created lazily on first raid creation anyway.
@@ -81,6 +73,16 @@ client.once(Events.ClientReady, async (c) => {
       console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
     }
 
+  }
+
+  // Anything still marked live in the database but missing from the cache is a guild
+  // the bot is no longer in — a kick during downtime, or (on the first boot after this
+  // shipped) a historical one that was never recorded. Runs after the sync loop above so
+  // every cached guild has already had its `leftAt` cleared and cannot be caught here.
+  try {
+    await reconcileDepartedGuilds(c.guilds.cache.keys());
+  } catch (error) {
+    console.error('❌ Guild departure reconciliation failed:', error);
   }
 
   console.log('✅ Guild data synchronized');
@@ -272,19 +274,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on(Events.GuildCreate, async (guild) => {
   console.log(`➕ Joined new guild: ${guild.name} (${guild.id})`);
 
-  // Upsert so a re-install (where the guild row persists) never throws and
-  // never clobbers the server's existing configuration. New guilds default to
-  // UTC — see the guild-sync block above for why nothing is auto-detected.
-  await prisma.guild.upsert({
-    where: { id: guild.id },
-    update: { name: guild.name },
-    create: {
-      id: guild.id,
-      name: guild.name,
-      raidRoles: process.env.RAID_ROLES || '',
-      raidLeaderRoles: process.env.RAID_LEADER_ROLES || '',
-    },
-  });
+  // Upserts, clears any `leftAt` mark, and logs the re-install case. New guilds
+  // default to UTC — see the guild-sync block above for why nothing is auto-detected.
+  await syncGuildOnJoin({ id: guild.id, name: guild.name });
 
   // Make sure the guild owns its default "Main" team right away.
   try {
@@ -355,6 +347,20 @@ client.on(Events.GuildCreate, async (guild) => {
     }
   } catch (error) {
     console.error('Error sending welcome message:', error);
+  }
+});
+
+// Guild departure
+//
+// Records the kick instead of deleting anything: the guild's raids, teams and
+// preferences stay on disk so a re-install finds its history intact. `markGuildDeparted`
+// ignores the event when the guild is merely unavailable during a Discord outage —
+// see the function's comment, that distinction is what keeps the number meaningful.
+client.on(Events.GuildDelete, async (guild) => {
+  try {
+    await markGuildDeparted({ id: guild.id, name: guild.name, available: guild.available });
+  } catch (error) {
+    console.error(`❌ Failed to mark guild ${guild.id} as departed:`, error);
   }
 });
 

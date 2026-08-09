@@ -24,7 +24,7 @@ describe('backfillTrials', () => {
     await backfillTrials();
 
     expect(guildMock.findMany).toHaveBeenCalledWith({
-      where: { trialStartedAt: null, entitlementId: null, premiumTier: 'FREE' },
+      where: { trialStartedAt: null, entitlementId: null, premiumTier: 'FREE', leftAt: null },
       select: { id: true, name: true },
     });
   });

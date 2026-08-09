@@ -22,6 +22,15 @@ model Guild {
   timezoneOffset  Int      @default(0) // DEPRECATED, phase 1 of the IANA migration. Nothing reads this any more; it is kept written (guildTimezoneUpdate()) purely as a rollback path and is dropped in phase 2.
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  // NULL = the bot is currently in this guild; set = the bot is out (kicked, or the
+  // guild was deleted). Rows are never removed, so this is the only thing that tells
+  // a live install apart from a dead one — every guild count must filter on it.
+  //
+  // SEMANTICS: this is the timestamp at which the departure was *detected*, not
+  // necessarily when it happened. A kick observed live via guildDelete lands within
+  // seconds; one found by the startup reconciliation is stamped at boot time and may
+  // be weeks late. Never read it as an exact churn date.
+  leftAt          DateTime?
 
   // Archive system fields (Phase 2.4)
   archiveChannelId String?  // Guild's designated archive channel
@@ -39,6 +48,9 @@ model Guild {
   users UserPreference[]
   rolePreferences UserRolePreference[]
   teams Team[]
+
+  // Every usage count and every candidate query filters on `leftAt` from here on.
+  @@index([leftAt])
 }
 
 model Team {

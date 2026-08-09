@@ -308,68 +308,49 @@ client.on(Events.GuildCreate, async (guild) => {
   console.log(`🌍 ${guild.name} starts on UTC. Use /config timezone to set the server's zone.`);
 
   // Send welcome/setup message
+  //
+  // Delivery order is system channel first, owner DM as the fallback (#52).
+  //
+  // This used to read the audit log to find who invited the bot and DM them. That
+  // needs View Audit Log, which the invite deliberately does not request — reading a
+  // server's moderation history is far more access than a greeting is worth. The
+  // call therefore always failed and the message always went to the system channel
+  // anyway; now that is the intended path rather than an accident. It also reaches
+  // every raid leader instead of one person.
   try {
-    const { AuditLogEvent } = await import('discord.js');
-
     // Localize the welcome embed to the guild's Discord locale (brand-new guilds
     // have no `language` config row yet), so a German server gets German copy.
     const language = localeToLanguage(guild.preferredLocale);
-    // Buttons carry the guild id: the primary delivery path is a DM, where the
-    // interaction has no guild context of its own (#39).
+    // Buttons carry the guild id: the owner-DM fallback has no guild context of its
+    // own, so the handlers cannot infer which server they are acting on (#39).
     const welcomeMessage = buildWelcomeMessage({
       trialGranted,
       language,
       guildId: guild.id,
     });
 
-    // Try to find who added the bot via audit logs
-    let botAdder = null;
-    try {
-      const auditLogs = await guild.fetchAuditLogs({
-        type: AuditLogEvent.BotAdd,
-        limit: 5,
-      });
-
-      const botAddEntry = auditLogs.entries.find(
-        (entry) => entry.target?.id === client.user?.id
-      );
-
-      if (botAddEntry) {
-        botAdder = botAddEntry.executor;
-        console.log(`📋 Bot was added by: ${botAdder?.tag}`);
-      }
-    } catch (error) {
-      console.log(`⚠️  Could not fetch audit logs for ${guild.name}`);
-    }
-
-    // Try to send DM to person who added the bot
     let messageSent = false;
 
-    if (botAdder) {
-      try {
-        await botAdder.send(welcomeMessage);
-        messageSent = true;
-        console.log(`📨 Sent welcome DM to ${botAdder.tag} (added the bot) in ${guild.name}`);
-      } catch (error) {
-        console.log(`⚠️  Could not DM ${botAdder.tag} (DMs disabled or blocked)`);
-      }
-    }
-
-    // Fallback: Try system channel
-    if (!messageSent && guild.systemChannel && guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')) {
+    if (
+      guild.systemChannel &&
+      guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')
+    ) {
       await guild.systemChannel.send(welcomeMessage);
       messageSent = true;
       console.log(`📨 Sent welcome message to system channel in ${guild.name}`);
     }
 
-    // Final fallback: Try to DM the owner
+    // No system channel, or no permission to post in it: fall back to the owner's
+    // DMs. This is the path the welcome flow's DM handling exists for.
     if (!messageSent) {
       try {
         const owner = await guild.fetchOwner();
         await owner.send(welcomeMessage);
-        console.log(`📨 Sent welcome DM to owner of ${guild.name}`);
+        console.log(`📨 Sent welcome DM to owner of ${guild.name} (no usable system channel)`);
       } catch (error) {
-        console.log(`❌ Could not send welcome message to ${guild.name}`);
+        console.log(
+          `❌ Could not send welcome message to ${guild.name}: no usable system channel and the owner's DMs are closed`
+        );
       }
     }
   } catch (error) {

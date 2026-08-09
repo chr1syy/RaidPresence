@@ -2,13 +2,13 @@
  * Handlers for the two welcome-message buttons (issue #39) and the setup chain
  * behind [Start setup] (issue #48).
  *
- * The hard constraint here is delivery: the welcome message is sent by DM to
- * whoever installed the bot, and only falls back to the guild's system channel. In
- * a DM the interaction has **no guild context** — `interaction.guild` is null and
- * the member (and therefore their roles) is unavailable. Both buttons must
- * therefore either work without a guild, or lead the user cleanly back into the
- * server. The guild id rides along in the custom ID so we always know which server
- * "back" means.
+ * The hard constraint here is delivery: the welcome message goes to the guild's
+ * system channel, and falls back to a DM to the server owner when there is none or
+ * the bot may not post there (#52). In that DM the interaction has **no guild
+ * context** — `interaction.guild` is null and the member (and therefore their
+ * roles) is unavailable. Both buttons must therefore either work without a guild,
+ * or lead the user cleanly back into the server. The guild id rides along in the
+ * custom ID so we always know which server "back" means.
  *
  * That split runs straight through the setup chain: timezone and language are plain
  * guild-table columns and can be set from anywhere, but a `RoleSelectMenu` needs a

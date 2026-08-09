@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The welcome message goes to the system channel first and falls back to a DM to the server owner. It no longer reads the audit log to find who invited the bot — that needs View Audit Log, which the invite does not request, so the lookup failed on every install and the message went to the system channel regardless. The system channel is now the intended path rather than an accident, and it reaches every raid leader instead of one person
+
 ## [0.8.0] - 2026-08-07
 
 ### Added

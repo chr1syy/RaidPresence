@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Guild departures are recorded. `Guild.leftAt` is NULL while the bot is in a server and holds a timestamp once it is out, so a live install can finally be told apart from a dead one — the row itself has always survived a kick, since raids, teams and preferences cascade off it and deleting them would lose a server's history on every re-install. A `guildDelete` handler stamps the field, `guildCreate` clears it again and logs the re-install with how long the server had been gone
+- Startup reconciliation: guilds that are still marked live in the database but no longer in the gateway's guild cache get stamped at boot, which catches kicks that happened while the bot was down
+
+### Changed
+- The trial backfill no longer treats servers the bot was kicked from as candidates — the trial is one-time, so granting it to a dead install would spend it before anyone could use it
+
+### Notes
+- **The first boot after this ships stamps a large batch of guilds at once, and that is expected.** Measured read-only on production on 2026-08-09: 116 `Guild` rows against 48 servers actually reachable via Discord, i.e. 68 departures that were never recorded. The reconciliation marks all 68 with the deploy timestamp. `leftAt` is defined as *when the departure was detected*, not when it happened, so those 68 are years of accumulated churn landing on one date — do not read them as 68 servers leaving in a single day. Every departure recorded after this deploy is accurate to the second
+- Every usage number produced before this change counted database rows and was therefore too optimistic by roughly 59%
+
 ## [0.8.1] - 2026-08-09
 
 ### Changed

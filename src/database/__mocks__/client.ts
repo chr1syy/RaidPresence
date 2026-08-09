@@ -32,6 +32,7 @@ const prisma: Record<string, any> = {
     update: jest.fn(),
     updateMany: jest.fn(),
     upsert: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   team: {
     // Default team resolution succeeds out of the box so raid fixtures get a teamId

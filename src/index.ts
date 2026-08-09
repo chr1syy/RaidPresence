@@ -353,15 +353,33 @@ client.on(Events.GuildCreate, async (guild) => {
 // Guild departure
 //
 // Records the kick instead of deleting anything: the guild's raids, teams and
-// preferences stay on disk so a re-install finds its history intact. `markGuildDeparted`
-// ignores the event when the guild is merely unavailable during a Discord outage —
-// see the function's comment, that distinction is what keeps the number meaningful.
+// preferences stay on disk so a re-install finds its history intact.
+//
+// Every event that arrives here is a real departure. discord.js separates the two cases
+// upstream — a guild that went unavailable in an outage is emitted as `guildUnavailable`
+// (see the listener below) and returns before `guildDelete` is ever emitted. Do not
+// filter on `guild.available` here; the field is stale on this path and doing so drops
+// real kicks. The reasoning is spelled out on markGuildDeparted().
 client.on(Events.GuildDelete, async (guild) => {
   try {
-    await markGuildDeparted({ id: guild.id, name: guild.name, available: guild.available });
+    await markGuildDeparted({ id: guild.id, name: guild.name });
   } catch (error) {
     console.error(`❌ Failed to mark guild ${guild.id} as departed:`, error);
   }
+});
+
+// Guild outage
+//
+// Logging only — this must never touch the database. A guild that goes unavailable
+// during a Discord outage is still ours; it comes back on its own. Stamping `leftAt`
+// here would mark large parts of the install base as kicked within seconds of an
+// incident, and since `leftAt` is a detection timestamp there would be nothing left in
+// the data to tell the mistake apart from real churn afterwards.
+//
+// This listener exists mostly so the split between "unreachable" and "gone" is visible
+// in the code rather than living only in a comment, and so outages show up in the log.
+client.on(Events.GuildUnavailable, (guild) => {
+  console.log(`⚠️ Guild unavailable (Discord outage), not a departure: ${guild.name} (${guild.id})`);
 });
 
 // Error handling

@@ -12,17 +12,16 @@ import prisma from '../database/client';
  * `leftAt` records when the departure was *detected*. A live `guildDelete` is exact
  * to the second; a departure found by the startup reconciliation is stamped at boot
  * and can be arbitrarily late. See the comment on the schema field.
+ *
+ * A Discord outage is not a departure and never reaches this module: discord.js routes
+ * unavailable guilds to `guildUnavailable` instead of `guildDelete`. See the comment on
+ * markGuildDeparted() before adding any availability check here.
  */
 
 /** The minimal shape both `guildCreate` and `guildDelete` supply. */
 export interface GuildLifecyclePayload {
   id: string;
   name: string;
-  /**
-   * discord.js sets this to `false` while a guild is unreachable due to an outage.
-   * `undefined` is treated as available — partial payloads default to the live case.
-   */
-  available?: boolean;
 }
 
 export interface GuildJoinResult {
@@ -89,30 +88,34 @@ export async function syncGuildOnJoin(
 /**
  * Marks a guild as departed after a `guildDelete` event.
  *
- * WHY THE `available` CHECK IS THE WHOLE POINT: Discord fires `guildDelete` for two
- * completely different things. One is a real departure (kick, ban, guild deleted).
- * The other is a guild going *temporarily unreachable* during a Discord outage or a
- * gateway node moving — and those arrive with `available === false`, followed later by
- * a `guildCreate` when the guild comes back. Stamping on the second case would let a
- * single Discord incident mark the entire install base as kicked in the space of a few
- * seconds, and because `leftAt` records a detection time there is nothing in the data
- * to undo that with afterwards. The metric would be permanently worthless. So an
- * unavailable guild is logged and nothing else.
+ * DO NOT ADD AN `available === false` GUARD HERE. It looks like the obviously right
+ * defence against a Discord outage marking the whole install base as kicked, it is the
+ * first thing anyone reaches for, and it is wrong twice over. Verified against
+ * `node_modules/discord.js/src/client/actions/GuildDelete.js`:
  *
- * @returns true when the row was stamped, false when the event was an outage.
+ *   if (data.unavailable) { guild.available = false;
+ *                           client.emit(Events.GuildUnavailable, guild); return; }
+ *   ... client.emit(Events.GuildDelete, guild);
+ *
+ * 1. The guard is dead code for its stated purpose. discord.js splits the two cases
+ *    itself: an outage returns early on `guildUnavailable` and never reaches
+ *    `guildDelete` at all. Every event we receive here has already been routed as a
+ *    real departure — a kick, a ban, or a deleted guild.
+ * 2. Worse, the guard breaks the exact case it was meant to protect. `guild.available`
+ *    is left at `false` on the cached object and only refreshed when a payload actually
+ *    carries `unavailable` (`Guild._patch`), i.e. not until a full `GUILD_CREATE` on
+ *    recovery. A genuine kick arriving in that window emits `guildDelete` with a stale
+ *    `available === false`, the guard reads it as an outage, and a real departure goes
+ *    unrecorded until the next startup reconciliation happens to catch it.
+ *
+ * So: a `guildDelete` that reaches this function is always stamped, whatever
+ * `available` says. Outages are handled by the `guildUnavailable` listener in
+ * src/index.ts, which only logs and never touches the database.
  */
 export async function markGuildDeparted(
   guild: GuildLifecyclePayload,
   options: { now?: Date } = {},
-): Promise<boolean> {
-  if (guild.available === false) {
-    console.log(
-      `⚠️ Guild temporarily unavailable (Discord outage), not marking as departed: ` +
-        `${guild.name} (${guild.id})`,
-    );
-    return false;
-  }
-
+): Promise<void> {
   const now = options.now ?? new Date();
 
   // updateMany, not update: a guildDelete for a guild that was never written (e.g. the
@@ -127,8 +130,6 @@ export async function markGuildDeparted(
   // Nothing is deleted here on purpose: raids, teams and preferences stay untouched so
   // a re-install finds its history intact. The cascade relations are never triggered.
   console.log(`➖ Left guild: ${guild.name} (${guild.id})`);
-
-  return true;
 }
 
 /**

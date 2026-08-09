@@ -26,41 +26,9 @@ afterEach(() => {
 });
 
 describe('markGuildDeparted', () => {
-  it('does not stamp leftAt when the guild is merely unavailable (Discord outage)', async () => {
-    const stamped = await markGuildDeparted(
-      { id: 'g1', name: 'Alpha', available: false },
-      { now: NOW },
-    );
-
-    expect(stamped).toBe(false);
-    expect(guildMock.updateMany).not.toHaveBeenCalled();
-    expect(guildMock.update).not.toHaveBeenCalled();
-  });
-
-  it('logs the outage case instead of silently ignoring it', async () => {
-    const log = jest.spyOn(console, 'log').mockImplementation(() => {});
-
-    await markGuildDeparted({ id: 'g1', name: 'Alpha', available: false }, { now: NOW });
-
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('temporarily unavailable'));
-  });
-
-  it('stamps leftAt when the guild is available, i.e. a real kick', async () => {
+  it('stamps leftAt for a guildDelete event', async () => {
     guildMock.updateMany.mockResolvedValue({ count: 1 });
 
-    const stamped = await markGuildDeparted(
-      { id: 'g1', name: 'Alpha', available: true },
-      { now: NOW },
-    );
-
-    expect(stamped).toBe(true);
-    expect(guildMock.updateMany).toHaveBeenCalledWith({
-      where: { id: 'g1', leftAt: null },
-      data: { leftAt: NOW },
-    });
-  });
-
-  it('treats a payload without an `available` flag as a real departure', async () => {
     await markGuildDeparted({ id: 'g1', name: 'Alpha' }, { now: NOW });
 
     expect(guildMock.updateMany).toHaveBeenCalledWith({
@@ -69,8 +37,24 @@ describe('markGuildDeparted', () => {
     });
   });
 
+  it('stamps even when the cached guild still carries a stale available === false', async () => {
+    // discord.js only refreshes `available` when a payload carries `unavailable`, so a
+    // guild that went through an outage keeps the flag until a full GUILD_CREATE. A kick
+    // in that window still emits guildDelete — filtering on `available` would silently
+    // drop it. Nothing in this module may read the flag; the extra property must not
+    // change the outcome.
+    guildMock.updateMany.mockResolvedValue({ count: 1 });
+
+    await markGuildDeparted({ id: 'g1', name: 'Alpha', available: false } as any, { now: NOW });
+
+    expect(guildMock.updateMany).toHaveBeenCalledWith({
+      where: { id: 'g1', leftAt: null },
+      data: { leftAt: NOW },
+    });
+  });
+
   it('never deletes the guild row or its related data', async () => {
-    await markGuildDeparted({ id: 'g1', name: 'Alpha', available: true }, { now: NOW });
+    await markGuildDeparted({ id: 'g1', name: 'Alpha' }, { now: NOW });
 
     // Raids/teams/preferences cascade off the Guild row, so the row must survive.
     expect((prisma as any).raid.deleteMany).not.toHaveBeenCalled();
@@ -82,7 +66,7 @@ describe('markGuildDeparted', () => {
     // The `leftAt: null` predicate is what makes this safe — the DB matches nothing.
     guildMock.updateMany.mockResolvedValue({ count: 0 });
 
-    await markGuildDeparted({ id: 'g1', name: 'Alpha', available: true }, { now: NOW });
+    await markGuildDeparted({ id: 'g1', name: 'Alpha' }, { now: NOW });
 
     expect(guildMock.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ leftAt: null }) }),

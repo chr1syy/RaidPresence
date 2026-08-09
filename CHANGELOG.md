@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Guild departures are recorded. `Guild.leftAt` is NULL while the bot is in a server and holds a timestamp once it is out, so a live install can finally be told apart from a dead one — the row itself has always survived a kick, since raids, teams and preferences cascade off it and deleting them would lose a server's history on every re-install. A `guildDelete` handler stamps the field, `guildCreate` clears it again and logs the re-install with how long the server had been gone
 - Startup reconciliation: guilds that are still marked live in the database but no longer in the gateway's guild cache get stamped at boot, which catches kicks that happened while the bot was down
+- A `guildUnavailable` listener logs Discord outages. It deliberately touches nothing — an unreachable server is not a departure, and discord.js already routes the two cases apart, so nothing about an outage reaches the departure path
 
 ### Changed
 - The trial backfill no longer treats servers the bot was kicked from as candidates — the trial is one-time, so granting it to a dead install would spend it before anyone could use it

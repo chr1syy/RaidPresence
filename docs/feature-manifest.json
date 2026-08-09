@@ -1,6 +1,6 @@
 {
-  "version": "0.8.0",
-  "updated_at": "2026-08-07",
+  "version": "0.8.2",
+  "updated_at": "2026-08-09",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": [

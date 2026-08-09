@@ -1,6 +1,6 @@
 {
-  "version": "0.4.0",
-  "updated_at": "2026-07-27",
+  "version": "0.7.0",
+  "updated_at": "2026-08-04",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": ["en", "de"],
@@ -8,7 +8,7 @@
   "links": {
     "invite": "https://discord.com/oauth2/authorize?client_id=1305228012080279686&scope=bot+applications.commands&permissions=117760",
     "support_discord": "https://discord.gg/raidpresence",
-    "github": "https://github.com/Cjones4004/RaidPresence",
+    "github": "https://github.com/chr1syy/RaidPresence",
     "changelog": "CHANGELOG.md",
     "docs_base": "docs/"
   },
@@ -48,7 +48,7 @@
       "docs_url": "docs/commands/CONFIG-COMMAND.md",
       "commands": ["create", "list", "delete"],
       "command_prefix": "/team",
-      "since": "0.5.0"
+      "since": "0.6.0"
     },
     {
       "id": "attendance-tracking",
@@ -182,6 +182,51 @@
       "landing_copy": "Get running in under a minute with the guided setup wizard.",
       "docs_url": "docs/guides/SETUP-GUIDE.md",
       "since": "0.0.1"
+    },
+    {
+      "id": "guided-raid-create",
+      "name": "Guided Raid Creation",
+      "category": "core",
+      "status": "live",
+      "summary": "/raid create runs without any options: a modal collects title, date, and time, a role select picks who is signed up, and a preview with Discord timestamps confirms before the raid is posted. Passing all options still creates the raid in one line.",
+      "landing_copy": "No parameters to memorise. Run /raid create and the bot walks you through it — fill in a form, pick the roles, check the preview.",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "commands": ["create"],
+      "since": "0.7.0"
+    },
+    {
+      "id": "welcome-onboarding",
+      "name": "Welcome Onboarding Buttons",
+      "category": "configuration",
+      "status": "live",
+      "summary": "On joining a server the bot posts a three-line welcome with two buttons — Start setup and Create first raid — that open the setup wizard and the guided raid flow directly. Works in-channel and via DM.",
+      "landing_copy": "Invite the bot and it hands you two buttons: start setup, or create your first raid. No manual to read first.",
+      "docs_url": "docs/guides/SETUP-GUIDE.md",
+      "since": "0.7.0"
+    },
+    {
+      "id": "guild-timezone",
+      "name": "Timezones with Daylight Saving",
+      "category": "configuration",
+      "status": "live",
+      "summary": "Raid times are entered and displayed in the server's IANA timezone (e.g. Europe/Berlin), set via /config timezone with autocomplete. Daylight saving transitions are applied automatically instead of a fixed hour offset.",
+      "landing_copy": "Set your server's timezone once. Raid times follow it through daylight saving — no shifted raid nights in spring and autumn.",
+      "docs_url": "docs/commands/CONFIG-COMMAND.md",
+      "commands": ["timezone"],
+      "command_prefix": "/config",
+      "since": "0.7.0"
+    },
+    {
+      "id": "premium-trial",
+      "name": "30-Day Premium Trial",
+      "category": "core",
+      "status": "live",
+      "premium_tier": "FREE",
+      "premium_note": "Granted once automatically to every new server; falls back to the free tier when it ends",
+      "summary": "Every new server is granted a one-time 30-day Premium trial on join, unlocking multi-team, archive and search, full attendance history, and composition analysis. No payment details required.",
+      "landing_copy": "Every new server starts with 30 days of Premium — every feature, no card, no signup step.",
+      "docs_url": "docs/guides/SETUP-GUIDE.md",
+      "since": "0.7.0"
     }
   ],
   "commands_summary": [
@@ -229,6 +274,7 @@
       "summary": "Raid lifecycle and archiving — create, list, delete, close, open, cancel, remind, refresh, edit, clone, archive, unarchive, search",
       "highlights": [
         "13 subcommands available",
+        "Guided creation — /raid create runs with no options",
         "Interactive attendance buttons",
         "Role and class-based roster sorting",
         "Reverse sign-up — all eligible members auto-added"
@@ -238,14 +284,14 @@
         {
           "name": "create",
           "required": false,
-          "format": "(no options — guided setup) | [date:<YYYY-MM-DD>] [time:<HH:MM>] [title:<text>] [roles:<role1,role2>] [ping_roles:true|false]",
+          "format": "(no options — guided setup) | [date:<YYYY-MM-DD>] [time:<HH:MM>] [title:<text>] [roles:<role1,role2>] [ping_roles:true|false] [team:<name>]",
           "description": "Create a new raid event. Run without options for a guided flow (modal for name/date/time, then a role picker and a confirmation preview). Supplying all four options creates the raid directly, as before; a partial set pre-fills the modal."
         },
         {
           "name": "list",
           "required": false,
-          "format": "(no options)",
-          "description": "Show all upcoming raids with attendance counts"
+          "format": "[team:<name>]",
+          "description": "Show all upcoming raids with attendance counts, optionally scoped to one team"
         },
         {
           "name": "edit",
@@ -262,7 +308,7 @@
         {
           "name": "clone",
           "required": false,
-          "format": "raid_id:<id> date:<YYYY-MM-DD> [time:<HH:MM>] [title:<text>]",
+          "format": "raid_id:<id> date:<YYYY-MM-DD> [time:<HH:MM>] [title:<text>] [team:<name>]",
           "description": "Copy a raid's configuration to a new date"
         },
         {
@@ -310,7 +356,7 @@
         {
           "name": "search",
           "required": false,
-          "format": "query:<text> [period:month|quarter|all]",
+          "format": "query:<text> [period:month|quarter|all] [team:<name>]",
           "description": "Search archived raids by name, player, or date"
         }
       ],
@@ -387,19 +433,19 @@
         {
           "name": "guild",
           "required": false,
-          "format": "[period:week|month|all]",
+          "format": "[period:week|month|all] [team:<name>]",
           "description": "View guild-wide attendance statistics over a time period (default: month)"
         },
         {
           "name": "status",
           "required": false,
-          "format": "(no options)",
-          "description": "Dashboard of the next 7 upcoming open raids with roster counts"
+          "format": "[team:<name>]",
+          "description": "Dashboard of the next 7 upcoming open raids with roster counts, optionally scoped to one team"
         },
         {
           "name": "attendance",
           "required": false,
-          "format": "player:<@user> [period:month|quarter|all]",
+          "format": "player:<@user> [period:month|quarter|all] [team:<name>]",
           "description": "View a player's attendance history, reliability score, and role distribution"
         },
         {
@@ -602,6 +648,11 @@
           "description": "Allows members with Officer or Raid Leader roles to manage raids"
         },
         {
+          "title": "Set the server timezone",
+          "command": "/config timezone zone:Europe/Berlin",
+          "description": "Raid times are entered and shown in Berlin time, including the daylight saving switch"
+        },
+        {
           "title": "Enable auto-archive",
           "command": "/config auto-archive enabled:true",
           "description": "Closed raids will be automatically moved to the archive channel after 2 hours"
@@ -614,7 +665,7 @@
           "bullets": [
             "leader-roles — controls who can create, edit, and delete raids",
             "language — localizes all bot responses (en or de)",
-            "timezone — offsets raid times for display purposes",
+            "timezone — the IANA zone raid times are entered and displayed in, with daylight saving applied automatically",
             "archive-channel — destination for archived raids",
             "auto-archive — requires archive-channel to be configured first"
           ]
@@ -628,7 +679,8 @@
         "Role names are case-sensitive — use exact Discord role names or role IDs.",
         "Use /config view before and after updates to verify changes took effect.",
         "Auto-archive requires an archive channel to be set first — configure archive-channel before enabling.",
-        "Timezone offset is in whole hours only (e.g., 1, -5, 0) — no half-hour offsets."
+        "Timezone takes an IANA zone name, not an hour offset — start typing a city (e.g. Berlin, New York) and pick from the autocomplete list.",
+        "New servers default to UTC until a zone is set — confirm the time shown in the raid preview if it looks off."
       ]
     },
     {
@@ -657,9 +709,20 @@
           "bullets": [
             "Current configuration status (leader roles)",
             "How to set raid leader roles with /config leader-roles",
-            "How to create your first raid with /raid create",
+            "How to create your first raid with /raid create — run it without options for the guided flow",
+            "Setting the server timezone with /config timezone",
             "Tips for Discord role names (case-sensitive, use IDs for reliability)",
             "Player actions — opt out, opt in, set class/spec"
+          ]
+        },
+        {
+          "title": "Welcome Message",
+          "body": "When the bot joins a server it posts a short welcome with two buttons, so the wizard rarely has to be typed out by hand.",
+          "bullets": [
+            "Start setup — opens the same wizard as /setup",
+            "Create first raid — jumps straight into the guided /raid create flow",
+            "Delivered to a channel the bot can post in, with a DM fallback",
+            "Every new server is granted a 30-day Premium trial at the same time"
           ]
         }
       ],

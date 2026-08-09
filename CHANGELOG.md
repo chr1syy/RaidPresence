@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-07
+
+### Added
+- The `[Start setup]` welcome button now walks through three settings instead of one: timezone, language, and raid leader roles. Every step is skippable and ends in a summary read back from the guild row, so a skipped step shows what was already stored. The language step preselects the value guessed from the installer's Discord locale — that guess is wrong often enough to be worth confirming once
+- The guided `/raid create` preview has a ping toggle. Picking roles and deciding whether they get notified are now the same step; the default stays off, and the preview shows the actual mentions when it is on
+
+### Changed
+- `/config view` renders raid leader roles as mentions instead of raw text. The welcome chain writes role IDs, which would otherwise show up as a row of snowflakes
+
+### Fixed
+- The setup chain falls back to a link into the server when it runs in a DM, where a role select has no guild to resolve roles against
+
 ## [0.7.0] - 2026-08-04
 
 ### Added

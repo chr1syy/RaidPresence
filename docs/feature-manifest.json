@@ -1,9 +1,12 @@
 {
-  "version": "0.7.0",
-  "updated_at": "2026-08-04",
+  "version": "0.8.0",
+  "updated_at": "2026-08-07",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
-  "supported_languages": ["en", "de"],
+  "supported_languages": [
+    "en",
+    "de"
+  ],
   "license": "CBSL-1.1",
   "links": {
     "invite": "https://discord.com/oauth2/authorize?client_id=1305228012080279686&scope=bot+applications.commands&permissions=117760",
@@ -33,7 +36,14 @@
       "summary": "Create, edit, clone, close, cancel, and delete raids with a single command.",
       "landing_copy": "Complete raid management from creation to archive — one command handles it all.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["create", "edit", "clone", "close", "cancel", "delete"],
+      "commands": [
+        "create",
+        "edit",
+        "clone",
+        "close",
+        "cancel",
+        "delete"
+      ],
       "since": "0.0.1"
     },
     {
@@ -46,7 +56,11 @@
       "summary": "Split a server into several raid teams — each raid, roster, and statistic is scoped to its team, so a guild can run mains and alts side by side.",
       "landing_copy": "Mains on Tuesday, alts on Friday. Give every roster its own team — raids and stats stay neatly separated.",
       "docs_url": "docs/commands/CONFIG-COMMAND.md",
-      "commands": ["create", "list", "delete"],
+      "commands": [
+        "create",
+        "list",
+        "delete"
+      ],
       "command_prefix": "/team",
       "since": "0.6.0"
     },
@@ -60,7 +74,9 @@
       "summary": "Track player attendance history, reliability metrics, and opt-out patterns across raids.",
       "landing_copy": "Know who shows up. Attendance history and reliability scores help you plan with confidence.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["attendance"],
+      "commands": [
+        "attendance"
+      ],
       "command_prefix": "/stats",
       "since": "0.0.1"
     },
@@ -73,7 +89,9 @@
       "summary": "Analyze raid composition by role (tank, healer, melee DPS, ranged DPS) with optimization suggestions.",
       "landing_copy": "See your comp at a glance — tanks, healers, melee, and ranged with smart suggestions.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["suggest"],
+      "commands": [
+        "suggest"
+      ],
       "command_prefix": "/stats",
       "since": "0.0.1"
     },
@@ -85,7 +103,9 @@
       "summary": "Send manual reminders to all signed-up players for an upcoming raid.",
       "landing_copy": "One command pings everyone who's signed up — no one forgets raid night.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["remind"],
+      "commands": [
+        "remind"
+      ],
       "since": "0.0.1"
     },
     {
@@ -97,7 +117,11 @@
       "summary": "Archive completed raids to a dedicated channel, with search across archived raids by name, player, or date.",
       "landing_copy": "Completed raids move to your archive channel automatically. Search past raids anytime.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["archive", "unarchive", "search"],
+      "commands": [
+        "archive",
+        "unarchive",
+        "search"
+      ],
       "since": "0.1.0"
     },
     {
@@ -118,7 +142,9 @@
       "summary": "View a dashboard of all upcoming raids with roster counts and status.",
       "landing_copy": "See every upcoming raid, who's in, and who's out — all in one view.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["status"],
+      "commands": [
+        "status"
+      ],
       "command_prefix": "/stats",
       "since": "0.0.1"
     },
@@ -130,7 +156,9 @@
       "summary": "Refresh raid rosters when guild membership changes — new members are added, departed members removed.",
       "landing_copy": "Guild roster changed? One command syncs every upcoming raid.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["refresh"],
+      "commands": [
+        "refresh"
+      ],
       "since": "0.0.1"
     },
     {
@@ -188,10 +216,12 @@
       "name": "Guided Raid Creation",
       "category": "core",
       "status": "live",
-      "summary": "/raid create runs without any options: a modal collects title, date, and time, a role select picks who is signed up, and a preview with Discord timestamps confirms before the raid is posted. Passing all options still creates the raid in one line.",
-      "landing_copy": "No parameters to memorise. Run /raid create and the bot walks you through it — fill in a form, pick the roles, check the preview.",
+      "summary": "/raid create runs without any options: a modal collects title, date, and time, a role select picks who is signed up, and a preview with Discord timestamps confirms before the raid is posted — including a toggle for whether those roles get pinged. Passing all options still creates the raid in one line.",
+      "landing_copy": "No parameters to memorise. Run /raid create and the bot walks you through it — fill in a form, pick the roles, decide whether to ping them, check the preview.",
       "docs_url": "docs/commands/RAID-COMMAND.md",
-      "commands": ["create"],
+      "commands": [
+        "create"
+      ],
       "since": "0.7.0"
     },
     {
@@ -199,8 +229,8 @@
       "name": "Welcome Onboarding Buttons",
       "category": "configuration",
       "status": "live",
-      "summary": "On joining a server the bot posts a three-line welcome with two buttons — Start setup and Create first raid — that open the setup wizard and the guided raid flow directly. Works in-channel and via DM.",
-      "landing_copy": "Invite the bot and it hands you two buttons: start setup, or create your first raid. No manual to read first.",
+      "summary": "On joining a server the bot posts a three-line welcome with two buttons — Start setup and Create first raid. Start setup walks through timezone, language and raid leader roles in one skippable pass and closes with a summary of what is stored; Create first raid opens the guided raid flow. Both work in-channel and via DM, where the role step points back into the server instead of showing an empty menu.",
+      "landing_copy": "Invite the bot and it hands you two buttons: start setup, or create your first raid. Setup is three questions long and every one of them is optional.",
       "docs_url": "docs/guides/SETUP-GUIDE.md",
       "since": "0.7.0"
     },
@@ -212,7 +242,9 @@
       "summary": "Raid times are entered and displayed in the server's IANA timezone (e.g. Europe/Berlin), set via /config timezone with autocomplete. Daylight saving transitions are applied automatically instead of a fixed hour offset.",
       "landing_copy": "Set your server's timezone once. Raid times follow it through daylight saving — no shifted raid nights in spring and autumn.",
       "docs_url": "docs/commands/CONFIG-COMMAND.md",
-      "commands": ["timezone"],
+      "commands": [
+        "timezone"
+      ],
       "command_prefix": "/config",
       "since": "0.7.0"
     },

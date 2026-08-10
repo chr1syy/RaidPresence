@@ -373,6 +373,28 @@ describe('handleCreateRaid()', () => {
     );
   });
 
+  it('creates a one-off raid by default — no recurrence state', async () => {
+    await command.execute(mockInteraction);
+
+    const data = (prisma.raid.create as jest.Mock).mock.calls[0][0].data;
+    expect(data.recurrenceRule).toBeNull();
+  });
+
+  it('starts a weekly series when the recurring option is set', async () => {
+    const inner = mockInteraction.options.get;
+    mockInteraction.options.get = jest.fn((key: string, required?: boolean) =>
+      key === 'recurring' ? { value: true } : inner(key, required),
+    );
+
+    await command.execute(mockInteraction);
+
+    expect((prisma.raid.create as jest.Mock).mock.calls[0][0].data.recurrenceRule).toBe('weekly');
+    // The confirmation has to say how to switch it off again.
+    expect(mockInteraction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({ content: expect.stringContaining('/raid recurring stop') }),
+    );
+  });
+
   it('should skip bot users when scanning members', async () => {
     await command.execute(mockInteraction);
 

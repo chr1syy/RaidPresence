@@ -7,7 +7,6 @@ export { PremiumTier };
 export type PremiumFeature =
   | 'raid.optout_reason'
   | 'raid.archive'
-  | 'raid.recurring'
   | 'raid.template'
   | 'raid.integrations'
   | 'stats.full_history'
@@ -15,11 +14,20 @@ export type PremiumFeature =
   | 'stats.export'
   | 'team.multi';
 
-/** Feature → minimum tier required */
+/**
+ * Feature → minimum tier required.
+ *
+ * Weekly recurring raids are deliberately NOT in here. `raid.recurring` sat in this map
+ * as PREMIUM while being completely unimplemented, and when it was actually built
+ * (2026-08-10) it shipped FREE: no guild has ever hit a free-tier ceiling (zero above the
+ * 5-raids-per-week limit, zero with more than one team), so gating the one mechanism that
+ * produces a second raid week would only suppress the usage we want to measure. What gets
+ * monetised is what *comes out of* retention — archive, analytics, teams — not retention
+ * itself.
+ */
 export const FEATURE_TIERS: Record<PremiumFeature, PremiumTier> = {
   'raid.optout_reason': 'PREMIUM',
   'raid.archive': 'PREMIUM',
-  'raid.recurring': 'PREMIUM',
   'stats.full_history': 'PREMIUM',
   'stats.analytics': 'PREMIUM',
   'raid.template': 'PREMIUM',

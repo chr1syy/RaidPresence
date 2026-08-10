@@ -170,6 +170,7 @@ Per-player attendance per raid. Fields: `raidId`, `userId`, `username`, `status`
 - **Entitlement handler** (`entitlementHandler.ts`): Listens to Discord `EntitlementCreate`, `EntitlementUpdate`, `EntitlementDelete` events
 - **Startup sync**: Fetches all active entitlements from Discord API on bot ready to ensure DB reflects current state
 - **Feature tier map**: `raid.optout_reason`, `raid.archive`, `raid.recurring`, `stats.full_history`, `stats.analytics` → PREMIUM; `raid.template`, `stats.export`, `raid.integrations` → PRO
+  - Superseded: the PRO tier is gone (v0.7 two-tier model), and `raid.recurring` was removed from the map entirely when weekly recurring raids shipped FREE (2026-08-10) — see the comment on `FEATURE_TIERS`
 - **Weekly raid limit**: Free tier = 5/week (atomic via `$transaction`), Premium/Pro = unlimited
 - **Tier cache**: In-memory 30s TTL cache on `getTier()` for fast button interactions; invalidated on `syncEntitlement()`
 - **SKU config**: `DISCORD_SKU_PREMIUM`, `DISCORD_SKU_PRO` env vars mapped via `skuToTier()`

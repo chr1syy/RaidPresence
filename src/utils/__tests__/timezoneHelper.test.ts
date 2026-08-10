@@ -12,6 +12,8 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  addDaysInZone,
+  nextWeeklyOccurrence,
   COMMON_TIMEZONES,
   DEFAULT_TIMEZONE,
   formatInTimezone,
@@ -493,4 +495,76 @@ describe('independence from the host process timezone', () => {
       );
     }
   );
+});
+
+/**
+ * Weekly recurrence arithmetic.
+ *
+ * The bug these guard against is the obvious implementation: `raidDate + 604_800_000`.
+ * That is a *duration*, and a week measured in milliseconds is one hour wrong on either
+ * side of a DST switch — a 20:00 raid silently becomes 19:00 or 21:00 for its players.
+ */
+describe('addDaysInZone / nextWeeklyOccurrence across DST', () => {
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+  it('keeps the local time when the clocks go back (Europe/Berlin, autumn)', () => {
+    // 2026-10-22 20:00 Berlin is CEST (UTC+2). One week later Berlin is on CET (UTC+1),
+    // so the same wall-clock slot is a different instant — one hour later in UTC.
+    const source = new Date('2026-10-22T18:00:00.000Z');
+
+    const next = addDaysInZone(source, 'Europe/Berlin', 7)!;
+
+    expect(next.toISOString()).toBe('2026-10-29T19:00:00.000Z');
+    expect(formatInTimezone(next, 'Europe/Berlin')).toEqual({ date: '2026-10-29', time: '20:00' });
+    // Explicitly not a fixed-duration week.
+    expect(next.getTime() - source.getTime()).not.toBe(MS_PER_WEEK);
+  });
+
+  it('keeps the local time when the clocks go forward (Europe/Berlin, spring)', () => {
+    // 2026-03-25 20:00 Berlin is CET (UTC+1); a week later it is CEST (UTC+2).
+    const source = new Date('2026-03-25T19:00:00.000Z');
+
+    const next = addDaysInZone(source, 'Europe/Berlin', 7)!;
+
+    expect(next.toISOString()).toBe('2026-04-01T18:00:00.000Z');
+    expect(formatInTimezone(next, 'Europe/Berlin')).toEqual({ date: '2026-04-01', time: '20:00' });
+  });
+
+  it('keeps the local time across a US transition too', () => {
+    // 2026-10-31 20:00 New York is EDT (UTC-4); a week later it is EST (UTC-5).
+    const source = new Date('2026-11-01T00:00:00.000Z');
+
+    const next = addDaysInZone(source, 'America/New_York', 7)!;
+
+    expect(formatInTimezone(next, 'America/New_York')).toEqual({ date: '2026-11-07', time: '20:00' });
+  });
+
+  it('is a plain week in a zone without DST', () => {
+    const source = new Date('2026-10-22T18:00:00.000Z');
+    const next = addDaysInZone(source, 'UTC', 7)!;
+    expect(next.getTime() - source.getTime()).toBe(MS_PER_WEEK);
+  });
+
+  it('falls back to UTC for an unknown zone rather than returning null', () => {
+    const next = addDaysInZone(new Date('2026-07-15T18:00:00.000Z'), 'Middle/Earth', 7)!;
+    expect(next.toISOString()).toBe('2026-07-22T18:00:00.000Z');
+  });
+
+  it('nextWeeklyOccurrence returns the following week for a raid that just ended', () => {
+    const source = new Date('2026-10-22T18:00:00.000Z');
+    const next = nextWeeklyOccurrence(source, 'Europe/Berlin', new Date('2026-10-22T22:00:00.000Z'))!;
+    expect(next.toISOString()).toBe('2026-10-29T19:00:00.000Z');
+  });
+
+  it('nextWeeklyOccurrence skips forward past a long pause instead of scheduling in the past', () => {
+    // Series paused for a month; the resumed raid must still be in the future and still
+    // land on the same weekday at the same local time.
+    const source = new Date('2026-10-22T18:00:00.000Z');
+    const now = new Date('2026-11-18T12:00:00.000Z');
+
+    const next = nextWeeklyOccurrence(source, 'Europe/Berlin', now)!;
+
+    expect(next > now).toBe(true);
+    expect(formatInTimezone(next, 'Europe/Berlin')).toEqual({ date: '2026-11-19', time: '20:00' });
+  });
 });

@@ -15,7 +15,6 @@ const TIER_NAME_KEYS: Record<PremiumTier, 'premiumTierFree' | 'premiumTierPremiu
 const FEATURE_NAME_KEYS: Record<PremiumFeature, keyof Translations> = {
   'raid.optout_reason': 'featureRaidOptoutReason',
   'raid.archive': 'featureRaidArchive',
-  'raid.recurring': 'featureRaidRecurring',
   'raid.template': 'featureRaidTemplate',
   'raid.integrations': 'featureRaidIntegrations',
   'stats.full_history': 'featureStatsFullHistory',

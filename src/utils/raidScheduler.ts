@@ -3,6 +3,14 @@ import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 import { getTeamLabel } from './teamContext';
+import { advanceSeries, retireNudge, sendPostRaidNudge } from '../services/recurringRaidService';
+import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence';
+
+/**
+ * Upper bound per pass. The scheduler runs every two minutes; a backlog is worked off
+ * over several ticks rather than in one burst that would hit Discord's rate limits.
+ */
+const BATCH_LIMIT = 25;
 
 /**
  * Formats a raid's team for the scheduler's log output.
@@ -41,6 +49,27 @@ export function startRaidScheduler(client: Client) {
       await checkAndCloseExpiredRaids(client);
     } catch (error) {
       console.error('Error in raid scheduler:', error);
+    }
+
+    // Deliberately separate passes rather than work tacked onto the close loop: each one
+    // re-reads its own state from the database, so a crash anywhere leaves a state the
+    // next tick can pick up from. That is what makes the successor creation idempotent.
+    try {
+      await processRecurringSeries(client);
+    } catch (error) {
+      console.error('Error in recurring raid pass:', error);
+    }
+
+    try {
+      await sendPostRaidNudges(client);
+    } catch (error) {
+      console.error('Error in post-raid nudge pass:', error);
+    }
+
+    try {
+      await expireStaleNudges(client);
+    } catch (error) {
+      console.error('Error in nudge expiry pass:', error);
     }
   }, CHECK_INTERVAL);
 
@@ -131,4 +160,102 @@ export async function checkAndCloseExpiredRaids(client: Client) {
        console.error(`Error closing raid ${raid.id}:`, error);
      }
    }
+}
+
+/**
+ * Creates the next instance of every active weekly series whose current instance is over.
+ *
+ * Runs as its own pass instead of inside the close loop on purpose. The query is
+ * "closed series raid that has no successor yet", which is exactly the state a crash
+ * between closing and generating leaves behind — so the retry is the normal path, not a
+ * special case, and the UNIQUE index on `recurrenceParentId` makes a double run a no-op.
+ */
+export async function processRecurringSeries(client: Client) {
+  const now = new Date();
+
+  const due = await withRetry(() =>
+    prisma.raid.findMany({
+      where: {
+        status: 'closed',
+        recurrenceRule: RECURRENCE_WEEKLY,
+        recurrenceActive: true,
+        raidDate: { lt: now },
+        // The successor slot is empty — the whole idempotency guard in one clause.
+        recurrenceChild: { is: null },
+      },
+      orderBy: { raidDate: 'asc' },
+      take: BATCH_LIMIT,
+    }),
+  );
+
+  if (due.length === 0) return;
+
+  console.log(`🔁 Advancing ${due.length} recurring raid series`);
+
+  for (const raid of due) {
+    try {
+      await advanceSeries(client, raid);
+    } catch (error) {
+      console.error(`Error advancing recurring series for raid ${raid.id}:`, error);
+    }
+  }
+}
+
+/**
+ * Posts the "same time next week?" prompt under recently closed one-off raids.
+ *
+ * The lookback window matters: without it, the first tick after deploy would nudge every
+ * raid ever closed. Cancelled raids and raids that are part of a series are excluded —
+ * the series already produces next week, and nobody wants a nudge for a raid they called
+ * off.
+ */
+export async function sendPostRaidNudges(client: Client) {
+  const now = new Date();
+
+  const candidates = await withRetry(() =>
+    prisma.raid.findMany({
+      where: {
+        status: 'closed',
+        nudgeSentAt: null,
+        recurrenceRule: null,
+        recurrenceChild: { is: null },
+        raidDate: { lt: now, gt: new Date(now.getTime() - NUDGE_LOOKBACK_MS) },
+      },
+      orderBy: { raidDate: 'asc' },
+      take: BATCH_LIMIT,
+    }),
+  );
+
+  if (candidates.length === 0) return;
+
+  for (const raid of candidates) {
+    try {
+      await sendPostRaidNudge(client, raid);
+    } catch (error) {
+      console.error(`Error sending post-raid nudge for raid ${raid.id}:`, error);
+    }
+  }
+}
+
+/** Removes nudge buttons nobody pressed within {@link NUDGE_TTL_MS}. */
+export async function expireStaleNudges(client: Client) {
+  const cutoff = new Date(Date.now() - NUDGE_TTL_MS);
+
+  const stale = await withRetry(() =>
+    prisma.raid.findMany({
+      where: {
+        nudgeMessageId: { not: null },
+        nudgeSentAt: { lt: cutoff },
+      },
+      take: BATCH_LIMIT,
+    }),
+  );
+
+  for (const raid of stale) {
+    try {
+      await retireNudge(client, raid);
+    } catch (error) {
+      console.error(`Error expiring nudge for raid ${raid.id}:`, error);
+    }
+  }
 }

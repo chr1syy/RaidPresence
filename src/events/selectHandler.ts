@@ -128,6 +128,10 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
     data: {
       wowClass: selectedClass,
       wowSpec: selectedSpec,
+      // Engagement signal for the recurrence zombie check — see utils/recurrence.ts.
+      // Deliberately not `respondedAt`: picking a class is not an attendance answer and
+      // must not distort the response-time analytics that column feeds.
+      interactedAt: new Date(),
       // Keep the denormalized team in sync with the raid (RPTIER Phase 4)
       ...(raid?.teamId ? { teamId: raid.teamId } : {}),
     },

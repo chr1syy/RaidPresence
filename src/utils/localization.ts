@@ -271,7 +271,6 @@ export interface Translations {
     // Premium feature display names (localized upsell embed)
     featureRaidOptoutReason: string;
     featureRaidArchive: string;
-    featureRaidRecurring: string;
     featureRaidTemplate: string;
     featureRaidIntegrations: string;
     featureStatsFullHistory: string;
@@ -291,6 +290,38 @@ export interface Translations {
     teamDefaultBadge: string;
     teamInvalidName: string;
     teamLimitReached: string;
+
+    // Weekly recurrence (free feature)
+    recurringEnabledHint: string;
+    recurringToggleOn: string;
+    recurringToggleOff: string;
+    recurringPreviewEnabled: string;
+    recurringSeriesStarted: string;
+    recurringSeriesAlreadyActive: string;
+    recurringSeriesStopped: string;
+    recurringSeriesNotActive: string;
+    recurringSeriesResumed: string;
+    recurringPausedTitle: string;
+    recurringPausedSilent: string;
+    recurringPausedLimit: string;
+    recurringPausedNoMembers: string;
+    recurringResumeButton: string;
+    recurringNoPermission: string;
+
+    // Post-raid nudge
+    nudgePrompt: string;
+    nudgeButton: string;
+    nudgeNoPermission: string;
+    nudgeCreated: string;
+    nudgeMakeSeriesButton: string;
+
+    // Shared follow-up raid outcomes (nudge + series)
+    followUpFailedChannel: string;
+    followUpFailedMembers: string;
+    followUpFailedLimit: string;
+    followUpFailedDate: string;
+    followUpFailedGeneric: string;
+    followUpDuplicate: string;
 }
 
 /**
@@ -574,7 +605,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Opt-Out Reasons',
         featureRaidArchive: 'Raid Archive',
-        featureRaidRecurring: 'Recurring Raids',
         featureRaidTemplate: 'Raid Templates',
         featureRaidIntegrations: 'Raid Integrations',
         featureStatsFullHistory: 'Full Attendance History',
@@ -594,6 +624,38 @@ const translations: Record<SupportedLanguage, Translations> = {
         teamDefaultBadge: 'default',
         teamInvalidName: '❌ Please provide a valid team name (1-50 characters).',
         teamLimitReached: 'You\'ve reached the free limit of {max} team. Upgrade to Premium for unlimited teams.',
+
+        // Weekly recurrence (free feature)
+        recurringEnabledHint: '🔁 Repeats weekly — the next raid is created automatically when this one closes. Stop it any time with `/raid recurring stop {raidId}`.',
+        recurringToggleOn: '🔁 Weekly: on',
+        recurringToggleOff: '🔁 Weekly: off',
+        recurringPreviewEnabled: '🔁 **Repeats weekly** — the next raid is created automatically when this one closes.',
+        recurringSeriesStarted: '🔁 Weekly series started for **{title}**. The next raid is created automatically when this one closes.',
+        recurringSeriesAlreadyActive: 'ℹ️ **{title}** already repeats weekly.',
+        recurringSeriesStopped: '🛑 Weekly series for **{title}** stopped. No further raids will be created automatically.',
+        recurringSeriesNotActive: 'ℹ️ This raid is not part of an active weekly series.',
+        recurringSeriesResumed: '🔁 Weekly series resumed. Next raid: <t:{unix}:F>',
+        recurringPausedTitle: '⏸️ Weekly series paused',
+        recurringPausedSilent: 'The last {count} automatically created raids for **{title}** got no responses at all — nobody opted out, marked themselves late, or picked a class. The series is paused so it does not keep posting into an empty channel.',
+        recurringPausedLimit: 'The weekly series for **{title}** hit the free limit of {max} raids per week, so the next raid was not created. Resume it once the limit resets.',
+        recurringPausedNoMembers: 'No members currently have the roles used by **{title}**, so the weekly series is paused.',
+        recurringResumeButton: 'Resume weekly series',
+        recurringNoPermission: '❌ Only raid leaders can change a weekly series.',
+
+        // Post-raid nudge
+        nudgePrompt: '**{title}** is done. Same time next week?',
+        nudgeButton: 'Next week, same time',
+        nudgeNoPermission: '❌ Only the raid leader who created this raid can use this.',
+        nudgeCreated: '✅ Next raid created for <t:{unix}:F> with {count} members.',
+        nudgeMakeSeriesButton: 'Repeat this weekly',
+
+        // Shared follow-up raid outcomes (nudge + series)
+        followUpFailedChannel: '❌ I can no longer post in the channel this raid lives in.',
+        followUpFailedMembers: '❌ No members currently have the roles for this raid.',
+        followUpFailedLimit: '❌ The free limit of {max} raids per week is reached. The next raid was not created.',
+        followUpFailedDate: '❌ Could not work out the next raid date.',
+        followUpFailedGeneric: '❌ Could not create the follow-up raid.',
+        followUpDuplicate: 'ℹ️ A follow-up raid for this one already exists.',
     },
 
   de: {
@@ -865,7 +927,6 @@ const translations: Record<SupportedLanguage, Translations> = {
         // Premium feature display names (localized upsell embed)
         featureRaidOptoutReason: 'Abmeldungsgründe',
         featureRaidArchive: 'Raid-Archiv',
-        featureRaidRecurring: 'Wiederkehrende Raids',
         featureRaidTemplate: 'Raid-Vorlagen',
         featureRaidIntegrations: 'Raid-Integrationen',
         featureStatsFullHistory: 'Vollständige Anwesenheitshistorie',
@@ -885,6 +946,38 @@ const translations: Record<SupportedLanguage, Translations> = {
         teamDefaultBadge: 'Standard',
         teamInvalidName: '❌ Bitte gib einen gültigen Team-Namen an (1-50 Zeichen).',
         teamLimitReached: 'Du hast das kostenlose Limit von {max} Team erreicht. Upgrade auf Premium für unbegrenzt viele Teams.',
+
+        // Wöchentliche Wiederholung (kostenloses Feature)
+        recurringEnabledHint: '🔁 Wiederholt sich wöchentlich – der nächste Raid wird automatisch angelegt, sobald dieser schließt. Beenden jederzeit mit `/raid recurring stop {raidId}`.',
+        recurringToggleOn: '🔁 Wöchentlich: an',
+        recurringToggleOff: '🔁 Wöchentlich: aus',
+        recurringPreviewEnabled: '🔁 **Wiederholt sich wöchentlich** – der nächste Raid wird automatisch angelegt, sobald dieser schließt.',
+        recurringSeriesStarted: '🔁 Wöchentliche Serie für **{title}** gestartet. Der nächste Raid wird automatisch angelegt, sobald dieser schließt.',
+        recurringSeriesAlreadyActive: 'ℹ️ **{title}** wiederholt sich bereits wöchentlich.',
+        recurringSeriesStopped: '🛑 Wöchentliche Serie für **{title}** beendet. Es werden keine weiteren Raids mehr automatisch angelegt.',
+        recurringSeriesNotActive: 'ℹ️ Dieser Raid gehört zu keiner aktiven wöchentlichen Serie.',
+        recurringSeriesResumed: '🔁 Wöchentliche Serie fortgesetzt. Nächster Raid: <t:{unix}:F>',
+        recurringPausedTitle: '⏸️ Wöchentliche Serie pausiert',
+        recurringPausedSilent: 'Die letzten {count} automatisch angelegten Raids für **{title}** hatten keinerlei Reaktionen – niemand hat abgesagt, sich verspätet gemeldet oder eine Klasse gewählt. Die Serie ist pausiert, damit sie nicht weiter in einen leeren Kanal postet.',
+        recurringPausedLimit: 'Die wöchentliche Serie für **{title}** hat das kostenlose Limit von {max} Raids pro Woche erreicht, deshalb wurde der nächste Raid nicht angelegt. Setze sie fort, sobald das Limit zurückgesetzt ist.',
+        recurringPausedNoMembers: 'Derzeit hat kein Mitglied die Rollen von **{title}**, deshalb ist die wöchentliche Serie pausiert.',
+        recurringResumeButton: 'Serie fortsetzen',
+        recurringNoPermission: '❌ Nur Raid-Leiter dürfen eine wöchentliche Serie ändern.',
+
+        // Nudge nach dem Raid
+        nudgePrompt: '**{title}** ist vorbei. Nächste Woche zur gleichen Zeit?',
+        nudgeButton: 'Nächste Woche, gleiche Zeit',
+        nudgeNoPermission: '❌ Das darf nur der Raid-Leiter, der diesen Raid erstellt hat.',
+        nudgeCreated: '✅ Nächster Raid für <t:{unix}:F> mit {count} Mitgliedern angelegt.',
+        nudgeMakeSeriesButton: 'Wöchentlich wiederholen',
+
+        // Gemeinsame Ergebnisse für Folge-Raids (Nudge + Serie)
+        followUpFailedChannel: '❌ Ich kann im Kanal dieses Raids nicht mehr posten.',
+        followUpFailedMembers: '❌ Derzeit hat kein Mitglied die Rollen für diesen Raid.',
+        followUpFailedLimit: '❌ Das kostenlose Limit von {max} Raids pro Woche ist erreicht. Der nächste Raid wurde nicht angelegt.',
+        followUpFailedDate: '❌ Das Datum des nächsten Raids konnte nicht berechnet werden.',
+        followUpFailedGeneric: '❌ Der Folge-Raid konnte nicht angelegt werden.',
+        followUpDuplicate: 'ℹ️ Für diesen Raid gibt es bereits einen Folge-Raid.',
     },
 };
 

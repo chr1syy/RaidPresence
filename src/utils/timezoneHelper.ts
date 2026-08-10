@@ -241,6 +241,51 @@ export function formatInTimezone(
 }
 
 /**
+ * Shifts an instant by whole calendar days *in `timeZone`*, keeping the wall-clock time.
+ *
+ * This is the whole point of the recurrence maths: `instant + 7 * 86_400_000` is a
+ * duration, not a week. Across a DST boundary that duration silently moves a 20:00 raid
+ * to 19:00 or 21:00 local. Here the instant is read back as a wall-clock pair in the
+ * guild's zone, the *calendar date* is advanced, and the pair is re-resolved — so 20:00
+ * stays 20:00 no matter what the offset did in between.
+ *
+ * Returns null only for an unresolvable result (an invalid zone falls back to UTC).
+ */
+export function addDaysInZone(instant: Date, timeZone: string, days: number): Date | null {
+  const zone = isValidTimezone(timeZone) ? timeZone : DEFAULT_TIMEZONE;
+  const { date, time } = formatInTimezone(instant, zone);
+
+  const [year, month, day] = date.split('-').map((part) => parseInt(part, 10));
+  // Date.UTC normalises month/day overflow, which is exactly the calendar arithmetic
+  // wanted here (Oct 28 + 7 → Nov 4).
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const shiftedDate = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+
+  return zonedDateTimeToUtc(shiftedDate, time, zone);
+}
+
+/**
+ * The next weekly occurrence of `instant`'s wall-clock slot that lies after `notBefore`.
+ *
+ * Normally one week later. The loop only matters when a series was paused for a while
+ * or the bot was down: it walks forward in DST-correct week steps instead of scheduling
+ * a raid in the past. Capped at two years of steps so a corrupt row cannot spin.
+ */
+export function nextWeeklyOccurrence(
+  instant: Date,
+  timeZone: string,
+  notBefore: Date = new Date()
+): Date | null {
+  for (let week = 1; week <= 104; week++) {
+    const candidate = addDaysInZone(instant, timeZone, 7 * week);
+    if (!candidate) return null;
+    if (candidate > notBefore) return candidate;
+  }
+  return null;
+}
+
+/**
  * Human-readable label for a zone, e.g. `Europe/Berlin (GMT+2)`.
  *
  * The offset is evaluated at `at` (default: now) because it changes with DST —

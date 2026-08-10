@@ -3,9 +3,6 @@ import {
   CommandInteraction,
   ChatInputCommandInteraction,
   EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   ButtonInteraction,
   ModalSubmitInteraction,
   Guild,
@@ -23,6 +20,8 @@ import { tryConsumeWeeklyRaid } from '../services/entitlementService';
 import { gateFeature, premiumFooterHint, freeTierHint } from '../middleware/premiumGate';
 import { getEffectivePrefsMap, normalizeRoleIds } from '../utils/rolePreference';
 import { addTeamOption, getTeamLabel, resolveTeam, TEAM_OPTION_NAME } from '../utils/teamContext';
+import { buildRaidButtonRows } from '../utils/raidComponents';
+import { RECURRENCE_WEEKLY } from '../utils/recurrence';
 import { countTeams } from '../services/teamService';
 import {
   DEFAULT_TIMEZONE,
@@ -112,7 +111,7 @@ export function buildRoleMentions(guild: Guild, roleIds: string[]): string {
  * @param guild Discord guild instance
  * @returns Object with valid role IDs and invalid role names
  */
-function parseRoleInput(input: string, guild: Guild): { validIds: string[]; invalidNames: string[] } {
+export function parseRoleInput(input: string, guild: Guild): { validIds: string[]; invalidNames: string[] } {
   const roleIds: string[] = [];
   const invalidNames: string[] = [];
 
@@ -222,6 +221,12 @@ const command: Command = {
             option
               .setName('ping_roles')
               .setDescription('Ping the specified roles when creating the raid')
+              .setRequired(false)
+          )
+          .addBooleanOption((option) =>
+            option
+              .setName('recurring')
+              .setDescription('Repeat weekly — the next raid is created automatically when this one closes')
               .setRequired(false)
           )
       )
@@ -376,6 +381,33 @@ const command: Command = {
            )
        )
       )
+      .addSubcommandGroup((group) =>
+        group
+          .setName('recurring')
+          .setDescription('Manage the weekly repeat of a raid')
+          .addSubcommand((subcommand) =>
+            subcommand
+              .setName('start')
+              .setDescription('Repeat this raid weekly from now on')
+              .addStringOption((option) =>
+                option
+                  .setName('raid_id')
+                  .setDescription('Any raid of the series')
+                  .setRequired(true)
+              )
+          )
+          .addSubcommand((subcommand) =>
+            subcommand
+              .setName('stop')
+              .setDescription('Stop the weekly repeat — no further raids are created automatically')
+              .addStringOption((option) =>
+                option
+                  .setName('raid_id')
+                  .setDescription('Any raid of the series')
+                  .setRequired(true)
+              )
+          )
+      )
       .addSubcommand((subcommand) =>
         subcommand
           .setName('archive')
@@ -426,6 +458,18 @@ const command: Command = {
   async execute(interaction: CommandInteraction) {
     if (!interaction.isChatInputCommand()) return;
 
+    // `/raid recurring …` is the only subcommand *group*; everything else is flat.
+    // Read defensively: discord.js always provides the accessor, but the command tests
+    // build minimal option stubs and a hard call would break every one of them.
+    const options = interaction.options as unknown as {
+      getSubcommandGroup?: (required: boolean) => string | null;
+    };
+    const group = options.getSubcommandGroup ? options.getSubcommandGroup(false) : null;
+    if (group === 'recurring') {
+      await handleRecurringCommand(interaction);
+      return;
+    }
+
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === 'create') {
@@ -472,6 +516,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const title = interaction.options.get('title', false)?.value as string | undefined;
   const rolesInput = interaction.options.get('roles', false)?.value as string | undefined;
   const pingRoles = interaction.options.get('ping_roles', false)?.value as boolean ?? false;
+  const recurring = interaction.options.get('recurring', false)?.value as boolean ?? false;
 
   // Permissions are checked before the fork: `showModal()` must be the very first
   // response to the interaction (it cannot follow a deferReply), so the two branches
@@ -495,6 +540,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
       title: title ?? null,
       roles: rolesInput ?? null,
       pingRoles,
+      recurring,
       teamOption: (interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined) ?? null,
     });
     return;
@@ -577,6 +623,7 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
     raidDate,
     roleIds,
     pingRoles,
+    recurring,
     teamOption: (interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined) ?? null,
     language: guildData.language || 'en',
     rolesLabel: effectiveRolesInput,
@@ -605,6 +652,8 @@ export async function createRaidWithRoster(
     raidDate: Date;
     roleIds: string[];
     pingRoles: boolean;
+    /** Start a weekly series: the scheduler creates the next instance when this one closes. */
+    recurring?: boolean;
     teamOption: string | null;
     language: string;
     /** Human-readable role list, used only in the "no eligible members" message. */
@@ -612,6 +661,7 @@ export async function createRaidWithRoster(
   }
 ): Promise<boolean> {
   const { guild, channel, createdBy, title, raidDate, roleIds, pingRoles, teamOption, language, rolesLabel } = params;
+  const recurring = params.recurring ?? false;
 
   let eligibleMembers = new Set<string>();
 
@@ -719,6 +769,8 @@ export async function createRaidWithRoster(
       description: title,
       roles: roleIds.join(','),
       createdBy,
+      // null rather than false-y bookkeeping: a one-off raid carries no recurrence state.
+      recurrenceRule: recurring ? RECURRENCE_WEEKLY : null,
     },
   });
 
@@ -746,32 +798,7 @@ export async function createRaidWithRoster(
 
   // Create embed with guild's language
   const embed = await createRaidEmbed(raid.id, language);
-
-  // Get translations for buttons
-  const trans = getTranslations(language);
-
-  // Create buttons (2 rows due to Discord limit of 5 buttons per row)
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_optin_${raid.id}`)
-      .setLabel(trans.optIn)
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`raid_late_${raid.id}`)
-      .setLabel(trans.runningLateButton)
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`raid_optout_${raid.id}`)
-      .setLabel(trans.optOut)
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_class_${raid.id}`)
-      .setLabel(trans.setClassSpec)
-      .setStyle(ButtonStyle.Primary)
-  );
+  const [row1, row2] = buildRaidButtonRows(raid.id, language);
 
   // Send public raid message to channel
   if (!('send' in channel)) {
@@ -806,6 +833,7 @@ export async function createRaidWithRoster(
   // Send ephemeral confirmation to command user — FREE guilds get the premium nudge appended.
   await interaction.editReply({
     content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`
+      + (recurring ? `\n${t(language, 'recurringEnabledHint', { raidId: raid.id })}` : '')
       + (await freeTierHint(guild.id, language)),
   });
 
@@ -1280,31 +1308,7 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
          const effectiveStatus = status ?? raid.status;
          if (effectiveStatus !== 'closed' && effectiveStatus !== 'cancelled') {
            // Add buttons if not closed/cancelled
-           const trans = getTranslations(guildData.language || 'en');
-
-          const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`raid_optin_${raidId}`)
-              .setLabel(trans.optIn)
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId(`raid_late_${raidId}`)
-              .setLabel(trans.runningLateButton)
-              .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-              .setCustomId(`raid_optout_${raidId}`)
-              .setLabel(trans.optOut)
-              .setStyle(ButtonStyle.Danger)
-          );
-
-          const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-              .setCustomId(`raid_class_${raidId}`)
-              .setLabel(trans.setClassSpec)
-              .setStyle(ButtonStyle.Primary)
-          );
-
-          components = [row1, row2];
+           components = buildRaidButtonRows(raidId, guildData.language || 'en');
         }
 
         await message.edit({
@@ -1594,32 +1598,7 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
   // Create embed with guild's language
   const embed = await createRaidEmbed(newRaid.id, guildData.language);
-
-  // Get translations for buttons
-  const trans = getTranslations(guildData.language || 'en');
-
-  // Create buttons
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_optin_${newRaid.id}`)
-      .setLabel(trans.optIn)
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`raid_late_${newRaid.id}`)
-      .setLabel(trans.runningLateButton)
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`raid_optout_${newRaid.id}`)
-      .setLabel(trans.optOut)
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_class_${newRaid.id}`)
-      .setLabel(trans.setClassSpec)
-      .setStyle(ButtonStyle.Primary)
-  );
+  const [row1, row2] = buildRaidButtonRows(newRaid.id, guildData.language || 'en');
 
   // Send public raid message to channel
   const message = await interaction.channel.send({
@@ -1643,6 +1622,88 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
 
 
+
+/**
+ * `/raid recurring start|stop <raid_id>` — the on/off switch for a weekly series.
+ *
+ * Both subcommands accept *any* raid of the series and operate on its tail (the newest
+ * instance), because that is the only row the scheduler reads. Without this, stopping a
+ * series would mean knowing which of the six raids it already produced is the current one.
+ */
+async function handleRecurringCommand(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: '❌ This command can only be used in a server!',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const guildData = await prisma.guild.findUnique({
+    where: { id: interaction.guild.id },
+    select: { language: true },
+  });
+  const language = guildData?.language || 'en';
+
+  const member = interaction.member;
+  if (!member || !(await canManageRaids(member as any))) {
+    await interaction.editReply({ content: t(language, 'recurringNoPermission') });
+    return;
+  }
+
+  const raidId = interaction.options.get('raid_id', true).value as string;
+  const { resolveSeriesTail } = await import('../services/recurringRaidService');
+  const { RECURRENCE_WEEKLY: WEEKLY } = await import('../utils/recurrence');
+
+  const raid = await prisma.raid.findUnique({ where: { id: raidId } });
+  if (!raid || raid.guildId !== interaction.guild.id) {
+    await interaction.editReply({ content: t(language, 'raidNotFound') });
+    return;
+  }
+
+  const tail = (await resolveSeriesTail(raidId)) ?? raid;
+  const title = tail.description || raid.description || 'Raid';
+  const teamLabel = teamSuffix(await getTeamLabel(interaction.guild.id, tail.teamId));
+
+  if (interaction.options.getSubcommand() === 'start') {
+    if (tail.recurrenceRule === WEEKLY && tail.recurrenceActive) {
+      await interaction.editReply({
+        content: t(language, 'recurringSeriesAlreadyActive', { title }),
+      });
+      return;
+    }
+
+    // The silent streak restarts with the series: a leader switching it back on is
+    // engagement, and carrying the old count over would pause it again immediately.
+    await prisma.raid.update({
+      where: { id: tail.id },
+      data: { recurrenceRule: WEEKLY, recurrenceActive: true, recurrenceSilentStreak: 0 },
+    });
+
+    await interaction.editReply({
+      content: t(language, 'recurringSeriesStarted', { title }) + teamLabel,
+    });
+    return;
+  }
+
+  if (!tail.recurrenceRule || !tail.recurrenceActive) {
+    await interaction.editReply({ content: t(language, 'recurringSeriesNotActive') });
+    return;
+  }
+
+  // `recurrenceRule` is kept so the raid still reads as "was part of a weekly series";
+  // only the flag the scheduler checks is cleared.
+  await prisma.raid.update({
+    where: { id: tail.id },
+    data: { recurrenceActive: false },
+  });
+
+  await interaction.editReply({
+    content: t(language, 'recurringSeriesStopped', { title }) + teamLabel,
+  });
+}
 
 async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
@@ -1951,31 +2012,7 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
         const message = await (channel as any).messages.fetch(raid.messageId);
         const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
 
-        // Get translations for buttons
-        const trans = getTranslations(raid.guild.language || 'en');
-
-        // Create buttons (2 rows due to Discord limit of 5 buttons per row)
-        const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_optin_${raid.id}`)
-            .setLabel(trans.optIn)
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId(`raid_late_${raid.id}`)
-            .setLabel(trans.runningLateButton)
-            .setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder()
-            .setCustomId(`raid_optout_${raid.id}`)
-            .setLabel(trans.optOut)
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`raid_class_${raid.id}`)
-            .setLabel(trans.setClassSpec)
-            .setStyle(ButtonStyle.Primary)
-        );
+        const [row1, row2] = buildRaidButtonRows(raid.id, raid.guild.language || 'en');
 
         // Restore buttons when opened
         await message.edit({

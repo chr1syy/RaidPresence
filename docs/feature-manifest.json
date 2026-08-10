@@ -1,6 +1,6 @@
 {
-  "version": "0.8.2",
-  "updated_at": "2026-08-09",
+  "version": "0.8.3",
+  "updated_at": "2026-08-10",
   "tagline": "Discord bot for WoW raid attendance management with reverse sign-up",
   "description": "RaidPresence uses a reverse sign-up system where all eligible guild members are automatically signed up for raids and must opt-out if they cannot attend — reducing friction and improving attendance visibility.",
   "supported_languages": [
@@ -259,6 +259,26 @@
       "landing_copy": "Every new server starts with 30 days of Premium — every feature, no card, no signup step.",
       "docs_url": "docs/guides/SETUP-GUIDE.md",
       "since": "0.7.0"
+    },
+    {
+      "id": "recurring-raids",
+      "name": "Weekly Recurring Raids",
+      "category": "core",
+      "status": "live",
+      "summary": "A raid can be marked as a weekly series; when it closes, the next instance is created automatically for the same weekday and the same local time, with a roster resolved against current role membership.",
+      "landing_copy": "Set your raid night once. Every week the next raid posts itself — same time, fresh roster, no one to chase.",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "since": "0.8.3"
+    },
+    {
+      "id": "post-raid-nudge",
+      "name": "Post-Raid Nudge",
+      "category": "core",
+      "status": "live",
+      "summary": "When a one-off raid closes, the bot asks the raid leader \"Same time next week?\" — one button creates next week's raid, with the option to turn it into a weekly series.",
+      "landing_copy": "When the raid is done, one click sets up the next one.",
+      "docs_url": "docs/commands/RAID-COMMAND.md",
+      "since": "0.8.3"
     }
   ],
   "commands_summary": [

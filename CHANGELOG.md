@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-08-10
+
 ### Added
 - Weekly recurring raids. `/raid create recurring:true` (or the 🔁 toggle in the guided setup) marks a raid as a series; when the scheduler closes it, the next instance is created automatically for the same weekday and the same *local* time. Until now nothing in the bot ever produced a second raid week — the only returning guild recreated the same Thursday by hand three weeks in a row and then stopped
 - The next date is computed in the guild's IANA zone, not as `+604800000ms`: a 20:00 raid stays 20:00 for its players across a DST switch

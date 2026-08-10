@@ -75,6 +75,9 @@ describe('Modal Handler - Raid Notes Feature', () => {
         data: {
           status: 'opted_out',
           respondedAt: expect.any(Date),
+          // Stamped alongside respondedAt so the recurrence zombie check can tell an
+          // ignored raid from an answered one.
+          interactedAt: expect.any(Date),
           optoutReason: 'Work emergency',
           notedAt: expect.any(Date),
         },
@@ -117,6 +120,7 @@ describe('Modal Handler - Raid Notes Feature', () => {
         data: {
           status: 'opted_out',
           respondedAt: expect.any(Date),
+          interactedAt: expect.any(Date),
           optoutReason: null,
           notedAt: null,
         },

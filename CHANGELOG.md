@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Weekly recurring raids. `/raid create recurring:true` (or the 🔁 toggle in the guided setup) marks a raid as a series; when the scheduler closes it, the next instance is created automatically for the same weekday and the same *local* time. Until now nothing in the bot ever produced a second raid week — the only returning guild recreated the same Thursday by hand three weeks in a row and then stopped
+- The next date is computed in the guild's IANA zone, not as `+604800000ms`: a 20:00 raid stays 20:00 for its players across a DST switch
+- Each generated instance gets a fresh roster resolved against current role membership — members who gained the role are added, members who left are gone, and no attendance is copied from last week
+- Zombie guard: after 3 consecutive auto-generated raids with no player interaction at all, the series pauses itself and posts a one-time notice with a [Resume] button. A series is also paused (not retried in a loop) when its channel is deleted or unwritable, when no member holds the raid roles, or when the free weekly raid limit blocks it
+- `/raid recurring start|stop <raid_id>` — accepts any raid of the series and acts on its newest instance
+- Post-raid nudge for one-off raids: when the scheduler closes a raid that is not part of a series, it posts "Same time next week?" with a single button that creates next week's raid. Only the raid's creator or a raid leader can press it, it fires exactly once per raid, and the button is removed on use or after 48 hours. The success reply offers to turn the follow-up into a weekly series
+- `RaidAttendance.interactedAt` records player-driven changes (opt-in, opt-out, late, class pick) separately from `respondedAt`, which keeps feeding response-time analytics unchanged
+
+### Changed
+- Weekly recurring raids are a FREE feature. `raid.recurring` was removed from `FEATURE_TIERS` and from the `PremiumFeature` union: it had been sitting there as PREMIUM while completely unimplemented, and no guild has ever reached a free-tier ceiling (zero above 5 raids/week, zero with more than one team). What gets monetised is what comes out of retention — archive, analytics, teams — not retention itself
+- Automatically created raids consume the free weekly allowance like manual ones; when the limit blocks a series, it pauses and says so instead of failing silently
+- The four raid buttons are built in one place (`utils/raidComponents.ts`) instead of five copy-pasted blocks
+
 ## [0.8.2] - 2026-08-09
 
 ### Added

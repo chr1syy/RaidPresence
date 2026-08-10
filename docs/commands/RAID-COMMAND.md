@@ -28,6 +28,24 @@ RaidPresence uses a **reverse sign-up system** where all eligible guild members 
   roles: 2T 4H 14D
 ```
 
+### `recurring start|stop` - Weekly Repeat
+**Permission:** Raid leader role or Administrator
+**Description:** Turns a raid into a weekly series, or ends one. A series raid is recreated
+automatically for the same weekday and the same local time when the scheduler closes it,
+with a roster resolved fresh against current role membership. Free feature, no premium gate.
+
+**Usage:**
+```
+/raid recurring start raid_id: [any raid of the series]
+/raid recurring stop  raid_id: [any raid of the series]
+```
+
+`/raid create` also takes `recurring: true` directly, and the guided setup has a 🔁 toggle.
+
+A series pauses itself and posts a notice with a [Resume] button when three consecutive
+automatically created raids get no response at all, when its channel is gone or unwritable,
+when nobody holds the raid roles any more, or when the free weekly raid limit blocks it.
+
 ### `list` - List Upcoming Raids
 **Permission:** Any guild member
 **Description:** Displays all upcoming raids for the server.

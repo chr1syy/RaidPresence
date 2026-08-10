@@ -56,6 +56,7 @@ export const SELECT_ROLES = 'rcflow-roles';
 export const BUTTON_CONFIRM = 'rcflow-confirm';
 export const BUTTON_FIXTIME = 'rcflow-fixtime';
 export const BUTTON_PING = 'rcflow-ping';
+export const BUTTON_RECUR = 'rcflow-recur';
 
 interface RaidDraft {
   guildId: string;
@@ -66,6 +67,8 @@ interface RaidDraft {
   title: string;
   roleIds: string[];
   pingRoles: boolean;
+  /** Weekly series — see services/recurringRaidService. */
+  recurring: boolean;
   teamOption: string | null;
   createdAt: number;
 }
@@ -165,6 +168,8 @@ export async function startGuidedRaidCreate(
     title: string | null;
     roles: string | null;
     pingRoles: boolean;
+    /** Optional: the welcome-message entry point has no command options to carry it. */
+    recurring?: boolean;
     teamOption: string | null;
   }
 ): Promise<void> {
@@ -190,6 +195,7 @@ export async function startGuidedRaidCreate(
     title: prefill.title ?? '',
     roleIds: [],
     pingRoles: prefill.pingRoles,
+    recurring: prefill.recurring ?? false,
     teamOption: prefill.teamOption,
   });
 
@@ -345,6 +351,7 @@ async function showPreview(
       (draft.pingRoles && hasRoles
         ? `${t(language, 'raidCreatePingEnabled', { roles: mentions })}\n`
         : `${t(language, 'raidCreatePingDisabled')}\n`) +
+      (draft.recurring ? `${t(language, 'recurringPreviewEnabled')}\n` : '') +
       `\n_Entered as ${draft.time} in ${formatTimezoneLabel(timezone)}. ` +
       'The time above is shown in your own Discord timezone — if it looks wrong, ' +
       'fix the server timezone below._'
@@ -365,7 +372,14 @@ async function showPreview(
       .setCustomId(`${BUTTON_PING}:${draftId}`)
       .setLabel(t(language, draft.pingRoles ? 'raidCreatePingOn' : 'raidCreatePingOff'))
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!hasRoles)
+      .setDisabled(!hasRoles),
+    // The weekly toggle sits next to the ping toggle because it answers the same kind of
+    // question — what happens *around* this raid — and because a series that could only be
+    // started from the one-line command form would never be discovered.
+    new ButtonBuilder()
+      .setCustomId(`${BUTTON_RECUR}:${draftId}`)
+      .setLabel(t(language, draft.recurring ? 'recurringToggleOn' : 'recurringToggleOff'))
+      .setStyle(ButtonStyle.Secondary)
   );
 
   const payload = { content: '', embeds: [embed], components: [buttons] };
@@ -413,6 +427,29 @@ export async function handlePingToggle(interaction: ButtonInteraction): Promise<
   }
 
   draft.pingRoles = !draft.pingRoles;
+
+  await showPreview(interaction, draftId, draft);
+}
+
+/**
+ * Flips `draft.recurring` and re-renders the preview.
+ *
+ * Purely in-memory like the ping toggle — nothing is written before [Create raid].
+ */
+export async function handleRecurringToggle(interaction: ButtonInteraction): Promise<void> {
+  const draftId = interaction.customId.split(':')[1];
+  const draft = getDraft(draftId, interaction.user.id);
+
+  if (!draft) {
+    await interaction.update({
+      content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+
+  draft.recurring = !draft.recurring;
 
   await showPreview(interaction, draftId, draft);
 }
@@ -596,6 +633,7 @@ export async function handleConfirmButton(interaction: ButtonInteraction): Promi
     raidDate,
     roleIds: draft.roleIds,
     pingRoles: draft.pingRoles,
+    recurring: draft.recurring,
     teamOption: draft.teamOption,
     language: guildData?.language || 'en',
     rolesLabel: draft.roleIds.map((id) => `<@&${id}>`).join(', '),
@@ -614,7 +652,8 @@ export function isFlowButton(customId: string): boolean {
   return (
     customId.startsWith(`${BUTTON_CONFIRM}:`) ||
     customId.startsWith(`${BUTTON_FIXTIME}:`) ||
-    customId.startsWith(`${BUTTON_PING}:`)
+    customId.startsWith(`${BUTTON_PING}:`) ||
+    customId.startsWith(`${BUTTON_RECUR}:`)
   );
 }
 
@@ -635,6 +674,8 @@ export async function routeFlowButton(interaction: ButtonInteraction): Promise<v
     await handleConfirmButton(interaction);
   } else if (interaction.customId.startsWith(`${BUTTON_PING}:`)) {
     await handlePingToggle(interaction);
+  } else if (interaction.customId.startsWith(`${BUTTON_RECUR}:`)) {
+    await handleRecurringToggle(interaction);
   } else {
     await handleFixTimeButton(interaction);
   }

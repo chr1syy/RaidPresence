@@ -1,6 +1,7 @@
 const prisma: Record<string, any> = {
   raid: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -17,6 +18,7 @@ const prisma: Record<string, any> = {
     delete: jest.fn(),
     deleteMany: jest.fn(),
     findUnique: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
   },
   userPreference: {
     findMany: jest.fn(),

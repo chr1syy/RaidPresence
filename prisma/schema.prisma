@@ -111,6 +111,22 @@ model Raid {
   archiveMessageId String?   // Message ID of archived embed
   isPinned         Boolean   @default(false) // Is raid pinned/archived?
 
+  // Weekly recurrence (retention). A series is a *chain*, not a separate table: every
+  // instance points at the one it was generated from, so "does a successor already
+  // exist" is a unique-index question rather than a bookkeeping problem.
+  recurrenceRule         String?  // null = one-off, 'weekly' = generate the next instance on close
+  recurrenceParentId     String?  @unique // the raid this one was generated from; UNIQUE = at most one successor, which is what makes the scheduler idempotent
+  recurrenceActive       Boolean  @default(true) // false = series stopped/paused; only meaningful with recurrenceRule set
+  recurrenceSilentStreak Int      @default(0) // consecutive auto-generated instances with zero player interaction, ending at this one
+
+  // Post-raid nudge (one per raid, non-recurring raids only)
+  nudgeSentAt    DateTime? // set once the nudge went out — the "exactly one nudge" guard
+  nudgeMessageId String?   // nudge message, cleared when the button is used or expires
+
+  recurrenceParent Raid? @relation("RaidRecurrence", fields: [recurrenceParentId], references: [id], onDelete: SetNull)
+  // One-to-one because of the UNIQUE above: the successor generated from this raid.
+  recurrenceChild  Raid? @relation("RaidRecurrence")
+
   // Team assignment (RPTIER Phase 2) — backfilled to the guild's default team
   teamId String
 
@@ -124,6 +140,8 @@ model Raid {
   @@index([guildId, archivedAt])
   @@index([teamId, status])
   @@index([teamId, raidDate])
+  // The scheduler's series pass scans exactly this predicate every 2 minutes.
+  @@index([recurrenceRule, recurrenceActive, status])
 }
 
 model UserRolePreference {
@@ -157,6 +175,12 @@ model RaidAttendance {
   optoutReason  String? // Player's reason for opting out
   playerNote    String? // Player's comment on their status
   notedAt       DateTime? // When note was added
+
+  // Last time the *player* touched this row (opt-in/out, late, class pick). Distinct
+  // from `respondedAt`, which only tracks attendance answers and feeds response-time
+  // analytics. This one answers a different question — "did anybody engage with this
+  // raid at all?" — which is what pauses a zombie recurring series.
+  interactedAt DateTime?
 
   raid           Raid            @relation(fields: [raidId], references: [id], onDelete: Cascade)
   userPreference UserPreference? @relation(fields: [userId, guildId], references: [userId, guildId])

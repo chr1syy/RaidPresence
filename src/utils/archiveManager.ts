@@ -1,7 +1,7 @@
-import { Client, TextChannel, NewsChannel, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { Client, TextChannel, NewsChannel, EmbedBuilder } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
-import { getTranslations } from './localization';
+import { buildRaidButtonRows } from './raidComponents';
 import { VERSION } from './version';
 
 /**
@@ -178,29 +178,7 @@ export async function unarchiveRaid(
   const guild = await prisma.guild.findUnique({ where: { id: guildId }, select: { language: true } });
   const language = guild?.language || 'en';
   const embed = await createRaidEmbed(raidId, language);
-  const trans = getTranslations(language);
-
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_optin_${raidId}`)
-      .setLabel(trans.optIn)
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`raid_late_${raidId}`)
-      .setLabel(trans.runningLateButton)
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`raid_optout_${raidId}`)
-      .setLabel(trans.optOut)
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`raid_class_${raidId}`)
-      .setLabel(trans.setClassSpec)
-      .setStyle(ButtonStyle.Primary)
-  );
+  const [row1, row2] = buildRaidButtonRows(raidId, language);
 
   const newMessage = await originalChannel.send({ embeds: [embed], components: [row1, row2] });
 

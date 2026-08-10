@@ -319,7 +319,7 @@ describe('guided /raid create flow', () => {
       expect(embed.description).toContain('Europe/Berlin');
     });
 
-    it('offers a confirm, a correct-time and a ping button', async () => {
+    it('offers a confirm, a correct-time, a ping and a weekly-repeat button', async () => {
       const { draftId } = await runToRoleSelect();
       const select = buildRoleSelectInteraction(`rcflow-roles:${draftId}`, ['role-a']);
 
@@ -330,6 +330,7 @@ describe('guided /raid create flow', () => {
         `rcflow-confirm:${draftId}`,
         `rcflow-fixtime:${draftId}`,
         `rcflow-ping:${draftId}`,
+        `rcflow-recur:${draftId}`,
       ]);
     });
 

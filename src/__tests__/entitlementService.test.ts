@@ -111,6 +111,14 @@ describe('hasFeature()', () => {
       expect(hasFeature('PREMIUM', feature)).toBe(true);
     }
   });
+
+  // Weekly recurrence shipped FREE (2026-08-10). It sat here as an unimplemented PREMIUM
+  // entry; gating the one mechanism that produces a second raid week would suppress the
+  // usage the tier decision is supposed to measure. Guarded so it cannot drift back in.
+  it('does not gate weekly recurring raids', () => {
+    expect(allFeatures).not.toContain('raid.recurring');
+    expect(FEATURE_TIERS).not.toHaveProperty('raid.recurring');
+  });
 });
 
 describe('tryConsumeWeeklyRaid()', () => {

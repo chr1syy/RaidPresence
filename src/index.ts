@@ -12,6 +12,7 @@ import { TEAM_OPTION_NAME } from './utils/teamContext';
 import { runStartupTrialBackfill } from './scripts/backfillTrials';
 import { syncGuildOnJoin, markGuildDeparted, reconcileDepartedGuilds } from './services/guildLifecycle';
 import { logInteraction, commandLabel } from './utils/interactionLog';
+import { startTopggStatsPoster } from './services/topggService';
 
 config();
 
@@ -92,6 +93,9 @@ client.once(Events.ClientReady, async (c) => {
 
   // Register entitlement handlers (Premium system)
   registerEntitlementHandlers(c);
+
+  // Keep the Top.gg listing's server count current. No-op unless TOPGG_TOKEN is set.
+  startTopggStatsPoster(c);
 
   // Sync existing entitlements from Discord
   const entitlementSync = await syncEntitlementsOnStartup(c);

@@ -16,6 +16,7 @@ jest.mock('../teamContext', () => ({
 jest.mock('../../services/entitlementService', () => ({
   ...jest.requireActual('../../services/entitlementService'),
   getTier: jest.fn(),
+  reapExpiredPremium: jest.fn(),
 }));
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
@@ -23,7 +24,7 @@ import prisma from '../../database/client';
 import { archiveRaid } from '../archiveManager';
 import { createRaidEmbed } from '../../commands/raid';
 import { getTeamLabel } from '../teamContext';
-import { getTier } from '../../services/entitlementService';
+import { getTier, reapExpiredPremium } from '../../services/entitlementService';
 
 describe('raidScheduler', () => {
   let mockClient: any;
@@ -58,12 +59,55 @@ describe('raidScheduler', () => {
 
     // Default: entitled guild, so the pre-existing auto-archive cases behave as before.
     (getTier as jest.Mock<any>).mockResolvedValue('PREMIUM');
+    (reapExpiredPremium as jest.Mock<any>).mockResolvedValue(0);
   });
 
   afterEach(() => {
     jest.useRealTimers();
     logSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  describe('startPremiumReaper', () => {
+    it('runs one pass immediately so a boot corrects the backlog', async () => {
+      const { startPremiumReaper } = require('../raidScheduler');
+      startPremiumReaper();
+
+      // The immediate call is fire-and-forget; let its microtasks settle.
+      await Promise.resolve();
+
+      expect(reapExpiredPremium).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs again on the hourly interval', async () => {
+      const { startPremiumReaper } = require('../raidScheduler');
+      startPremiumReaper();
+      await Promise.resolve();
+
+      await jest.advanceTimersByTimeAsync(60 * 60 * 1000);
+
+      expect(reapExpiredPremium).toHaveBeenCalledTimes(2);
+    });
+
+    it('survives a failing pass — the error is logged, the interval keeps running', async () => {
+      (reapExpiredPremium as jest.Mock<any>).mockRejectedValue(new Error('db down'));
+
+      const { startPremiumReaper } = require('../raidScheduler');
+      expect(() => startPremiumReaper()).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Error in expired-premium reaper pass:',
+        expect.any(Error),
+      );
+
+      // A failed pass must not stop the timer: the next hour still fires.
+      (reapExpiredPremium as jest.Mock<any>).mockResolvedValue(3);
+      await jest.advanceTimersByTimeAsync(60 * 60 * 1000);
+
+      expect(reapExpiredPremium).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('checkAndCloseExpiredRaids - Archive failure fallback', () => {

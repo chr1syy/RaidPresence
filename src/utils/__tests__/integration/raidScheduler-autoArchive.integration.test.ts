@@ -19,9 +19,16 @@ jest.mock('../../archiveManager');
 jest.mock('../../../commands/raid', () => ({
   createRaidEmbed: jest.fn(),
 }));
+// Auto-archive is premium-gated; these fallback scenarios assume an entitled guild, so
+// only the DB-backed tier lookup is faked (hasFeature/FEATURE_TIERS stay real).
+jest.mock('../../../services/entitlementService', () => ({
+  ...jest.requireActual('../../../services/entitlementService'),
+  getTier: jest.fn(),
+}));
 
 // Now safe to import mocked modules
 const prisma = require('../../../database/client').default;
+const { getTier } = require('../../../services/entitlementService');
 const { archiveRaid } = require('../../archiveManager');
 const { createRaidEmbed } = require('../../../commands/raid');
 const { checkAndCloseExpiredRaids } = require('../../raidScheduler');
@@ -50,6 +57,8 @@ describe('Auto-Archive Scheduler Integration Tests', () => {
       findMany: jest.fn(),
       update: jest.fn(),
     };
+
+    (getTier as jest.Mock<any>).mockResolvedValue('PREMIUM');
 
     // Setup createRaidEmbed mock
     (createRaidEmbed as jest.Mock<any>).mockResolvedValue({

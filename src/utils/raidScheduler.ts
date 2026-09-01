@@ -3,6 +3,7 @@ import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 import { getTeamLabel } from './teamContext';
+import { FEATURE_TIERS, getTier, hasFeature } from '../services/entitlementService';
 import { advanceSeries, retireNudge, sendPostRaidNudge } from '../services/recurringRaidService';
 import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence';
 
@@ -116,7 +117,32 @@ export async function checkAndCloseExpiredRaids(client: Client) {
        const teamLabel = teamSuffix(await getTeamLabel(raid.guildId, raid.teamId));
 
          // Check if auto-archive is enabled for this guild
-         const shouldAutoArchive = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);
+         const autoArchiveConfigured = !!(raid.guild.autoArchive && raid.guild.archiveChannelId);
+
+         // Auto-archive is the background twin of `/raid archive`, so it has to honour the
+         // same `raid.archive` entitlement. Without this check a guild whose trial lapsed
+         // keeps archiving forever and never sees the upsell the manual paths show.
+         // Skipped quietly on purpose: there is no interaction to reply to here, and a
+         // scheduler pass must not message the guild every two minutes. The raid still
+         // closes normally below — only the archiving is withheld.
+         let shouldAutoArchive = autoArchiveConfigured;
+         if (autoArchiveConfigured) {
+           try {
+             const tier = await getTier(raid.guildId);
+             if (!hasFeature(tier, 'raid.archive')) {
+               shouldAutoArchive = false;
+               console.log(
+                 `⏭️ Skipped auto-archive for raid ${raid.id} — guild ${raid.guildId} is on ${tier}, 'raid.archive' requires ${FEATURE_TIERS['raid.archive']}`,
+               );
+             }
+           } catch (tierError) {
+             // Fail closed: an unreadable tier must not hand out a premium feature. The
+             // raid still closes; the next pass re-evaluates once the lookup recovers.
+             shouldAutoArchive = false;
+             console.error(`⚠️ Tier lookup failed for guild ${raid.guildId}, skipping auto-archive:`, tierError);
+           }
+         }
+
          let archivedSuccessfully = false;
 
         // If auto-archive is enabled, archive the raid

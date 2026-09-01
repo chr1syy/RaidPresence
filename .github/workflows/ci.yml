@@ -1,0 +1,41 @@
+name: CI
+
+# Validation-only workflow. Deployment lives in ci-cd.yml, which is triggered
+# exclusively by `v*` tags — nothing here builds or publishes an image.
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Mondays at 05:00 UTC — catches drift from transitive dependency updates
+    # on main even in weeks without a pull request.
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # `npm ci` already triggers postinstall -> prisma generate, but the client
+      # is regenerated explicitly so a failure here is attributable.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint (tsc --noEmit)
+        run: npm run lint
+
+      # Invoked directly rather than via `npm test`, which package.json maps to
+      # `tsc --noEmit` — the Jest suite would otherwise never run in CI.
+      - name: Jest
+        run: npx jest

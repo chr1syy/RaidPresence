@@ -13,8 +13,12 @@ import { runStartupTrialBackfill } from './scripts/backfillTrials';
 import { syncGuildOnJoin, markGuildDeparted, reconcileDepartedGuilds } from './services/guildLifecycle';
 import { logInteraction, commandLabel } from './utils/interactionLog';
 import { startTopggStatsPoster } from './services/topggService';
+import { startVoteWebhook } from './services/topggWebhook';
 
 config();
+
+/** Vote webhook listener, if one was started. Closed on shutdown to release the port. */
+let voteWebhookServer: import('node:http').Server | null = null;
 
 /** Commands that expose the shared, autocompleted `team` option. */
 const TEAM_AUTOCOMPLETE_COMMANDS = new Set(['raid', 'stats', 'team']);
@@ -96,6 +100,10 @@ client.once(Events.ClientReady, async (c) => {
 
   // Keep the Top.gg listing's server count current. No-op unless TOPGG_TOKEN is set.
   startTopggStatsPoster(c);
+
+  // Receive Top.gg vote webhooks. No-op — no port opened — unless
+  // TOPGG_WEBHOOK_SECRET is set. Held so shutdown can release the port.
+  voteWebhookServer = startVoteWebhook();
 
   // Sync existing entitlements from Discord
   const entitlementSync = await syncEntitlementsOnStartup(c);
@@ -394,6 +402,7 @@ process.on('unhandledRejection', (error) => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down gracefully...');
+  voteWebhookServer?.close();
   await prisma.$disconnect();
   client.destroy();
   process.exit(0);

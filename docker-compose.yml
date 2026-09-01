@@ -29,6 +29,8 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?Set DISCORD_CLIENT_ID in .env}
       GUILD_ID: ${GUILD_ID:-}
       RAID_LEADER_ROLES: ${RAID_LEADER_ROLES:-}
+      # Optional: unset means the bot never contacts Top.gg (see docs/guides/TOPGG-INTEGRATION.md)
+      TOPGG_TOKEN: ${TOPGG_TOKEN:-}
 
 volumes:
   pgdata:

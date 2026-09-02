@@ -352,3 +352,59 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<Startup
     return { ok: false };
   }
 }
+
+/**
+ * Resets `premiumTier` to FREE for guilds whose `premiumExpiresAt` has passed.
+ *
+ * This is **data hygiene, not a behaviour change**. `getTier()` already treats an expired
+ * `premiumExpiresAt` as FREE, so every runtime gate — features, team limits, the weekly
+ * raid cap — has been returning FREE for these guilds all along. What was never corrected
+ * is the stored column: nothing writes `premiumTier` back down when a trial lapses, so it
+ * stays PREMIUM forever. Anything reading the column directly instead of calling
+ * `getTier()` — SQL, dashboards, analytics — therefore counts lapsed trials as paying
+ * customers. On 2026-09-01 that was 42 of 56 live guilds: the column said 56 premium, the
+ * truth was 14.
+ *
+ * Guilds with an `entitlementId` are excluded unconditionally. That column is only set for
+ * a linked paid subscription, and its lifecycle belongs to the provider — Discord's
+ * entitlement events and `syncEntitlement()`. A paid subscription whose `premiumExpiresAt`
+ * has passed is a renewal question, not an expiry, and this job must never be the thing
+ * that downgrades a paying customer.
+ *
+ * Idempotent: reaped guilds no longer match `premiumTier: { not: 'FREE' }`, so a second
+ * run selects nothing. `premiumExpiresAt` and `trialStartedAt` are deliberately left in
+ * place — the former is the audit trail of when the tier lapsed, and clearing the latter
+ * would make a spent trial look unused and re-grantable.
+ *
+ * Returns the number of guilds downgraded.
+ */
+export async function reapExpiredPremium(): Promise<number> {
+  const now = new Date();
+
+  const where = {
+    premiumTier: { not: 'FREE' as PremiumTier },
+    premiumExpiresAt: { lt: now },
+    entitlementId: null,
+  };
+
+  // Read the ids first: `updateMany` returns only a count, and each downgraded guild
+  // needs its cached tier dropped. The rows are re-checked against the same predicate
+  // inside the update, so a guild that buys premium between the two statements is not
+  // clobbered by a stale id list.
+  const expired = await prisma.guild.findMany({ where, select: { id: true } });
+
+  if (expired.length === 0) return 0;
+
+  const { count } = await prisma.guild.updateMany({
+    where: { ...where, id: { in: expired.map((guild) => guild.id) } },
+    data: { premiumTier: 'FREE' },
+  });
+
+  for (const guild of expired) {
+    invalidateTierCache(guild.id);
+  }
+
+  console.log(`🧹 Premium reaper: downgraded ${count} guild(s) with an expired premiumTier to FREE`);
+
+  return count;
+}

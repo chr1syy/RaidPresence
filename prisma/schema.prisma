@@ -13,15 +13,15 @@ enum PremiumTier {
 }
 
 model Guild {
-  id              String   @id
+  id              String    @id
   name            String
-  raidRoles       String?  @default("") // DEPRECATED: Previously used for default raid attendance roles. No longer used as roles are now specified per-raid in /raid create. Keep only for backward compatibility with existing data. Consider removing in v2.0+
-  raidLeaderRoles String   @default("") // Comma-separated role IDs or names who can create raids
-  language        String   @default("en") // Language for bot messages (en, de)
-  timezone        String   @default("UTC") // IANA zone for interpreting typed raid times (e.g. "Europe/Berlin"). DST-aware; see utils/timezoneHelper.ts
-  timezoneOffset  Int      @default(0) // DEPRECATED, phase 1 of the IANA migration. Nothing reads this any more; it is kept written (guildTimezoneUpdate()) purely as a rollback path and is dropped in phase 2.
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  raidRoles       String?   @default("") // DEPRECATED: Previously used for default raid attendance roles. No longer used as roles are now specified per-raid in /raid create. Keep only for backward compatibility with existing data. Consider removing in v2.0+
+  raidLeaderRoles String    @default("") // Comma-separated role IDs or names who can create raids
+  language        String    @default("en") // Language for bot messages (en, de)
+  timezone        String    @default("UTC") // IANA zone for interpreting typed raid times (e.g. "Europe/Berlin"). DST-aware; see utils/timezoneHelper.ts
+  timezoneOffset  Int       @default(0) // DEPRECATED, phase 1 of the IANA migration. Nothing reads this any more; it is kept written (guildTimezoneUpdate()) purely as a rollback path and is dropped in phase 2.
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // NULL = the bot is currently in this guild; set = the bot is out (kicked, or the
   // guild was deleted). Rows are never removed, so this is the only thing that tells
   // a live install apart from a dead one — every guild count must filter on it.
@@ -33,8 +33,8 @@ model Guild {
   leftAt          DateTime?
 
   // Archive system fields (Phase 2.4)
-  archiveChannelId String?  // Guild's designated archive channel
-  autoArchive      Boolean  @default(false) // Auto-archive on close?
+  archiveChannelId String? // Guild's designated archive channel
+  autoArchive      Boolean @default(false) // Auto-archive on close?
 
   // Premium system (Phase 1.2)
   premiumTier            PremiumTier @default(FREE)
@@ -44,10 +44,10 @@ model Guild {
   weeklyRaidCountResetAt DateTime?
   trialStartedAt         DateTime?
 
-  raids Raid[]
-  users UserPreference[]
+  raids           Raid[]
+  users           UserPreference[]
   rolePreferences UserRolePreference[]
-  teams Team[]
+  teams           Team[]
 
   // Every usage count and every candidate query filters on `leftAt` from here on.
   @@index([leftAt])
@@ -99,29 +99,29 @@ model Raid {
   updatedAt   DateTime @updatedAt
 
   // Template/Clone fields
-  templateName         String?   // Optional: save raid as template name
-  isTemplate           Boolean   @default(false) // Is this a template?
-  createdFromTemplateId String?  // Track which raid this was cloned from
-  templateVersion      Int       @default(1) // Version for future template iterations
-  clonedAt             DateTime? // When this raid was cloned from a template
+  templateName          String? // Optional: save raid as template name
+  isTemplate            Boolean   @default(false) // Is this a template?
+  createdFromTemplateId String? // Track which raid this was cloned from
+  templateVersion       Int       @default(1) // Version for future template iterations
+  clonedAt              DateTime? // When this raid was cloned from a template
 
   // Archive system fields (Phase 2.4)
   archivedAt       DateTime? // When raid was archived
-  archiveChannelId String?   // Channel where archived message lives
-  archiveMessageId String?   // Message ID of archived embed
+  archiveChannelId String? // Channel where archived message lives
+  archiveMessageId String? // Message ID of archived embed
   isPinned         Boolean   @default(false) // Is raid pinned/archived?
 
   // Weekly recurrence (retention). A series is a *chain*, not a separate table: every
   // instance points at the one it was generated from, so "does a successor already
   // exist" is a unique-index question rather than a bookkeeping problem.
-  recurrenceRule         String?  // null = one-off, 'weekly' = generate the next instance on close
-  recurrenceParentId     String?  @unique // the raid this one was generated from; UNIQUE = at most one successor, which is what makes the scheduler idempotent
-  recurrenceActive       Boolean  @default(true) // false = series stopped/paused; only meaningful with recurrenceRule set
-  recurrenceSilentStreak Int      @default(0) // consecutive auto-generated instances with zero player interaction, ending at this one
+  recurrenceRule         String? // null = one-off, 'weekly' = generate the next instance on close
+  recurrenceParentId     String? @unique // the raid this one was generated from; UNIQUE = at most one successor, which is what makes the scheduler idempotent
+  recurrenceActive       Boolean @default(true) // false = series stopped/paused; only meaningful with recurrenceRule set
+  recurrenceSilentStreak Int     @default(0) // consecutive auto-generated instances with zero player interaction, ending at this one
 
   // Post-raid nudge (one per raid, non-recurring raids only)
   nudgeSentAt    DateTime? // set once the nudge went out — the "exactly one nudge" guard
-  nudgeMessageId String?   // nudge message, cleared when the button is used or expires
+  nudgeMessageId String? // nudge message, cleared when the button is used or expires
 
   recurrenceParent Raid? @relation("RaidRecurrence", fields: [recurrenceParentId], references: [id], onDelete: SetNull)
   // One-to-one because of the UNIQUE above: the successor generated from this raid.
@@ -172,9 +172,9 @@ model RaidAttendance {
   updatedAt   DateTime  @updatedAt
 
   // Raid notes feature (Phase 2.3)
-  optoutReason  String? // Player's reason for opting out
-  playerNote    String? // Player's comment on their status
-  notedAt       DateTime? // When note was added
+  optoutReason String? // Player's reason for opting out
+  playerNote   String? // Player's comment on their status
+  notedAt      DateTime? // When note was added
 
   // Last time the *player* touched this row (opt-in/out, late, class pick). Distinct
   // from `respondedAt`, which only tracks attendance answers and feeds response-time
@@ -194,4 +194,29 @@ model RaidAttendance {
   @@index([raidId, status])
   @@index([userId, guildId, status])
   @@index([teamId, userId, status])
+}
+
+/// A vote cast for the bot on Top.gg, delivered by Top.gg's vote webhook.
+///
+/// Votes are stored rather than counted in place so they can be rewarded and measured
+/// later: Top.gg only exposes a rolling 12-hour "has this user voted" check, so the
+/// history is ours to keep or lose. Rows are append-only — a user voting again every
+/// 12 hours produces a new row, which is what makes streaks and totals computable.
+///
+/// No relation to Guild: a vote is cast by a user against the *bot* on Top.gg's site,
+/// with no server context at all. Nothing here can be attributed to a guild.
+model TopggVote {
+  id        String   @id @default(cuid())
+  userId    String // Discord user ID of the voter (Top.gg `user`)
+  botId     String // Discord bot ID that was voted for (Top.gg `bot`)
+  // "upvote" for a real vote, "test" for one fired from the Top.gg dashboard. Kept
+  // rather than dropped so a test delivery is visibly a test instead of silently absent.
+  type      String
+  isWeekend Boolean  @default(false) // Top.gg counts weekend votes double
+  query     String? // raw query string from the vote link, if the link carried one
+  votedAt   DateTime @default(now())
+
+  // "recent votes for this user" — the lookup any reward mechanic needs.
+  @@index([userId, votedAt])
+  @@index([votedAt])
 }

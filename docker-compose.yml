@@ -31,6 +31,14 @@ services:
       RAID_LEADER_ROLES: ${RAID_LEADER_ROLES:-}
       # Optional: unset means the bot never contacts Top.gg (see docs/guides/TOPGG-INTEGRATION.md)
       TOPGG_TOKEN: ${TOPGG_TOKEN:-}
+      TOPGG_WEBHOOK_SECRET: ${TOPGG_WEBHOOK_SECRET:-}
+      TOPGG_WEBHOOK_PORT: ${TOPGG_WEBHOOK_PORT:-8080}
+    # The vote webhook needs a public HTTPS URL, so the port belongs behind the reverse
+    # proxy that already terminates TLS — not published straight to the host. Uncomment
+    # only if you intend to expose it directly. Left commented so merging this changes
+    # nothing about the host's listening ports.
+    # ports:
+    #   - "127.0.0.1:${TOPGG_WEBHOOK_PORT:-8080}:${TOPGG_WEBHOOK_PORT:-8080}"
 
 volumes:
   pgdata:

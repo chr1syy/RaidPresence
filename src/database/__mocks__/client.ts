@@ -46,6 +46,11 @@ const prisma: Record<string, any> = {
     delete: jest.fn(),
     count: jest.fn(),
   },
+  topggVote: {
+    create: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
+    count: jest.fn().mockResolvedValue(0),
+  },
   userRolePreference: {
     findMany: jest.fn().mockResolvedValue([]),
     findUnique: jest.fn(),

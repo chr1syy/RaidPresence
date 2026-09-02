@@ -45,12 +45,12 @@ Example: `1.2.3`
 
 ```bash
 # From package.json
-cat package.json | grep '"version"'
+npm pkg get version
 
-# Output: "version": "0.1.0"
+# Output: "0.8.3"
 
 # In Discord
-# Bot footer shows: v0.1.0
+# Bot footer shows: v0.8.3
 ```
 
 **In bot messages:**
@@ -58,7 +58,7 @@ cat package.json | grep '"version"'
 All embeds include version in the footer:
 
 ```
-RaidPresence v0.1.0 • Powered by Discord.js
+RaidPresence v0.8.3 • Powered by Discord.js
 ```
 
 ---
@@ -119,7 +119,8 @@ Edit `package.json` directly:
 3. **Build and test:**
    ```bash
    npm run build
-   npm run test:jest
+   npm run lint      # tsc --noEmit
+   npx jest          # NOT `npm test`, which is mapped to tsc --noEmit
    ```
 
 4. **Update CHANGELOG.md** with version entry (see below)
@@ -130,12 +131,43 @@ Edit `package.json` directly:
    git commit -m "Bump version to 1.3.0"
    ```
 
-6. **Create release tag:**
+6. **Create release tag** — see the warning below first:
    ```bash
    git tag -a v1.3.0 -m "Release version 1.3.0"
    git push origin main
    git push origin v1.3.0
    ```
+
+---
+
+## ⚠️ A tag is a production deployment
+
+Pushing a `v*` tag does not just label a commit. It triggers the full deploy chain:
+
+```
+git push origin v1.3.0
+  -> GitHub Actions (.github/workflows/ci-cd.yml, triggered by `on: push: tags: ['v*']`)
+  -> builds and pushes ghcr.io/chr1syy/raidpresence:latest
+  -> Watchtower on the production host (300s poll) pulls :latest
+  -> the running container is replaced
+  -> the container's start script runs `prisma migrate deploy` against the production database
+```
+
+There is **no manual approval gate and no automated rollback**. From `git push --tags` to
+new code serving live guilds is a handful of minutes, unattended.
+
+Consequences worth internalising:
+
+- **Never tag to "see if the build works."** Use the CI workflow instead — it runs on every
+  pull request, and `workflow_dispatch` lets you run it on any branch on demand.
+- **Any migration in the release applies itself to production.** Take a fresh dump first:
+  `bash /usr/local/bin/raidpresence-backup.sh` on the prod host (the nightly at 03:15 is a
+  floor, not a substitute).
+- **Rolling back means tagging a new version.** There is no "undo" — a bad `:latest` is
+  replaced only by a newer `:latest`. A reverted commit still has to be tagged to ship.
+- Two workflows exist and they are not interchangeable: `ci.yml` validates (pull requests,
+  weekly schedule, manual dispatch) and deploys nothing; `ci-cd.yml` deploys and runs only
+  on tags.
 
 ---
 
@@ -159,7 +191,7 @@ embed.setFooter({
 Bot logs version on startup:
 
 ```
-✓ Bot is ready! Version: v0.1.0
+✓ Bot is ready! Version: v0.8.3
 ✓ Successfully registered 14 commands
 ```
 
@@ -210,28 +242,29 @@ Could be used to:
 
 Before releasing a new version:
 
-- [ ] All tests passing: `npm run test:jest`
+- [ ] Jest suite passing: `npx jest` (**not** `npm test` — that is mapped to `tsc --noEmit`)
 - [ ] TypeScript compiling: `npm run build`
 - [ ] Linting clean: `npm run lint`
+- [ ] CI green on the merged pull requests (`ci.yml`)
 - [ ] Version bumped: `npm run version:patch/minor/major`
-- [ ] CHANGELOG.md updated
+- [ ] CHANGELOG.md updated — the `[Unreleased]` section emptied into a dated entry
 - [ ] Commits clean: `git status`
 - [ ] Branch up to date: `git pull origin main`
-- [ ] Ready to tag: `git tag -a v${VERSION}`
 - [ ] Documentation updated
+- [ ] **If the release contains a migration:** fresh verified dump taken on the prod host
+      (`bash /usr/local/bin/raidpresence-backup.sh`, check `/root/backups/.last-status`)
+- [ ] **Understood that the next step deploys to production**, then: `git tag -a v${VERSION}`
 
 ---
 
 ## Version History
 
-### v0.1.0 (Initial Release)
-- Core reverse sign-up system
-- Per-server configuration
-- Raid CRUD operations
-- Class/spec selection
-- Phase 1 features (stats, status, clone)
-- Phase 2 features (attendance, composition, notes, archive)
-- Multi-language support (EN/DE)
+**`CHANGELOG.md` is the single source of truth for release history.** This file documents
+the versioning *process*; duplicating the history here only produced a second copy that
+went stale — it still listed v0.1.0 as current while production ran v0.8.3.
+
+Current release: see `npm pkg get version` and the topmost entry in
+[CHANGELOG.md](../CHANGELOG.md).
 
 ---
 
@@ -263,14 +296,14 @@ Before releasing a new version:
 
 Future enhancements could include:
 
-1. **GitHub Actions Workflow**
-   ```yaml
-   - Automatically bump version on merge to main
-   - Generate release notes from commits
-   - Publish to npm registry
-   ```
+1. **A deploy gate.** The highest-value missing piece: a tag currently reaches production
+   with no approval step and no rollback path. A GitHub Environment with a required
+   reviewer on the `docker` job in `ci-cd.yml` would make the deploy deliberate without
+   changing the workflow.
 
-2. **Version Checking**
+2. **Automated release notes** generated from commits between tags.
+
+3. **Version Checking**
    ```typescript
    // Check for updates on bot startup
    if (localVersion < remoteVersion) {
@@ -278,7 +311,7 @@ Future enhancements could include:
    }
    ```
 
-3. **API Versioning**
+4. **API Versioning**
    ```typescript
    // Support multiple API versions
    const apiVersion = require('package.json').version;
@@ -320,5 +353,5 @@ git push origin --tags
 
 ---
 
-**Last Updated:** 2026-02-18
+**Last Updated:** 2026-09-01
 **Semantic Versioning Standard:** https://semver.org/spec/v2.0.0.html

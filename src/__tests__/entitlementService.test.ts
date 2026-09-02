@@ -11,6 +11,7 @@ import {
   syncEntitlementsOnStartup,
   TRIAL_DAYS,
   clearTierCache,
+  reapExpiredPremium,
   PremiumTier,
   PremiumFeature,
 } from '../services/entitlementService';
@@ -376,5 +377,115 @@ describe('syncEntitlementsOnStartup()', () => {
     await expect(
       syncEntitlementsOnStartup(clientWith({ appId: 'app1', get })),
     ).resolves.toEqual({ ok: false });
+  });
+});
+
+describe('reapExpiredPremium()', () => {
+  /** Convenience: the reaper reads ids, then writes. Wire both halves of that pair. */
+  const givenExpiredGuilds = (ids: string[]) => {
+    (prisma.guild.findMany as jest.Mock).mockResolvedValue(ids.map((id) => ({ id })) as any);
+    (prisma.guild.updateMany as jest.Mock).mockResolvedValue({ count: ids.length } as any);
+  };
+
+  it('downgrades guilds whose premium has expired', async () => {
+    givenExpiredGuilds(['guild1', 'guild2']);
+
+    expect(await reapExpiredPremium()).toBe(2);
+
+    expect(prisma.guild.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ['guild1', 'guild2'] } }),
+        data: { premiumTier: 'FREE' },
+      }),
+    );
+  });
+
+  // The one rule this job must never break: the paying customer keeps their tier.
+  it('never selects guilds with a linked paid entitlement', async () => {
+    givenExpiredGuilds([]);
+
+    await reapExpiredPremium();
+
+    // Both the candidate read and the write must exclude linked entitlements, so a
+    // paid guild can neither be picked up nor written to.
+    expect(prisma.guild.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ entitlementId: null }) }),
+    );
+    expect(prisma.guild.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('leaves a paying guild alone even when its premiumExpiresAt has passed', async () => {
+    // The full live shape: an expired date, but an entitlement id — a renewal question
+    // for the provider, not an expiry for this job. The predicate must filter it out.
+    const paying = {
+      id: 'paying-guild',
+      premiumTier: 'PREMIUM',
+      premiumExpiresAt: new Date('2020-01-01'),
+      entitlementId: 'discord-entitlement-1',
+    };
+
+    (prisma.guild.findMany as jest.Mock).mockImplementation((async (args: any) => {
+      const rows = [paying].filter((guild) => {
+        if (args.where.entitlementId === null && guild.entitlementId !== null) return false;
+        if (guild.premiumTier === 'FREE') return false;
+        return guild.premiumExpiresAt < args.where.premiumExpiresAt.lt;
+      });
+      return rows.map((guild) => ({ id: guild.id }));
+    }) as any);
+
+    expect(await reapExpiredPremium()).toBe(0);
+    expect(prisma.guild.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('only targets guilds that are not already FREE, and does not clear the expiry or trial stamp', async () => {
+    givenExpiredGuilds(['guild1']);
+
+    await reapExpiredPremium();
+
+    const readWhere = (prisma.guild.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(readWhere.premiumTier).toEqual({ not: 'FREE' });
+    expect(readWhere.premiumExpiresAt.lt).toBeInstanceOf(Date);
+
+    // premiumExpiresAt is the audit trail; trialStartedAt keeps a spent trial spent.
+    const written = (prisma.guild.updateMany as jest.Mock).mock.calls[0][0].data;
+    expect(written).toEqual({ premiumTier: 'FREE' });
+  });
+
+  it('is a no-op when nothing has expired', async () => {
+    (prisma.guild.findMany as jest.Mock).mockResolvedValue([] as any);
+
+    expect(await reapExpiredPremium()).toBe(0);
+    expect(prisma.guild.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('drops the cached tier for every downgraded guild', async () => {
+    // Warm the cache as PREMIUM via a stored row that has not expired yet.
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'PREMIUM',
+      premiumExpiresAt: new Date(Date.now() + 60_000),
+    } as any);
+    expect(await getTier('guild1')).toBe('PREMIUM');
+
+    givenExpiredGuilds(['guild1']);
+    await reapExpiredPremium();
+
+    // Without the invalidation this would still read PREMIUM from the 30s cache.
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE',
+      premiumExpiresAt: new Date('2020-01-01'),
+    } as any);
+    expect(await getTier('guild1')).toBe('FREE');
+  });
+
+  it('is idempotent — a second pass finds nothing left to do', async () => {
+    givenExpiredGuilds(['guild1']);
+    expect(await reapExpiredPremium()).toBe(1);
+
+    // After the write the guild is FREE, so it no longer matches `premiumTier: not FREE`.
+    (prisma.guild.findMany as jest.Mock).mockResolvedValue([] as any);
+    (prisma.guild.updateMany as jest.Mock).mockClear();
+
+    expect(await reapExpiredPremium()).toBe(0);
+    expect(prisma.guild.updateMany).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
 import { getTeamLabel } from './teamContext';
-import { FEATURE_TIERS, getTier, hasFeature } from '../services/entitlementService';
+import { FEATURE_TIERS, getTier, hasFeature, reapExpiredPremium } from '../services/entitlementService';
 import { advanceSeries, retireNudge, sendPostRaidNudge } from '../services/recurringRaidService';
 import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence';
 
@@ -12,6 +12,16 @@ import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence
  * over several ticks rather than in one burst that would hit Discord's rate limits.
  */
 const BATCH_LIMIT = 25;
+
+/**
+ * How often the expired-premium reaper runs.
+ *
+ * Deliberately not on the two-minute raid tick. Nothing user-facing depends on it —
+ * `getTier()` already reports these guilds as FREE — so this only has to be frequent
+ * enough that a direct read of `premiumTier` is never badly stale, and rare enough that
+ * it does not add a write query to a loop that runs 720 times a day.
+ */
+const PREMIUM_REAP_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 /**
  * Formats a raid's team for the scheduler's log output.
@@ -75,6 +85,34 @@ export function startRaidScheduler(client: Client) {
   }, CHECK_INTERVAL);
 
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
+
+  startPremiumReaper();
+}
+
+/**
+ * Starts the hourly pass that resets `premiumTier` for guilds whose premium has lapsed.
+ *
+ * Runs once immediately so a fresh boot corrects the backlog rather than carrying stale
+ * rows for another hour, then on {@link PREMIUM_REAP_INTERVAL}. Kept on its own timer
+ * instead of inside the two-minute tick — see that constant for why.
+ *
+ * Every invocation is wrapped: a failure here must never take down the scheduler or
+ * surface as an unhandled rejection. The job is idempotent, so a skipped run costs
+ * nothing beyond staying stale until the next one.
+ */
+export function startPremiumReaper(): void {
+  const runReaperPass = async () => {
+    try {
+      await reapExpiredPremium();
+    } catch (error) {
+      console.error('Error in expired-premium reaper pass:', error);
+    }
+  };
+
+  void runReaperPass();
+  setInterval(runReaperPass, PREMIUM_REAP_INTERVAL);
+
+  console.log('✅ Premium reaper started - resetting expired premiumTier every 60 minutes');
 }
 
 export async function checkAndCloseExpiredRaids(client: Client) {

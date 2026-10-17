@@ -21,6 +21,7 @@ import { tryConsumeWeeklyRaid } from '../entitlementService';
 import {
   advanceSeries,
   createFollowUpRaid,
+  deleteRaidAndStopPredecessor,
   hasPlayerInteraction,
   resolveSeriesTail,
   sendPostRaidNudge,
@@ -106,12 +107,15 @@ describe('recurringRaidService', () => {
       language: 'en',
       timezone: 'Europe/Berlin',
     });
-    (prisma.raid.findFirst as jest.Mock).mockResolvedValue(null);
+    (prisma.raid.findFirst as jest.Mock).mockImplementation(async ({ where }: any) =>
+      where.recurrenceParentId ? null : { id: 'raid-source' },
+    );
     (prisma.raid.create as jest.Mock).mockImplementation(async ({ data }: any) => ({
       id: 'raid-new',
       ...data,
     }));
     (prisma.raid.update as jest.Mock).mockResolvedValue({});
+    (prisma.raid.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
     (prisma.raidAttendance.createMany as jest.Mock).mockResolvedValue({ count: 2 });
     (prisma.raidAttendance.count as jest.Mock).mockResolvedValue(0);
     (prisma.userPreference.upsert as jest.Mock).mockResolvedValue({});
@@ -136,6 +140,7 @@ describe('recurringRaidService', () => {
       const result = await createFollowUpRaid(client, source, { mode: 'inherit' });
 
       expect(result.ok).toBe(true);
+      expect(tryConsumeWeeklyRaid).toHaveBeenCalledWith('guild-1', prisma);
       const created = (prisma.raid.create as jest.Mock).mock.calls[0][0].data;
       // Berlin left CEST in between: the same 20:00 slot is 19:00 UTC, not 18:00.
       expect(created.raidDate.toISOString()).toBe('2026-10-29T19:00:00.000Z');
@@ -192,6 +197,35 @@ describe('recurringRaidService', () => {
       expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
     });
 
+    it('does not recreate a successor when its closed parent was stopped after the scheduler read it', async () => {
+      // The scheduler may have loaded this source before /raid delete deactivated it.
+      (prisma.raid.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+      const result = await createFollowUpRaid(client, sourceRaid(), { mode: 'inherit' });
+
+      expect(result).toEqual({ ok: false, reason: 'series_stopped' });
+      expect(prisma.raid.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'raid-source', guildId: 'guild-1', status: 'closed',
+          recurrenceRule: 'weekly', recurrenceActive: true,
+        },
+        data: { recurrenceActive: true },
+      });
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+      expect(channel.send).not.toHaveBeenCalled();
+      expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
+    });
+
+    it('skips roster work and the weekly limit when the scheduler source has already been stopped', async () => {
+      (prisma.raid.findFirst as jest.Mock).mockImplementation(async () => null);
+
+      const result = await createFollowUpRaid(client, sourceRaid(), { mode: 'inherit' });
+
+      expect(result).toEqual({ ok: false, reason: 'series_stopped' });
+      expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
+      expect(prisma.raid.create).not.toHaveBeenCalled();
+    });
+
     it('treats a unique-constraint collision as a duplicate, not an error', async () => {
       // Two scheduler ticks racing: the loser hits the UNIQUE index on recurrenceParentId.
       (prisma.raid.create as jest.Mock).mockRejectedValue(
@@ -246,7 +280,73 @@ describe('recurringRaidService', () => {
 
       expect(result).toEqual({ ok: false, reason: 'channel_unavailable' });
       // Otherwise the orphan row would permanently occupy the successor slot.
-      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-new' } });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-new', guildId: 'guild-1' } });
+    });
+
+    it('removes a posted message if delete wins before its message ID can be saved', async () => {
+      const deleteMessage = jest.fn().mockResolvedValue(undefined);
+      channel.send.mockResolvedValue({ id: 'message-new', delete: deleteMessage });
+      (prisma.raid.update as jest.Mock).mockRejectedValue(new Error('raid was deleted'));
+      (prisma.raid.delete as jest.Mock).mockRejectedValue(new Error('raid was deleted'));
+
+      const result = await createFollowUpRaid(client, sourceRaid(), { mode: 'inherit' });
+
+      expect(result).toEqual({ ok: false, reason: 'channel_unavailable' });
+      expect(deleteMessage).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteRaidAndStopPredecessor', () => {
+    it('stops only the same-guild predecessor before deleting a weekly instance', async () => {
+      const operations: string[] = [];
+      (prisma.raid.updateMany as jest.Mock).mockImplementation(async () => {
+        operations.push('stop');
+        return { count: 1 };
+      });
+      (prisma.raid.delete as jest.Mock).mockImplementation(async () => {
+        operations.push('delete');
+        return {};
+      });
+
+      await deleteRaidAndStopPredecessor(sourceRaid());
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(operations).toEqual(['stop', 'delete']);
+      expect(prisma.raid.updateMany).toHaveBeenCalledWith({
+        where: { id: 'raid-older', guildId: 'guild-1' },
+        data: { recurrenceActive: false },
+      });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source', guildId: 'guild-1' } });
+    });
+
+    it('deletes a one-off follow-up without changing its predecessor', async () => {
+      (prisma.raid.delete as jest.Mock).mockResolvedValue({});
+
+      await deleteRaidAndStopPredecessor(sourceRaid({ recurrenceRule: null }));
+
+      expect(prisma.raid.updateMany).not.toHaveBeenCalled();
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source', guildId: 'guild-1' } });
+    });
+
+    it('keeps a generated instance deleted across repeated creation attempts', async () => {
+      let parentActive = true;
+      (prisma.raid.updateMany as jest.Mock).mockImplementation(async ({ where, data }: any) => {
+        if (where.id !== 'raid-source') return { count: 0 };
+        if (data.recurrenceActive === false) parentActive = false;
+        return { count: parentActive || data.recurrenceActive === false ? 1 : 0 };
+      });
+      (prisma.raid.delete as jest.Mock).mockResolvedValue({});
+      const parent = sourceRaid({ recurrenceParentId: null });
+
+      expect((await createFollowUpRaid(client, parent, { mode: 'inherit' })).ok).toBe(true);
+      await deleteRaidAndStopPredecessor({
+        id: 'raid-new', guildId: 'guild-1', recurrenceParentId: parent.id, recurrenceRule: 'weekly',
+      });
+      expect((await createFollowUpRaid(client, parent, { mode: 'inherit' })).ok).toBe(false);
+      expect((await createFollowUpRaid(client, parent, { mode: 'inherit' })).ok).toBe(false);
+
+      expect(prisma.raid.create).toHaveBeenCalledTimes(1);
+      expect(channel.send).toHaveBeenCalledTimes(1);
     });
   });
 

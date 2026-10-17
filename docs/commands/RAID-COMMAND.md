@@ -71,6 +71,9 @@ when nobody holds the raid roles any more, or when the free weekly raid limit bl
 ### `delete` - Delete a Raid
 **Permission:** Raid leader role or Administrator
 **Description:** Permanently removes a raid from the system.
+Deleting an instance of a weekly series also stops its predecessor from generating
+that instance again. To end a series while keeping its current raid, use
+`/raid recurring stop`.
 
 **Usage:**
 ```

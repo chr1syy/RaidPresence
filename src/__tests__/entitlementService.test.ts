@@ -231,6 +231,21 @@ describe('tryConsumeWeeklyRaid()', () => {
     await tryConsumeWeeklyRaid('guild1');
     expect((prisma.$transaction as jest.Mock)).toHaveBeenCalled();
   });
+
+  it('uses a supplied transaction for an atomic follow-up creation', async () => {
+    (prisma.guild.findUnique as jest.Mock).mockResolvedValue({
+      premiumTier: 'FREE', premiumExpiresAt: null,
+      weeklyRaidCount: 0, weeklyRaidCountResetAt: new Date(),
+    } as any);
+    (prisma.guild.update as jest.Mock).mockResolvedValue({} as any);
+
+    await tryConsumeWeeklyRaid('guild1', prisma as any);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.guild.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ weeklyRaidCount: 1 }),
+    }));
+  });
 });
 
 describe('grantTrialIfEligible()', () => {

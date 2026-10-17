@@ -1161,6 +1161,11 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Stop the predecessor before removing this instance, so the scheduler cannot
+  // treat its now-empty successor slot as a reason to recreate the deleted raid.
+  const { deleteRaidAndStopPredecessor } = await import('../services/recurringRaidService');
+  await deleteRaidAndStopPredecessor(raid);
+
   // Delete the raid message if it exists
   if (raid.messageId && raid.channelId) {
     try {
@@ -1174,11 +1179,6 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
       // Continue with database deletion even if message deletion fails
     }
   }
-
-  // Delete from database (cascades to attendance)
-  await prisma.raid.delete({
-    where: { id: raidId },
-  });
 
   const deleteTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 

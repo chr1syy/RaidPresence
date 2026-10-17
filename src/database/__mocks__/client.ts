@@ -5,6 +5,7 @@ const prisma: Record<string, any> = {
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
     count: jest.fn().mockResolvedValue(0),
@@ -65,3 +66,4 @@ const prisma: Record<string, any> = {
 prisma.$transaction = jest.fn((fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma));
 
 export default prisma;
+export const withRetry = jest.fn((operation: () => Promise<unknown>) => operation());

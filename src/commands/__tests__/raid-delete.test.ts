@@ -9,7 +9,9 @@ import { canManageRaids } from '../../utils/permissions';
 jest.mock('../../database/client');
 jest.mock('../../utils/permissions');
 
-import prisma from '../../database/client';
+import prisma, { withRetry } from '../../database/client';
+import * as recurringService from '../../services/recurringRaidService';
+import { processRecurringSeries } from '../../utils/raidScheduler';
 import command from '../raid';
 
 describe('handleDeleteRaid()', () => {
@@ -194,5 +196,49 @@ describe('handleDeleteRaid()', () => {
 
     expect(mockMessage.delete).not.toHaveBeenCalled();
     expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-123' } });
+  });
+
+  it('does not recreate a deleted weekly successor on later scheduler ticks', async () => {
+    const parent = {
+      id: 'raid-parent', guildId: 'guild-123', teamId: 'team-123',
+      status: 'closed', recurrenceRule: 'weekly', recurrenceActive: true,
+      raidDate: new Date('2026-10-01T18:00:00Z'),
+    };
+    const child = {
+      ...parent, id: 'raid-123', status: 'open', recurrenceParentId: parent.id,
+      messageId: null, channelId: null, description: 'Weekly Raid',
+    };
+    const raids = new Map<string, any>([[parent.id, parent], [child.id, child]]);
+    (withRetry as jest.Mock).mockImplementation((run: () => Promise<unknown>) => run());
+    (prisma.raid.findUnique as jest.Mock).mockImplementation(async ({ where }: any) => {
+      const raid = raids.get(where.id);
+      return raid ? { ...raid, guild: { language: 'en' } } : null;
+    });
+    (prisma.raid.findMany as jest.Mock).mockImplementation(async () =>
+      [...raids.values()].filter((raid) =>
+        raid.status === 'closed' && raid.recurrenceRule === 'weekly' &&
+        raid.recurrenceActive && ![...raids.values()].some((next) => next.recurrenceParentId === raid.id),
+      ),
+    );
+    (prisma.raid.delete as jest.Mock).mockImplementation(async ({ where }: any) => raids.delete(where.id));
+    (prisma.raid.updateMany as jest.Mock).mockImplementation(async ({ where, data }: any) => {
+      const raid = raids.get(where.id);
+      if (!raid || raid.guildId !== where.guildId) return { count: 0 };
+      Object.assign(raid, data);
+      return { count: 1 };
+    });
+    const advanceSeries = jest.spyOn(recurringService, 'advanceSeries').mockImplementation(async (_client: any, source: any) => {
+      raids.set('raid-reappeared', { ...child, id: 'raid-reappeared', recurrenceParentId: source.id });
+      return { ok: true, raidId: 'raid-reappeared', raidDate: new Date(), memberCount: 1 };
+    });
+
+    await command.execute(mockInteraction);
+    await processRecurringSeries(mockInteraction.client);
+    await processRecurringSeries(mockInteraction.client);
+
+    expect(raids.has(child.id)).toBe(false);
+    expect(raids.has('raid-reappeared')).toBe(false);
+    expect(advanceSeries).not.toHaveBeenCalled();
+    advanceSeries.mockRestore();
   });
 });

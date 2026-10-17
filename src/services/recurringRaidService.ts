@@ -43,6 +43,7 @@ export type FollowUpFailureReason =
   | 'weekly_limit'
   | 'date_error'
   | 'duplicate'
+  | 'series_stopped'
   | 'error';
 
 export type FollowUpResult =
@@ -172,6 +173,22 @@ export async function createFollowUpRaid(
   });
   if (existing) return { ok: false, reason: 'duplicate' };
 
+  if (options.mode === 'inherit') {
+    // Most stale scheduler runs stop here, before resolving a roster or consuming a
+    // weekly slot. The write transaction below repeats this check under a row lock.
+    const activeSource = await prisma.raid.findFirst({
+      where: {
+        id: source.id,
+        guildId: source.guildId,
+        status: 'closed',
+        recurrenceRule: RECURRENCE_WEEKLY,
+        recurrenceActive: true,
+      },
+      select: { id: true },
+    });
+    if (!activeSource) return { ok: false, reason: 'series_stopped' };
+  }
+
   const raidDate = nextWeeklyOccurrence(source.raidDate, timezone, new Date());
   if (!raidDate) return { ok: false, reason: 'date_error' };
 
@@ -231,25 +248,44 @@ export async function createFollowUpRaid(
       ? RECURRENCE_WEEKLY
       : null;
 
-  let newRaid;
+  let newRaid: Raid | null;
   try {
-    newRaid = await prisma.raid.create({
-      data: {
-        guildId: guild.id,
-        teamId: source.teamId,
-        channelId: channel.id,
-        raidDate,
-        description: source.description,
-        roles: source.roles,
-        createdBy: options.createdBy ?? source.createdBy,
-        createdFromTemplateId: source.id,
-        clonedAt: new Date(),
-        recurrenceParentId: source.id,
-        recurrenceRule,
-        recurrenceActive: true,
-        recurrenceSilentStreak: options.silentStreak ?? 0,
-      },
-    });
+    const data = {
+      guildId: guild.id,
+      teamId: source.teamId,
+      channelId: channel.id,
+      raidDate,
+      description: source.description,
+      roles: source.roles,
+      createdBy: options.createdBy ?? source.createdBy,
+      createdFromTemplateId: source.id,
+      clonedAt: new Date(),
+      recurrenceParentId: source.id,
+      recurrenceRule,
+      recurrenceActive: true,
+      recurrenceSilentStreak: options.silentStreak ?? 0,
+    };
+    if (options.mode === 'inherit') {
+      // Serialize with /raid delete: both paths lock the source row before changing
+      // the successor slot. A scheduler tick holding an old source snapshot cannot
+      // recreate an instance after the delete transaction stops its predecessor.
+      newRaid = await prisma.$transaction(async (tx) => {
+        const claim = await tx.raid.updateMany({
+          where: {
+            id: source.id,
+            guildId: source.guildId,
+            status: 'closed',
+            recurrenceRule: RECURRENCE_WEEKLY,
+            recurrenceActive: true,
+          },
+          data: { recurrenceActive: true },
+        });
+        if (claim.count === 0) return null;
+        return tx.raid.create({ data });
+      });
+    } else {
+      newRaid = await prisma.raid.create({ data });
+    }
   } catch (error) {
     // P2002 on `recurrenceParentId`: a concurrent scheduler tick won the race. The other
     // run created exactly the raid this one would have, so this is a success elsewhere.
@@ -258,6 +294,8 @@ export async function createFollowUpRaid(
     }
     throw error;
   }
+
+  if (!newRaid) return { ok: false, reason: 'series_stopped' };
 
   await prisma.raidAttendance.createMany({
     data: eligibleMembers.map((userId) => {
@@ -294,6 +332,21 @@ export async function createFollowUpRaid(
   }
 
   return { ok: true, raidId: newRaid.id, raidDate, memberCount: eligibleMembers.length };
+}
+
+/** Remove one instance while closing the predecessor's successor slot atomically. */
+export async function deleteRaidAndStopPredecessor(
+  raid: Pick<Raid, 'id' | 'guildId' | 'recurrenceParentId' | 'recurrenceRule'>,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    if (raid.recurrenceRule === RECURRENCE_WEEKLY && raid.recurrenceParentId) {
+      await tx.raid.updateMany({
+        where: { id: raid.recurrenceParentId, guildId: raid.guildId },
+        data: { recurrenceActive: false },
+      });
+    }
+    await tx.raid.delete({ where: { id: raid.id } });
+  });
 }
 
 /**
@@ -381,6 +434,7 @@ export async function advanceSeries(client: Client, raid: Raid): Promise<FollowU
 
   switch (result.reason) {
     case 'duplicate':
+    case 'series_stopped':
       // Already handled by an earlier tick — nothing to do, and definitely nothing to pause.
       return result;
     case 'weekly_limit':

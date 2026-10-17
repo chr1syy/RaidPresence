@@ -140,6 +140,7 @@ describe('recurringRaidService', () => {
       const result = await createFollowUpRaid(client, source, { mode: 'inherit' });
 
       expect(result.ok).toBe(true);
+      expect(tryConsumeWeeklyRaid).toHaveBeenCalledWith('guild-1', prisma);
       const created = (prisma.raid.create as jest.Mock).mock.calls[0][0].data;
       // Berlin left CEST in between: the same 20:00 slot is 19:00 UTC, not 18:00.
       expect(created.raidDate.toISOString()).toBe('2026-10-29T19:00:00.000Z');
@@ -212,6 +213,7 @@ describe('recurringRaidService', () => {
       });
       expect(prisma.raid.create).not.toHaveBeenCalled();
       expect(channel.send).not.toHaveBeenCalled();
+      expect(tryConsumeWeeklyRaid).not.toHaveBeenCalled();
     });
 
     it('skips roster work and the weekly limit when the scheduler source has already been stopped', async () => {
@@ -278,7 +280,19 @@ describe('recurringRaidService', () => {
 
       expect(result).toEqual({ ok: false, reason: 'channel_unavailable' });
       // Otherwise the orphan row would permanently occupy the successor slot.
-      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-new' } });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-new', guildId: 'guild-1' } });
+    });
+
+    it('removes a posted message if delete wins before its message ID can be saved', async () => {
+      const deleteMessage = jest.fn().mockResolvedValue(undefined);
+      channel.send.mockResolvedValue({ id: 'message-new', delete: deleteMessage });
+      (prisma.raid.update as jest.Mock).mockRejectedValue(new Error('raid was deleted'));
+      (prisma.raid.delete as jest.Mock).mockRejectedValue(new Error('raid was deleted'));
+
+      const result = await createFollowUpRaid(client, sourceRaid(), { mode: 'inherit' });
+
+      expect(result).toEqual({ ok: false, reason: 'channel_unavailable' });
+      expect(deleteMessage).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -302,7 +316,7 @@ describe('recurringRaidService', () => {
         where: { id: 'raid-older', guildId: 'guild-1' },
         data: { recurrenceActive: false },
       });
-      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source' } });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source', guildId: 'guild-1' } });
     });
 
     it('deletes a one-off follow-up without changing its predecessor', async () => {
@@ -311,7 +325,7 @@ describe('recurringRaidService', () => {
       await deleteRaidAndStopPredecessor(sourceRaid({ recurrenceRule: null }));
 
       expect(prisma.raid.updateMany).not.toHaveBeenCalled();
-      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source' } });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-source', guildId: 'guild-1' } });
     });
 
     it('keeps a generated instance deleted across repeated creation attempts', async () => {

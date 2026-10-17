@@ -1164,19 +1164,19 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   // Stop the predecessor before removing this instance, so the scheduler cannot
   // treat its now-empty successor slot as a reason to recreate the deleted raid.
   const { deleteRaidAndStopPredecessor } = await import('../services/recurringRaidService');
-  await deleteRaidAndStopPredecessor(raid);
+  const deletedRaid = await deleteRaidAndStopPredecessor(raid);
 
-  // Delete the raid message if it exists
-  if (raid.messageId && raid.channelId) {
+  // The row returned by DELETE has the latest message ID if creation raced us.
+  if (deletedRaid.messageId && deletedRaid.channelId) {
     try {
-      const channel = await interaction.client.channels.fetch(raid.channelId);
+      const channel = await interaction.client.channels.fetch(deletedRaid.channelId);
       if (channel?.isTextBased() && 'messages' in channel) {
-        const message = await channel.messages.fetch(raid.messageId);
+        const message = await channel.messages.fetch(deletedRaid.messageId);
         await message.delete();
       }
     } catch (error) {
       console.error('Error deleting raid message:', error);
-      // Continue with database deletion even if message deletion fails
+      // The database row is already deleted; still confirm the command.
     }
   }
 

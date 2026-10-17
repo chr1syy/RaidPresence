@@ -1,4 +1,4 @@
-import { PremiumTier } from '@prisma/client';
+import { PremiumTier, Prisma } from '@prisma/client';
 import { Client } from 'discord.js';
 import prisma from '../database/client';
 
@@ -173,8 +173,11 @@ export async function teamLimitFor(guildId: string): Promise<number | null> {
  * Returns { allowed, remaining } — if allowed, the count has already been incremented.
  * This prevents race conditions where two concurrent creates both pass the check.
  */
-export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: boolean; remaining: number; max: number; resetAt: Date | null }> {
-  return prisma.$transaction(async (tx) => {
+export async function tryConsumeWeeklyRaid(
+  guildId: string,
+  transaction?: Prisma.TransactionClient,
+): Promise<{ allowed: boolean; remaining: number; max: number; resetAt: Date | null }> {
+  const consume = async (tx: Prisma.TransactionClient) => {
     const guild = await tx.guild.findUnique({
       where: { id: guildId },
       select: { premiumTier: true, premiumExpiresAt: true, weeklyRaidCount: true, weeklyRaidCountResetAt: true },
@@ -219,7 +222,8 @@ export async function tryConsumeWeeklyRaid(guildId: string): Promise<{ allowed: 
 
     const remaining = FREE_WEEKLY_RAID_LIMIT - (currentCount + 1);
     return { allowed: true, remaining, max: FREE_WEEKLY_RAID_LIMIT, resetAt: windowResetAt };
-  });
+  };
+  return transaction ? consume(transaction) : prisma.$transaction(consume);
 }
 
 /**

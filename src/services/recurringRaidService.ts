@@ -235,12 +235,6 @@ export async function createFollowUpRaid(
   }
   const prefsMap = await getEffectivePrefsMap(eligibleMembers, guild.id, roleIds, memberRolesMap);
 
-  // Automatically created raids consume the free weekly allowance exactly like manual
-  // ones. A series that silently bypassed the limit would make the limit meaningless and
-  // hide the very signal (guilds pressing against it) the tier decision depends on.
-  const { allowed, max } = await tryConsumeWeeklyRaid(guild.id);
-  if (!allowed) return { ok: false, reason: 'weekly_limit', max };
-
   const recurrenceRule =
     options.mode === 'inherit'
       ? source.recurrenceRule ?? RECURRENCE_WEEKLY
@@ -248,7 +242,7 @@ export async function createFollowUpRaid(
       ? RECURRENCE_WEEKLY
       : null;
 
-  let newRaid: Raid | null;
+  let newRaid: Raid;
   try {
     const data = {
       guildId: guild.id,
@@ -269,7 +263,10 @@ export async function createFollowUpRaid(
       // Serialize with /raid delete: both paths lock the source row before changing
       // the successor slot. A scheduler tick holding an old source snapshot cannot
       // recreate an instance after the delete transaction stops its predecessor.
-      newRaid = await prisma.$transaction(async (tx) => {
+      // Consume the weekly slot in this same transaction so an aborted creation
+      // cannot charge the guild.
+      type CreationOutcome = { raid: Raid } | { reason: 'series_stopped' | 'weekly_limit'; max?: number };
+      const outcome: CreationOutcome = await prisma.$transaction(async (tx) => {
         const claim = await tx.raid.updateMany({
           where: {
             id: source.id,
@@ -280,10 +277,21 @@ export async function createFollowUpRaid(
           },
           data: { recurrenceActive: true },
         });
-        if (claim.count === 0) return null;
-        return tx.raid.create({ data });
+        if (claim.count === 0) return { reason: 'series_stopped' };
+        const { allowed, max } = await tryConsumeWeeklyRaid(guild.id, tx);
+        if (!allowed) return { reason: 'weekly_limit', max };
+        return { raid: await tx.raid.create({ data }) };
       });
+      if ('reason' in outcome) {
+        return outcome.reason === 'weekly_limit'
+          ? { ok: false, reason: 'weekly_limit', max: outcome.max }
+          : { ok: false, reason: 'series_stopped' };
+      }
+      newRaid = outcome.raid;
     } else {
+      // One-off and user-started follow-ups keep the existing quota path.
+      const { allowed, max } = await tryConsumeWeeklyRaid(guild.id);
+      if (!allowed) return { ok: false, reason: 'weekly_limit', max };
       newRaid = await prisma.raid.create({ data });
     }
   } catch (error) {
@@ -294,8 +302,6 @@ export async function createFollowUpRaid(
     }
     throw error;
   }
-
-  if (!newRaid) return { ok: false, reason: 'series_stopped' };
 
   await prisma.raidAttendance.createMany({
     data: eligibleMembers.map((userId) => {
@@ -317,17 +323,24 @@ export async function createFollowUpRaid(
   const embed = await createRaidEmbed(newRaid.id, language);
   const components = buildRaidButtonRows(newRaid.id, language);
 
+  let message: { id: string; delete: () => Promise<unknown> } | null = null;
   try {
-    const message = await channel.send({ embeds: [embed], components });
+    const postedMessage = await channel.send({ embeds: [embed], components });
+    message = postedMessage;
     await prisma.raid.update({
-      where: { id: newRaid.id },
-      data: { messageId: message.id },
+      where: { id: newRaid.id, guildId: source.guildId },
+      data: { messageId: postedMessage.id },
     });
   } catch (error) {
-    // The raid row exists but has no message. Leaving it would post nothing and still
-    // block the series (the UNIQUE successor slot is taken), so it is rolled back.
+    // Delete may have removed the row while Discord was posting. In that case the
+    // failed messageId update must also remove the already-sent message.
     console.error(`Recurrence: failed to post follow-up raid ${newRaid.id}:`, error);
-    await prisma.raid.delete({ where: { id: newRaid.id } }).catch(() => undefined);
+    if (message) {
+      await message.delete().catch((deleteError) => {
+        console.error(`Recurrence: failed to remove orphaned message for ${newRaid.id}:`, deleteError);
+      });
+    }
+    await prisma.raid.delete({ where: { id: newRaid.id, guildId: source.guildId } }).catch(() => undefined);
     return { ok: false, reason: 'channel_unavailable' };
   }
 
@@ -337,15 +350,17 @@ export async function createFollowUpRaid(
 /** Remove one instance while closing the predecessor's successor slot atomically. */
 export async function deleteRaidAndStopPredecessor(
   raid: Pick<Raid, 'id' | 'guildId' | 'recurrenceParentId' | 'recurrenceRule'>,
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
+): Promise<Raid> {
+  return prisma.$transaction(async (tx) => {
     if (raid.recurrenceRule === RECURRENCE_WEEKLY && raid.recurrenceParentId) {
       await tx.raid.updateMany({
         where: { id: raid.recurrenceParentId, guildId: raid.guildId },
         data: { recurrenceActive: false },
       });
     }
-    await tx.raid.delete({ where: { id: raid.id } });
+    // Use the row returned by DELETE: it has the latest messageId even when the
+    // follow-up was posted after /raid delete first loaded the raid.
+    return tx.raid.delete({ where: { id: raid.id, guildId: raid.guildId } });
   });
 }
 

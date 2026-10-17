@@ -341,7 +341,9 @@ describe('/raid visibility & authorization gating', () => {
 
       await command.execute(interaction);
 
-      expect(prisma.raid.delete).toHaveBeenCalledWith({ where: { id: 'raid-new-1' } });
+      expect(prisma.raid.delete).toHaveBeenCalledWith({
+        where: { id: 'raid-new-1', guildId: 'guild-123' },
+      });
     });
   });
 

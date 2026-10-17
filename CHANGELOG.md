@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-17
+
+### Fixed
+- Deleting a generated weekly raid now stops its predecessor from recreating that instance on a later scheduler tick. Concurrent follow-up creation checks the active series state and leaves no orphan Discord post or consumed weekly slot when deletion wins the race.
+
+
 ## [0.9.0] - 2026-09-01
 
 ### Added

@@ -6,6 +6,7 @@ import { getTeamLabel } from './teamContext';
 import { FEATURE_TIERS, getTier, hasFeature, reapExpiredPremium } from '../services/entitlementService';
 import { advanceSeries, retireNudge, sendPostRaidNudge } from '../services/recurringRaidService';
 import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence';
+import type { createGuildRemovalDraft, GuildJobToken } from '../services/guildRemoval';
 
 /**
  * Upper bound per pass. The scheduler runs every two minutes; a backlog is worked off
@@ -234,12 +235,33 @@ export async function checkAndCloseExpiredRaids(client: Client) {
  * between closing and generating leaves behind — so the retry is the normal path, not a
  * special case, and the UNIQUE index on `recurrenceParentId` makes a double run a no-op.
  */
-export async function processRecurringSeries(client: Client) {
+/** Preparation only: callers retain the token of a positively observed join.
+ * No timer currently supplies this scope. Never capture a new token after a scan.
+ */
+export interface RecurringSeriesJob {
+  token: GuildJobToken;
+  coordinator: Pick<ReturnType<typeof createGuildRemovalDraft>, 'runWithToken'>;
+}
+
+export async function processRecurringSeries(client: Client, job?: RecurringSeriesJob) {
+  if (job) {
+    // Both selection and ALL awaited recurrence side effects belong to this root.
+    // Do not wrap only advanceSeries: an old bulk selection could cross a rejoin.
+    const { coordinator, token } = job;
+    await coordinator.runWithToken(token, () => processDueRecurringSeries(client, token.guildId));
+    return;
+  }
+  // Existing runtime retains its current behaviour until all writers are integrated.
+  await processDueRecurringSeries(client);
+}
+
+async function processDueRecurringSeries(client: Client, guildId?: string) {
   const now = new Date();
 
   const due = await withRetry(() =>
     prisma.raid.findMany({
       where: {
+        ...(guildId === undefined ? {} : { guildId }),
         status: 'closed',
         recurrenceRule: RECURRENCE_WEEKLY,
         recurrenceActive: true,

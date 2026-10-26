@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Starts a NEW local PostgreSQL cluster; never reads DATABASE_URL or .env.
-// Supply existing PostgreSQL binaries: node scripts/test-guild-removal-db.cjs /path/to/bin
+// Supply existing binaries and an optional narrow Jest name filter:
+// node scripts/test-guild-removal-db.cjs /path/to/bin [testNamePattern]
 const { spawnSync } = require('node:child_process');
 const { mkdirSync, mkdtempSync, realpathSync, writeFileSync } = require('node:fs');
 const { resolve, join } = require('node:path');
@@ -9,6 +10,7 @@ const net = require('node:net');
 
 const root = resolve(__dirname, '..');
 const bin = process.argv[2];
+const testNamePattern = process.argv[3];
 if (!bin) throw new Error('Pass the directory containing initdb, pg_ctl and createdb. No existing DB URL is accepted.');
 const pgBin = realpathSync(bin);
 const artifacts = join(root, '.maestro', 'raidpresence-data-deletion-20261022', 'db-runs');
@@ -60,6 +62,7 @@ async function freePort() {
     command(join(root, 'node_modules/.bin/prisma'), ['migrate', 'deploy'], 'migrations.log', testEnv);
     command(join(root, 'node_modules/.bin/jest'), [
       '--runInBand', '--runTestsByPath', 'src/__tests__/integration/guildRemoval.postgres.test.ts',
+      ...(testNamePattern ? ['--testNamePattern', testNamePattern] : []),
       '--json', `--outputFile=${join(runDir, 'jest.json')}`,
     ], 'jest.log', testEnv);
     status = 'passed';

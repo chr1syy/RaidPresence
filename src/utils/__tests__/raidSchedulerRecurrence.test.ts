@@ -62,6 +62,60 @@ describe('scheduler — recurring series pass', () => {
     expect(advanceSeries).toHaveBeenCalledWith(client, { id: 'raid-a' });
   });
 
+  it('keeps selection and the complete awaited advance inside the original per-guild job', async () => {
+    const token = Object.freeze({ guildId: 'guild-a', generation: 2 });
+    let active = false;
+    const coordinator = { runWithToken: jest.fn(async (_token: unknown, operation: () => Promise<any>) => {
+      active = true;
+      try { return await operation(); } finally { active = false; }
+    }) };
+    (prisma.raid.findMany as jest.Mock).mockImplementation(async () => {
+      expect(active).toBe(true);
+      return [{ id: 'raid-a', guildId: 'guild-a' }];
+    });
+    let finish!: () => void;
+    const gate = new Promise<void>((resolve) => { finish = resolve; });
+    (advanceSeries as jest.Mock).mockImplementationOnce(async () => {
+      expect(active).toBe(true);
+      await gate;
+      expect(active).toBe(true);
+    });
+    let completed = false;
+    const pass = processRecurringSeries(client, { token, coordinator }).then(() => { completed = true; });
+    await Promise.resolve(); await Promise.resolve();
+    expect(completed).toBe(false);
+    expect(active).toBe(true);
+    finish(); await pass;
+    expect(coordinator.runWithToken).toHaveBeenCalledWith(token, expect.any(Function));
+    expect((prisma.raid.findMany as jest.Mock).mock.calls[0][0].where.guildId).toBe('guild-a');
+    expect(active).toBe(false);
+  });
+
+  it('does not scan or advance when the coordinator rejects admission, and never falls back to bulk', async () => {
+    const token = Object.freeze({ guildId: 'guild-a', generation: 1 });
+    await processRecurringSeries(client, { token, coordinator: { runWithToken: async () => undefined } });
+    expect(prisma.raid.findMany).not.toHaveBeenCalled();
+    expect(advanceSeries).not.toHaveBeenCalled();
+    await expect(processRecurringSeries(client, { token, coordinator: {
+      runWithToken: async () => { throw new Error('closed admission'); },
+    } })).rejects.toThrow('closed admission');
+    expect(prisma.raid.findMany).not.toHaveBeenCalled();
+  });
+
+  it('snapshots the supplied token before queueing and propagates selection failure without advancing', async () => {
+    const original: { readonly guildId: string; readonly generation: number } = Object.freeze({ guildId: 'guild-a', generation: 1 });
+    let run!: () => Promise<unknown>;
+    const job = { token: original, coordinator: { runWithToken: jest.fn((_token: unknown, operation: () => Promise<any>) => {
+      run = operation; return Promise.resolve(undefined);
+    }) } };
+    await processRecurringSeries(client, job);
+    job.token = Object.freeze({ guildId: 'guild-b', generation: 2 });
+    (prisma.raid.findMany as jest.Mock).mockRejectedValueOnce(new Error('scan failed'));
+    await expect(run()).rejects.toThrow('scan failed');
+    expect((prisma.raid.findMany as jest.Mock).mock.calls[0][0].where.guildId).toBe('guild-a');
+    expect(advanceSeries).not.toHaveBeenCalled();
+  });
+
   it('is a no-op on the next tick once the successor exists', async () => {
     // Same crash-recovery scenario, second run: the successor now satisfies the
     // `recurrenceChild` filter, so the query returns nothing and nothing is created twice.

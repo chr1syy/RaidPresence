@@ -3,7 +3,7 @@
  */
 import type { PrismaClient, Raid } from '@prisma/client';
 import { Prisma } from '@prisma/client';
-import { Client, Events } from 'discord.js';
+import { Client, Collection, Events } from 'discord.js';
 import { realpathSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 
@@ -19,6 +19,7 @@ let recurrence: typeof import('../../services/recurringRaidService');
 let adapterModule: typeof import('../../services/guildWriterAdapter');
 let guided: typeof import('../../events/raidCreateFlow');
 let welcome: typeof import('../../events/welcomeFlow');
+let scheduler: typeof import('../../utils/raidScheduler');
 
 const A = 'synthetic-guild-a';
 const B = 'synthetic-guild-b';
@@ -101,6 +102,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     adapterModule = await import('../../services/guildWriterAdapter');
     guided = await import('../../events/raidCreateFlow');
     welcome = await import('../../events/welcomeFlow');
+    scheduler = await import('../../utils/raidScheduler');
   });
 
   beforeEach(async () => {
@@ -509,5 +511,123 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     expect(deferred).toBe(true);
     expect(checks).toBe(1);
     expect(await snapshot()).toEqual(before);
+  });
+
+  describe('coordinated recurring scheduler', () => {
+    function syntheticClient(onSend: () => Promise<void> = async () => {}) {
+      const role = { id: 'synthetic-role-id', name: 'synthetic-role' };
+      const members = new Collection([[USER, {
+        user: { bot: false }, displayName: 'Synthetic Shared Player',
+        roles: { cache: new Collection([[role.id, role]]) },
+      }]]);
+      const guild = {
+        id: A, roles: { cache: new Collection([[role.id, role]]) },
+        members: { cache: members, fetch: async () => members, me: {} },
+      };
+      let sends = 0;
+      const channel = {
+        id: 'synthetic-channel', isTextBased: () => true,
+        permissionsFor: () => ({ has: () => true }),
+        send: async () => { ++sends; await onSend(); return { id: 'synthetic-posted-successor', delete: async () => {} }; },
+      };
+      return { client: { guilds: { fetch: async () => guild }, channels: { fetch: async () => channel } } as any,
+        sends: () => sends };
+    }
+
+    it('creates through actual advanceSeries once, inside one guild job, retaining every other-guild field', async () => {
+      const coordinator = removal.createGuildRemovalDraft();
+      const token = (await coordinator.join(payload()))!;
+      // A second due guild must be excluded at SELECT, not merely at dispatch.
+      await db.raid.update({ where: { id: 'raid-other' }, data: { recurrenceRule: 'weekly' } });
+      const beforeOther = await retainedSnapshot();
+      const fake = syntheticClient();
+      await scheduler.processRecurringSeries(fake.client, { coordinator, token });
+      const child = await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } });
+      expect(child).toMatchObject({ guildId: A, messageId: 'synthetic-posted-successor' });
+      expect(await db.raidAttendance.count({ where: { raidId: child!.id, guildId: A } })).toBe(1);
+      expect(fake.sends()).toBe(1);
+      expect(await retainedSnapshot()).toEqual(beforeOther);
+      const once = await snapshot();
+      await scheduler.processRecurringSeries(fake.client, { coordinator, token });
+      expect(await snapshot()).toEqual(once);
+      expect(fake.sends()).toBe(1);
+    });
+
+    it('awaits the actual message/write tail before rejoin and permits another guild job during the drain', async () => {
+      const coordinator = removal.createGuildRemovalDraft();
+      const token = (await coordinator.join(payload()))!;
+      const other = (await coordinator.join({ id: B, name: 'Synthetic Beta' }))!;
+      const entered = deferred(); const release = deferred();
+      const fake = syntheticClient(async () => { entered.release(); await release.promise; });
+      let passDone = false; let rejoined = false;
+      const pass = scheduler.processRecurringSeries(fake.client, { coordinator, token }).then(() => { passDone = true; });
+      await entered.promise;
+      const join = coordinator.join(payload()).then(() => { rejoined = true; });
+      expect(passDone).toBe(false); expect(rejoined).toBe(false);
+      await scheduler.processRecurringSeries({} as any, { coordinator, token: other });
+      expect(rejoined).toBe(false);
+      release.release(); await pass; await join;
+      expect(passDone).toBe(true); expect(rejoined).toBe(true);
+      expect(await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } })).toMatchObject({ messageId: 'synthetic-posted-successor' });
+      const beforeLate = await snapshot();
+      await scheduler.processRecurringSeries({} as any, { coordinator, token });
+      expect(await snapshot()).toEqual(beforeLate);
+    });
+
+    it('rejects an old selected generation after delete/rejoin without resurrecting any source or guild data', async () => {
+      const coordinator = removal.createGuildRemovalDraft();
+      const old = (await coordinator.join(payload()))!;
+      await coordinator.remove(payload(), old); // Synthetic test cluster only.
+      const fresh = (await coordinator.join(payload()))!;
+      const before = await snapshot();
+      await scheduler.processRecurringSeries({} as any, { coordinator, token: old });
+      expect(await snapshot()).toEqual(before);
+      expect(await db.raid.count({ where: { guildId: A } })).toBe(0);
+      await scheduler.processRecurringSeries({} as any, { coordinator, token: fresh });
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it('rolls back actual successor creation and quota consumption on an injected transaction failure', async () => {
+      const coordinator = removal.createGuildRemovalDraft();
+      const token = (await coordinator.join(payload()))!;
+      await db.guild.update({ where: { id: A }, data: {
+        premiumTier: 'FREE', premiumExpiresAt: null, weeklyRaidCount: 2, weeklyRaidCountResetAt: new Date(),
+      } });
+      const guildBefore = await db.guild.findUnique({ where: { id: A } });
+      const sourceBefore = await db.raid.findUnique({ where: { id: 'raid-child' } });
+      const otherBefore = await retainedSnapshot();
+      await db.$executeRawUnsafe(`CREATE FUNCTION fail_scheduler_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic scheduler insert failure'; END $$`);
+      await db.$executeRawUnsafe(`CREATE TRIGGER fail_scheduler_insert BEFORE INSERT ON "Raid" FOR EACH ROW EXECUTE FUNCTION fail_scheduler_insert()`);
+      const fake = syntheticClient();
+      try {
+        await scheduler.processRecurringSeries(fake.client, { coordinator, token });
+      } finally {
+        await db.$executeRawUnsafe(`DROP TRIGGER fail_scheduler_insert ON "Raid"`);
+        await db.$executeRawUnsafe(`DROP FUNCTION fail_scheduler_insert()`);
+      }
+      expect(await db.guild.findUnique({ where: { id: A } })).toEqual(guildBefore);
+      expect(await db.raid.findUnique({ where: { id: 'raid-child' } })).toEqual(sourceBefore);
+      expect(await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } })).toBeNull();
+      expect(await retainedSnapshot()).toEqual(otherBefore);
+      expect(fake.sends()).toBe(0);
+      // Existing preference upserts precede that transaction; no whole-job rollback claim.
+      expect(coordinator.isCurrent(token)).toBe(true);
+      await scheduler.processRecurringSeries(fake.client, { coordinator, token });
+      expect(fake.sends()).toBe(1); // Failure releases the awaited root, without deadlock.
+    });
+
+    it('does not fall back to a bulk scan when join admission failed', async () => {
+      const coordinator = removal.createGuildRemovalDraft();
+      await db.$executeRawUnsafe(`CREATE FUNCTION fail_scheduler_join() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic join failure'; END $$`);
+      await db.$executeRawUnsafe(`CREATE TRIGGER fail_scheduler_join BEFORE UPDATE ON "Guild" FOR EACH ROW EXECUTE FUNCTION fail_scheduler_join()`);
+      try { await expect(coordinator.join(payload())).rejects.toThrow(); }
+      finally {
+        await db.$executeRawUnsafe(`DROP TRIGGER fail_scheduler_join ON "Guild"`);
+        await db.$executeRawUnsafe(`DROP FUNCTION fail_scheduler_join()`);
+      }
+      const before = await snapshot();
+      await scheduler.processRecurringSeries({} as any, { coordinator, token: coordinator.capture(A) });
+      expect(await snapshot()).toEqual(before);
+    });
   });
 });

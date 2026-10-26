@@ -164,12 +164,40 @@ No production entry point has been connected to the new adapter in this phase.
 | Entitlement events/startup sync | `src/events/entitlementHandler.ts:5`, `src/services/entitlementService.ts:316` | Existing guild_id provider mapping and startup order inspected/tests passed. Complete per-guild event/REST job remains unwrapped |
 | Trial grant/backfill | `src/services/entitlementService.ts:254`, `src/scripts/backfillTrials.ts:34` | Authoritative leftAt predicate added and real race scenario tested. Candidate selection and full per-guild backfill job still need admission/fencing |
 | Premium reaper | `src/services/entitlementService.ts:388`, `src/utils/raidScheduler.ts:103` | Bulk job still unwrapped; split/group per guild before one-coordinator integration |
-| Scheduler close/recurrence/nudge/expiry | `src/utils/raidScheduler.ts:118`, `src/utils/raidScheduler.ts:237`, `src/utils/raidScheduler.ts:276`, `src/utils/raidScheduler.ts:305` | Focused scheduler/recurrence tests and real deleted-source rejection pass. Entire per-guild passes, including target resolution/network work, remain unwrapped |
+| Scheduler close/recurrence/nudge/expiry | `src/utils/raidScheduler.ts:118`, `src/utils/raidScheduler.ts:237`, `src/utils/raidScheduler.ts:276`, `src/utils/raidScheduler.ts:305` | Focused scheduler/recurrence tests and real deleted-source rejection pass. Optional concrete per-guild recurring pass now wraps SELECT through complete advanceSeries; live timer, close/nudge/expiry remain unwrapped |
 
 The completed phase supplies the coordinator/adapter capability, concrete config,
 authorization and trial-race fixes, and real-data-store proofs. The next phase is
 explicit runtime entry-point and UI-issuance integration; it must not be declared
 complete merely because `writer(token, callback)` can accept an arbitrary callback.
+
+## Bounded recurring-scheduler preparation (October 26)
+
+`processRecurringSeries(client, { coordinator, token })` now executes the actual
+per-guild SELECT and complete awaited `advanceSeries` path within the supplied
+coordinator root. The token is the original capability from a positively observed
+join, supplied before selection; this function never captures or refreshes it.
+The WHERE includes that token's guildId. Revoked admission returns without a query,
+and admission/selection failure never falls back to the existing bulk path.
+
+This is a concrete scheduler integration seam, **not registered by the live timer**.
+`startRaidScheduler` still calls the existing unscoped signature. Neither runtime
+join/departure handling nor legacy onboarding changes, and deletion stays off.
+Each future caller must dispatch one such job per guild using the same coordinator;
+close, nudge, expiry and premium-reaper passes remain outside this seam.
+
+The whole awaited job includes Discord target/member resolution, preference writes,
+the existing successor/quota transaction, attendance creation, and message posting
+plus its final messageId write/cleanup. It is not one database transaction: earlier
+preference updates and later attendance/Discord work cannot be undone by rolling
+back successor creation. The real-DB failure test covers the existing transaction's
+successor and weekly-quota rollback only. A committed deletion cannot be reversed
+by code rollback.
+
+Outbound recurrence/resume buttons still carry their existing raw IDs. Their original
+issuance binding, callback reauthorization and prompt acknowledgement remain activation
+blockers; this background seam neither authorizes a user nor claims UI fencing.
+No new trial, billing or retention policy is selected.
 
 ## Decisions and work required before activation
 

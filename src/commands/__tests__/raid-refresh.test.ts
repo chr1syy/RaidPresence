@@ -1,3 +1,5 @@
+import { createGuildJobCoordinator, readGuildCustomId } from '../../services/guildJobs';
+import { runGuildInteraction } from '../../events/guildInteraction';
 /**
  * Regression test suite for handleRefreshRaid() function
  * Tests: permission checks, raid lookup, guild isolation,
@@ -257,7 +259,13 @@ describe('handleRefreshRaid()', () => {
 
     (prisma.userPreference.findMany as jest.Mock).mockResolvedValue([]);
 
-    await command.execute(mockInteraction);
+    const jobs = createGuildJobCoordinator(); const token = (await jobs.observe('guild-123', async () => {}))!;
+    mockInteraction.guildId = 'guild-123'; mockInteraction.user = { id: 'fresh-leader' }; mockInteraction.locale = 'en'; mockInteraction.commandName = 'raid';
+    mockInteraction.isAutocomplete = () => false;
+    mockInteraction.guild.members.fetch.mockImplementation(async (arg: unknown) => arg ? { permissions: { has: () => true } } : undefined);
+    await runGuildInteraction({ jobs } as any, mockInteraction, i => command.execute(i as any));
+    const rows = mockMessage.edit.mock.calls[0][0].components;
+    expect(readGuildCustomId(rows[0].toJSON().components[0].custom_id)).toEqual({ token, customId: 'raid_optin_raid-123' });
 
     // No new members to add
     expect(prisma.raidAttendance.createMany).not.toHaveBeenCalled();

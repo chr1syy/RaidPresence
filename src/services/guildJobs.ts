@@ -1,15 +1,16 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
-const outputContext = new AsyncLocalStorage<{ token: GuildJobToken; check: () => void; checkLifetime: () => void }>();
+const outputContext = new AsyncLocalStorage<{ token: GuildJobToken; check: () => void; checkLifetime: () => void; maintenance?: boolean }>();
 const cleanupContext = new AsyncLocalStorage<boolean>();
 
 export function currentGuildJobToken(): GuildJobToken | undefined {
-  const running = outputContext.getStore(); running?.check(); return running?.token;
+  const running = outputContext.getStore(); if (running?.maintenance) return undefined; running?.check(); return running?.token;
 }
 
 export function assertGuildJobActive(): void {
   const running = outputContext.getStore();
-  if (cleanupContext.getStore()) running?.checkLifetime(); else running?.check();
+  if (cleanupContext.getStore() || running?.maintenance) running?.checkLifetime(); else running?.check();
 }
 
 /** Only compensation for a row created by this still-running job. Rejoin remains queued.
@@ -33,6 +34,39 @@ export async function guildOutput<T>(operation: () => Promise<T>, cleanupCreated
   return result;
 }
 
+/** Process-only issuance provenance: restart requires an authorized refresh/reissue.
+ * The MAC binds the complete raw ID, so a public button cannot authorize a forged modal.
+ * No Discord/user data or persistent installation/retention record is introduced.
+ */
+const issuedUI = new WeakMap<GuildJobToken, { nonce: string; key: Buffer }>();
+const uiTokens = new Map<string, GuildJobToken>();
+function uiMac(key: Buffer, raw: string) { return createHmac('sha256', key).update(raw).digest('base64url').slice(0, 11); }
+export function bindGuildCustomId(raw: string): string {
+  const token = currentGuildJobToken();
+  if (!token) return raw; // Uncoordinated builders cannot manufacture admitted callbacks.
+  let binding = issuedUI.get(token);
+  if (!binding) {
+    binding = { nonce: randomBytes(8).toString('base64url'), key: randomBytes(32) };
+    issuedUI.set(token, binding); uiTokens.set(binding.nonce, token);
+  }
+  const id = `gj:${binding.nonce}:${uiMac(binding.key, raw)}:${raw}`;
+  if (id.length > 100) throw new Error('Guild-bound custom ID exceeds Discord limit');
+  return id;
+}
+export function readGuildCustomId(id: string): { token: GuildJobToken; customId: string } | undefined {
+  const match = /^gj:([^:]+):([^:]+):(.+)$/.exec(id);
+  if (!match) return undefined;
+  const token = uiTokens.get(match[1]); const binding = token && issuedUI.get(token);
+  if (!token || !binding) return undefined;
+  const expected = Buffer.from(uiMac(binding.key, match[3])); const actual = Buffer.from(match[2]);
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return undefined;
+  return { token, customId: match[3] };
+}
+function revokeUI(token: GuildJobToken) {
+  const binding = issuedUI.get(token); if (binding) uiTokens.delete(binding.nonce);
+  issuedUI.delete(token);
+}
+
 export interface GuildJobToken {
   readonly guildId: string;
   readonly generation: number;
@@ -47,7 +81,7 @@ interface Work {
 /** One process-local awaited boundary. No database or destructive operations. */
 export function createGuildJobCoordinator(options: { invalidateGuild?: (guildId: string) => void } = {}) {
   const work = new Map<string, Work>();
-  const context = new AsyncLocalStorage<{ token: GuildJobToken; active: boolean }>();
+  const context = new AsyncLocalStorage<{ token: GuildJobToken; active: boolean; maintenance?: boolean }>();
   function state(guildId: string): Work {
     let entry = work.get(guildId);
     if (!entry) {
@@ -63,6 +97,7 @@ export function createGuildJobCoordinator(options: { invalidateGuild?: (guildId:
     return result;
   }
   function advance(entry: Work) {
+    revokeUI(entry.token);
     entry.token = Object.freeze({ guildId: entry.token.guildId, generation: entry.token.generation + 1 });
     return entry.token;
   }
@@ -78,7 +113,7 @@ export function createGuildJobCoordinator(options: { invalidateGuild?: (guildId:
   function runWithToken<T>(token: GuildJobToken, operation: () => Promise<T>): Promise<T | undefined> {
     const parent = context.getStore();
     if (parent) {
-      if (!parent.active || parent.token !== token) return Promise.reject(new Error('Guild job context expired or belongs to another generation'));
+      if (parent.maintenance || !parent.active || parent.token !== token) return Promise.reject(new Error('Guild job context expired or belongs to another generation'));
       return operation();
     }
     const entry = work.get(token.guildId);
@@ -89,6 +124,21 @@ export function createGuildJobCoordinator(options: { invalidateGuild?: (guildId:
     capture(guildId: string) { return state(guildId).token; },
     snapshot() { return [...work.values()].filter(e => e.accepting).map(e => e.token); },
     owns, isCurrent, runWithToken,
+    /** Retained-row maintenance shares the drain, but never admits an installation or UI.
+     * Only idempotent, predicate-checked maintenance may use this boundary.
+     */
+    runMaintenance<T>(guildId: string, operation: () => Promise<T>): Promise<T> {
+      if (context.getStore()) return Promise.reject(new Error('Maintenance cannot nest in a guild job'));
+      const entry = state(guildId);
+      return enqueue(entry, async () => {
+        const running = { token: entry.token, active: true, maintenance: true };
+        const checkLifetime = () => { if (!running.active) throw new Error('Maintenance context expired'); };
+        try { return await context.run(running, () => outputContext.run({ token: entry.token, maintenance: true,
+          checkLifetime, check: () => { throw new Error('Maintenance cannot publish guild output'); },
+        }, async () => await operation())); }
+        finally { running.active = false; }
+      });
+    },
     current: () => context.getStore(),
     assertOutput() {
       const running = context.getStore();

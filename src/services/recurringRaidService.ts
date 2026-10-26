@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from './guildJobs';
 import { guildOutput, guildJobCleanup } from './guildJobs';
 import {
   ActionRowBuilder,
@@ -394,7 +395,7 @@ export async function pauseSeries(
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`raid_resume_${raid.id}`)
+        .setCustomId(bindGuildCustomId(`raid_resume_${raid.id}`))
         .setLabel(t(notice.language, 'recurringResumeButton'))
         .setStyle(ButtonStyle.Primary),
     );
@@ -499,7 +500,7 @@ export async function sendPostRaidNudge(client: Client, raid: Raid): Promise<boo
     if (channel?.isTextBased?.() && typeof channel.send === 'function') {
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`raid_nudge_${raid.id}`)
+          .setCustomId(bindGuildCustomId(`raid_nudge_${raid.id}`))
           .setLabel(t(language, 'nudgeButton'))
           .setStyle(ButtonStyle.Success),
       );

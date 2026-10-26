@@ -101,9 +101,9 @@ it('keeps showModal as the first response and never restamps a legacy callback',
   input.showModal = jest.fn();
   await runGuildInteraction(runtime, input, async i => { await guildOutput(async () => (i as any).showModal({})); });
   expect(input.showModal).toHaveBeenCalledTimes(1); expect(input.deferReply).not.toHaveBeenCalled();
-  const raw: any = { isChatInputCommand: () => false, isAutocomplete: () => false };
-  const dispatch = jest.fn(async () => { expect(runtime.jobs.current()).toBeUndefined(); });
-  await runGuildInteraction(runtime, raw, dispatch); expect(dispatch).toHaveBeenCalledWith(raw);
+  const raw: any = { customId: 'raid_optin_old', guildId: guild().id, locale: 'en', replied: false, deferred: false, reply: jest.fn(), isChatInputCommand: () => false, isAutocomplete: () => false };
+  const dispatch = jest.fn();
+  await runGuildInteraction(runtime, raw, dispatch); expect(dispatch).not.toHaveBeenCalled(); expect(raw.reply).toHaveBeenCalled();
 });
 
 it.each([true, false])('compensates only newly sent messages, never pre-existing edits (created=%s)', async created => {

@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from '../services/guildJobs';
 import { guildOutput } from '../services/guildJobs';
 import {
   StringSelectMenuInteraction,
@@ -35,7 +36,7 @@ async function handleClassSelect(interaction: StringSelectMenuInteraction, raidI
 
   // Create spec selection menu
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(`spec_select_${raidId}_${selectedClass}`)
+    .setCustomId(bindGuildCustomId(`spec_select_${raidId}_${selectedClass}`))
     .setPlaceholder('Select your specialization')
     .addOptions(
       specs.map((spec) => ({

@@ -87,20 +87,18 @@ export async function runRaidSchedulerPass(client: Client, runtime?: GuildRuntim
  * nothing beyond staying stale until the next one.
  */
 export function startPremiumReaper(runtime?: GuildRuntime): void {
-  const runReaperPass = async () => {
-    try {
-      const tokens = runtime?.jobs.snapshot();
-      if (!runtime) await reapExpiredPremium();
-      else for (const token of tokens!) await runtime.jobs.runWithToken(token, () => reapExpiredPremium(token.guildId));
-    } catch (error) {
-      console.error('Error in expired-premium reaper pass:', error);
-    }
-  };
+  const runReaperPass = () => runPremiumReaperPass(runtime);
 
   void runReaperPass();
   setInterval(runReaperPass, PREMIUM_REAP_INTERVAL);
 
   console.log('✅ Premium reaper started - resetting expired premiumTier every 60 minutes');
+}
+
+/** Global retained-row coverage, serialized per guild without positive admission. */
+export async function runPremiumReaperPass(runtime?: GuildRuntime): Promise<void> {
+  try { await reapExpiredPremium(undefined, runtime?.jobs); }
+  catch (error) { console.error('Error in expired-premium reaper pass:', error); }
 }
 
 export async function checkAndCloseExpiredRaids(client: Client, guildId?: string) {

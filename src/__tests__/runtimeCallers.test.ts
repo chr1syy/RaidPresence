@@ -48,7 +48,7 @@ it('wires actual startup, a real timer tick and every scheduler SELECT to the sh
   for (const [input] of (prisma.raid.findMany as jest.Mock).mock.calls) expect(input.where.guildId).toBe(guild.id);
   const reaper = intervals.find(x => x.ms === 3600000 && x.callback.name === 'runReaperPass')!; expect(reaper).toBeDefined();
   (prisma.guild.findMany as jest.Mock).mockClear(); await reaper.callback();
-  expect(prisma.guild.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: guild.id }) }));
+  expect(prisma.guild.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ premiumTier: { not: 'FREE' } }) }));
 });
 
 it('runs the real config dispatcher, retains on GuildDelete, rejects a stale queued command and reopens retained history on GuildCreate', async () => {

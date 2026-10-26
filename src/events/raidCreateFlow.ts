@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from '../services/guildJobs';
 import { guildOutput, currentGuildJobToken, GuildJobToken } from '../services/guildJobs';
 /**
  * Guided `/raid create` flow: modal → role select → preview → confirm.
@@ -219,7 +220,7 @@ export async function startGuidedRaidCreate(
   });
 
   const modal = new ModalBuilder()
-    .setCustomId(`${MODAL_DETAILS}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${MODAL_DETAILS}:${draftId}`))
     .setTitle('Create a raid')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -300,7 +301,7 @@ export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): 
   draft.time = time;
 
   const select = new RoleSelectMenuBuilder()
-    .setCustomId(`${SELECT_ROLES}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${SELECT_ROLES}:${draftId}`))
     .setPlaceholder('Which roles are raiding?')
     .setMinValues(1)
     .setMaxValues(10);
@@ -378,17 +379,17 @@ async function showPreview(
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_CONFIRM}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_CONFIRM}:${draftId}`))
       .setLabel('Create raid')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_FIXTIME}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_FIXTIME}:${draftId}`))
       .setLabel('Fix time / timezone')
       .setStyle(ButtonStyle.Secondary),
     // Nothing to ping without roles, so the toggle is dead weight rather than a
     // control that flips a flag with no effect.
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_PING}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_PING}:${draftId}`))
       .setLabel(t(language, draft.pingRoles ? 'raidCreatePingOn' : 'raidCreatePingOff'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!hasRoles),
@@ -396,7 +397,7 @@ async function showPreview(
     // question — what happens *around* this raid — and because a series that could only be
     // started from the one-line command form would never be discovered.
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_RECUR}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_RECUR}:${draftId}`))
       .setLabel(t(language, draft.recurring ? 'recurringToggleOn' : 'recurringToggleOff'))
       .setStyle(ButtonStyle.Secondary)
   );
@@ -493,7 +494,7 @@ export async function handleFixTimeButton(interaction: ButtonInteraction): Promi
   const timezone = await guildTimezone(draft.guildId);
 
   const modal = new ModalBuilder()
-    .setCustomId(`${MODAL_FIXTIME}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${MODAL_FIXTIME}:${draftId}`))
     .setTitle('Fix time / timezone')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(

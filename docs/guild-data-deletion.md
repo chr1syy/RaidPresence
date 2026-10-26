@@ -159,14 +159,14 @@ it is not imported by the runtime. No flag can activate deletion.
 | Startup reconciliation | Per-row retaining marker work serialized; a positive concurrent join outranks a stale partial cache | Unobserved historical rows can still get the existing retaining leftAt detection mark; no purge |
 | Slash config/setup/raid/team/stats | `runGuildInteraction` around the actual existing dispatcher; original receipt token; force-fetched member; config/setup require current Administrator | Membership lookup bounded to 1200ms, no automatic pre-defer that would break a modal's first response |
 | Autocomplete | Same original token and entire lookup; busy/revoked lookup responds [] immediately | No hosted timing claim |
-| Guided create modal/select/buttons | Draft store captures original issuing token, actor and guild; real callbacks use that token and fresh raid-leader authorization | Existing ephemeral expiry across restart is unchanged; raw welcome entry points without issuance binding remain legacy |
-| Long-lived attendance / class/spec / optout callbacks | Existing authorization and actual handler behavior retained | **Not connected**: raw raid IDs have no installation generation; no late current-token stamp is substituted |
-| Welcome/DM setup / first raid / skip | Existing fresh Administrator checks for setup selects and prompt defer retained | **Not connected**: original long-lived welcome issuance has no generation or stored delivery identity |
-| Scheduler close / recurring / nudge / expiry | Production timer snapshots positive tokens before any SELECT; complete awaited per-guild root includes all four actual passes and target/member/message work | Existing outbound long-lived buttons still need the compatibility decision below |
+| Guided create modal/select/buttons | Draft store captures original issuing token, actor and guild; real callbacks use that token and fresh raid-leader authorization | Original signed publication token + stored actor/guild draft are both required; restart expires the draft, with fresh /raid create as reissue |
+| Long-lived attendance / class/spec / optout callbacks | Actionable custom IDs are signed at actual builder issuance with the original job token; full dispatcher runs under that token, fresh guild membership, and existing handler checks | Raw/old/restarted IDs reject; a current authorized /raid refresh reissues all open-raid buttons even without roster changes |
+| Welcome/DM setup / first raid / skip | Same issuance binding; DM resolves original guild and force-fetches current membership; setup/skip/select require Administrator, first-raid retains raid-leader check | Old DM messages cannot be revived; current Administrator /setup publishes fresh setup buttons in the server |
+| Scheduler close / recurring / nudge / expiry | Production timer snapshots positive tokens before any SELECT; complete awaited per-guild root includes all four actual passes and target/member/message work | Actual recurrence/nudge/resume builders issue the same signed original-generation IDs |
 | Entitlement startup | Snapshot before provider REST, apply each result with original guild token, failed/revoked sync blocks trial backfill | Provider billing mapping unchanged; no entitlement cancellation claim |
 | Entitlement events | Capture at event receipt, queue complete sync per guild | No distributed/provider event journal or proof of provider event creation generation |
 | Trial backfill | Startup passes shared runtime; snapshot before per-guild candidate selection + atomic grant | Standalone CLI has no bot's process-local generation; external writers remain outside this fence |
-| Premium reaper | Production hourly timer snapshots tokens; guild-scoped selection/update/cache invalidation inside root | Retained departed guilds are not admitted to this live hygiene pass; paid records excluded as before |
+| Premium reaper | Global expired/unpaid candidate selection; complete per-guild reread/update/cache invalidation in the same serialized maintenance queue | Includes departed/unobserved retained rows without observe/join or positive admission; existing paid/expiry predicates are rechecked at UPDATE |
 
 `database/client.ts` checks the active job before each ORM mutation, so a query or
 Discord lookup returning after revocation cannot initiate its next write. This is
@@ -184,23 +184,39 @@ must be awaited inside the compensation context; the real DB case covers this.
 Earlier preference writes and later attendance/Discord work remain separate from
 the existing successor/quota transaction. Code rollback cannot restore committed deletes.
 
-### Concrete architecture decision blocking long-lived UI
+### Audited refresh/reissue transition for existing UI
 
-`buildRaidButtonRows`, `buttonHandler`, `selectHandler`, `welcomeEmbed` and
-`welcomeFlow` currently publish/consume raw IDs containing raid/guild IDs but no
-original install epoch. Welcome delivery IDs are not persisted. Using an in-memory
-binding table as the sole live replacement would invalidate every existing raid
-button after restart, unlike their current normal behavior. Looking up the current
-epoch on callback receipt would accept stale pre-rejoin UI and violates fencing.
+Actual raid, welcome, class/spec, optout modal, guided and recurring UI builders now
+sign actionable IDs when invoked inside the original job. The MAC covers the full
+raw action ID; public button IDs cannot be modified into a forged modal/action.
+The process-only secret/token record is invalidated on generation advance. No
+schema, migration, durable user/installation store or new retention data is added.
+Raw IDs, prior-process IDs after restart and prior-installation IDs after rejoin
+fail closed before the actual handler. They receive only a transport-level ephemeral
+rejection, with no database write, interactive UI or guild-channel output.
 
-Before connecting these callers, choose and review either durable operational
-installation/issuance provenance with an explicit legacy-message transition, or
-an audited startup refresh/reissue strategy with an explicit contract for old
-raid and DM messages. This run adds neither a migration nor that larger compatibility
-mechanism and preserves existing raw handlers. The gap is technical and specific;
-it is not a blanket block on independent runtime wiring or an answered trial/retention
-question. Deletion must remain unregistered until this and all other activation gaps
-are independently reviewed.
+Existing open raid messages deliberately need a **current authorized `/raid refresh`**
+after restart or installation change. It reissues buttons even if the roster did not
+change, preserving the existing raid data and roster-refresh behavior. Current
+Administrator `/setup` reissues welcome/setup buttons; old owner DMs remain expired,
+and the refreshed setup lives in the server. Fresh `/raid create`, edit/open/unarchive
+and new scheduler publications issue current buttons through the same builders.
+There is no startup mass refresh and no current-generation stamping on callback receipt.
+This explicit compatibility transition replaces the earlier raw-handler fallback;
+it still needs independent review before release. Guided drafts keep their existing
+actor, guild and expiry checks in addition to the signed publication generation.
+
+The callback wrapper force-fetches membership within a 1200ms lookup budget and
+checks current setup Administrator / guided raid-leader authority. It never pre-defers
+an action that may open a modal. Busy admission rejects promptly rather than queueing
+past the acknowledgement window. Real Discord/network timing is not guaranteed by
+synthetic tests; already-started remote output cannot reliably be recalled.
+
+Maintenance is a separate mode on the same guild queue: it cannot publish output,
+issue an admitted token, or nest an installation writer. Its lifetime-guarded writes
+may finish before a concurrently queued rejoin initializes; only existing idempotent,
+predicate-checked expired-premium maintenance uses it. This is process-local ordering,
+not distributed fencing or a new deletion permission.
 
 ## Decisions and work required before activation
 
@@ -212,8 +228,9 @@ are independently reviewed.
    reattached before trial grant; deleting the local pointer does not cancel payment.
 2. **Complete the remaining UI writers.** Startup/GuildCreate, fresh commands,
    guided drafts, autocomplete and background runtime jobs now share the retaining
-   coordinator. Long-lived button/select/modal and DM welcome issuance still need
-   the compatibility decision and must use original provenance when connected.
+   coordinator. Long-lived button/select/modal and DM welcome issuance now use original
+   provenance with the explicit refresh/reissue transition above. Independently
+   review this transition and callback/publication coverage before release.
    Include the entire async job, not just its first query. Same-guild nested `run`
    now reuses the active root; cross-guild and lifecycle nesting is rejected. Keep
    acknowledgments within Discord deadlines. Remove/replace the existing departure handler as part
@@ -224,9 +241,9 @@ are independently reviewed.
    delayed old operation look new. Duplicate original objects/tokens replay their
    original result or failure; no deletion retry is scheduled over rejoin.
 3. **Draft/cache lifecycle.** Per-guild guided invalidation and issuance-bound
-   callback rejection are implemented in the inactive adapter. Wire issuance into
-   every UI publication path, route each callback through it, supply current
-   authorization, and handle rejection promptly. Existing unbound messages cannot
+   callback rejection are implemented in retaining runtime. Actual UI builders
+   sign issuance and the dispatcher supplies current authorization and prompt rejection.
+   The older generic deletion adapter remains inactive; it is not the live dispatcher. Existing unbound messages cannot
    be silently re-stamped on receipt. The adapter has no persistent binding store;
    after restart old bindings must be rejected and UI refreshed deliberately.
 4. **Deployment and failures.** The coordinator is for the currently documented
@@ -245,12 +262,11 @@ are independently reviewed.
    An offline-removal workflow needs
    explicit positive evidence and a separate reviewed change.
 
-The original config-resurrection finding is now fixed with actual command-path DB
-tests. Runtime writer integration remains incomplete: `index.ts`, maintenance loops,
-entitlement handlers and UI component publication have not been connected to the
-adapter. This PR remains an isolated draft, not a rollout-ready end-to-end deletion
-feature. There is no activation flag, runtime registration, destructive script or
-migration hidden in the patch.
+The original config-resurrection finding is fixed with actual command-path DB tests.
+Retaining runtime callers now use the shared primitive, signed publication/reauthorization
+and scoped maintenance. This is still a draft: independent review, remaining activation
+requirements and the unanswered trial/legacy decisions remain. There is no deletion
+activation flag, destructive runtime registration, purge script or new migration.
 
 ## Legacy cleanup preview and recovery limits
 

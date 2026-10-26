@@ -398,7 +398,7 @@ export async function syncEntitlementsOnStartup(client: Client, runtime?: GuildR
  *
  * Returns the number of guilds downgraded.
  */
-export async function reapExpiredPremium(guildId?: string): Promise<number> {
+export async function reapExpiredPremium(guildId?: string, jobs?: import('./guildRuntime').GuildRuntime['jobs']): Promise<number> {
   const now = new Date();
 
   const where = {
@@ -415,6 +415,15 @@ export async function reapExpiredPremium(guildId?: string): Promise<number> {
   const expired = await prisma.guild.findMany({ where, select: { id: true } });
 
   if (expired.length === 0) return 0;
+
+  if (jobs) {
+    let count = 0;
+    // The global candidate query includes retained departed/unobserved guilds. The
+    // complete per-guild reread/update/cache invalidation shares its lifecycle drain.
+    // It does not observe/join or create an accepting installation generation.
+    for (const guild of expired) count += await jobs.runMaintenance(guild.id, () => reapExpiredPremium(guild.id));
+    return count;
+  }
 
   const { count } = await prisma.guild.updateMany({
     where: { ...where, id: { in: expired.map((guild) => guild.id) } },

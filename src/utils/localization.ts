@@ -580,7 +580,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupIntro: '**Which timezone are your raid times in?**\nPick it below — daylight saving is handled automatically.',
         welcomeSetupTimezonePlaceholder: 'Select your timezone',
         welcomeSetupAdminRequired: '❌ Current server Administrator permission is required to change setup settings. Reopen setup after access is restored.',
-    guildJobUnavailable: 'This server is busy or unavailable. Please try again.',
+    guildJobUnavailable: 'This action is busy or expired. Try again, or ask a raid leader to run /raid refresh; administrators can run /setup to reopen setup.',
         welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.',
         welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
 
@@ -904,7 +904,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeSetupIntro: '**In welcher Zeitzone sind eure Raid-Zeiten?**\nUnten auswählen – die Sommerzeit wird automatisch berücksichtigt.',
         welcomeSetupTimezonePlaceholder: 'Zeitzone auswählen',
         welcomeSetupAdminRequired: '❌ Zum Ändern der Einrichtung ist die aktuelle Administrator-Berechtigung auf dem Server erforderlich. Öffne die Einrichtung nach Wiederherstellung des Zugriffs erneut.',
-    guildJobUnavailable: 'Dieser Server ist beschäftigt oder nicht verfügbar. Bitte versuche es erneut.',
+    guildJobUnavailable: 'Diese Aktion ist beschäftigt oder abgelaufen. Versuche es erneut oder bitte einen Raidleiter um /raid refresh; Administratoren können das Setup mit /setup neu öffnen.',
         welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.',
         welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
 

@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from '../services/guildJobs';
 import { guildOutput } from '../services/guildJobs';
 /**
  * Handlers for the two welcome-message buttons (issue #39) and the setup chain
@@ -181,7 +182,7 @@ function skipRow(
 ): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${WELCOME_BUTTON_SKIP}:${guildId}:${step}`)
+      .setCustomId(bindGuildCustomId(`${WELCOME_BUTTON_SKIP}:${guildId}:${step}`))
       .setLabel(t(language, 'welcomeSetupSkip'))
       .setStyle(ButtonStyle.Secondary)
   );
@@ -225,7 +226,7 @@ async function handleSetupButton(interaction: ButtonInteraction): Promise<void> 
   const language = await guildLanguage(guildId);
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_TIMEZONE}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_TIMEZONE}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupTimezonePlaceholder'))
     .addOptions(
       COMMON_TIMEZONES.slice(0, TIMEZONE_CHOICE_LIMIT).map((zone) => ({
@@ -293,7 +294,7 @@ async function showLanguageStep(
   const current = language === 'de' ? 'de' : 'en';
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_LANGUAGE}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_LANGUAGE}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupLanguagePlaceholder'))
     .addOptions(
       { label: 'English', value: 'en', default: current === 'en' },
@@ -357,7 +358,7 @@ async function showLeaderRolesStep(
   }
 
   const select = new RoleSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_LEADER_ROLES}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_LEADER_ROLES}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupLeaderRolesPlaceholder'))
     // Zero is allowed so an empty submit means the same as [Skip]: keep the default.
     .setMinValues(0)

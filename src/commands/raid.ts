@@ -2426,7 +2426,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   }
 
   // Update Discord message with refreshed embed
-  if (raid.messageId && (newMembers.length > 0 || membersToRemove.length > 0)) {
+  if (raid.messageId) {
     try {
       const channel = await interaction.client.channels.fetch(raid.channelId);
       if (channel?.isTextBased()) {
@@ -2434,6 +2434,7 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
         const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
         await guildOutput(async () => message.edit({
           embeds: [updatedEmbed],
+          components: raid.status === 'open' ? buildRaidButtonRows(raid.id, raid.guild.language || 'en') : [],
         }));
       }
     } catch (error) {

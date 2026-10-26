@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from '../services/guildJobs';
 import { guildOutput } from '../services/guildJobs';
 import {
   ButtonInteraction,
@@ -70,7 +71,7 @@ async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
   if (canUseReason) {
     // Premium: show modal with opt-out reason field
     const modal = new ModalBuilder()
-      .setCustomId(`optout_reason_${raidId}_${interaction.user.id}`)
+      .setCustomId(bindGuildCustomId(`optout_reason_${raidId}_${interaction.user.id}`))
       .setTitle('Opt-Out Reason')
       .addComponents(
         new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -316,7 +317,7 @@ async function handleClassSelection(interaction: ButtonInteraction, raidId: stri
   const classList = getClassList();
 
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(`class_select_${raidId}`)
+    .setCustomId(bindGuildCustomId(`class_select_${raidId}`))
     .setPlaceholder('Select your class')
     .addOptions(
       classList.map((className) => ({
@@ -389,7 +390,7 @@ async function handleNudgeClick(interaction: ButtonInteraction, raidId: string) 
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`raid_series_${result.raidId}`)
+      .setCustomId(bindGuildCustomId(`raid_series_${result.raidId}`))
       .setLabel(t(language, 'nudgeMakeSeriesButton'))
       .setStyle(ButtonStyle.Primary),
   );

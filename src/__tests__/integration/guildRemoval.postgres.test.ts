@@ -751,7 +751,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       expect(result.granted).toBe(1); expect(await retainedSnapshot()).toEqual(other);
       await db.guild.update({ where: { id: A }, data: { premiumExpiresAt: new Date('2026-01-01Z') } });
       const interval = jest.spyOn(global, 'setInterval').mockReturnValue(0 as any);
-      try { scheduler.startPremiumReaper(runtime); await runtime.jobs.runWithToken(token, async () => {}); }
+      try { await scheduler.runPremiumReaperPass(runtime); }
       finally { interval.mockRestore(); }
       expect((await db.guild.findUnique({ where: { id: A } }))!.premiumTier).toBe('FREE');
       const handlers = new Map<string, Function>();
@@ -778,14 +778,15 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       const { input, revokeAdmin } = inputFor(); input.commandName = 'raid'; input.channel = { id: 'synthetic-channel' };
       let modalId = ''; input.showModal = async (modal: any) => { modalId = modal.toJSON().custom_id; };
       await interactionModule.runGuildInteraction(runtime, input, i => guided.startGuidedRaidCreate(i as any, { date: null, time: null, title: null, roles: null, pingRoles: false, teamOption: null }));
-      expect(guided.getFlowJobToken(modalId, USER, A)).toBe(token);
+      const rawModalId = jobModule.readGuildCustomId(modalId)!.customId;
+      expect(guided.getFlowJobToken(rawModalId, USER, A)).toBe(token);
       const callback: any = { ...input, customId: modalId, isChatInputCommand: () => false, isAutocomplete: () => false,
         fields: { getTextInputValue: (key: string) => ({ title: 'Synthetic guided', date: '2099-01-01', time: '19:00' } as Record<string, string>)[key] },
         reply: async () => { callback.replied = true; },
       };
       await interactionModule.runGuildInteraction(runtime, callback, i => guided.routeFlowModal(i as any));
       expect(callback.replied).toBe(true);
-      callback.customId = `rcflow-fixtime-modal:${modalId.split(':')[1]}`;
+      callback.customId = (await runtime.jobs.runWithToken(token, async () => jobModule.bindGuildCustomId(`rcflow-fixtime-modal:${rawModalId.split(':')[1]}`)))!;
       callback.replied = false;
       callback.isModalSubmit = () => true;
       callback.fields.getTextInputValue = (key: string) => ({ date: '2099-01-01', time: '19:00', timezone: 'UTC' } as Record<string, string>)[key];
@@ -807,4 +808,87 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       expect(await db.raid.count()).toBe(6);
     });
   });
+  describe('review fixes', () => {
+    it('covers departed, unobserved and active retained rows through the actual reaper without admitting inactive installations', async () => {
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload();
+      await runtime.join(original); await runtime.depart(original);
+      const active = { id: 'synthetic-active', name: 'Active' }; const token = (await runtime.join(active))!;
+      await db.guild.createMany({ data: [
+        { id: 'synthetic-paid', name: 'Paid', premiumTier: 'PREMIUM', entitlementId: 'paid', premiumExpiresAt: new Date('2020-01-01Z') },
+        { id: 'synthetic-future', name: 'Future', premiumTier: 'PREMIUM', premiumExpiresAt: new Date('2099-01-01Z') },
+      ] });
+      await db.guild.updateMany({ where: { id: { in: [A, B, active.id] } }, data: { premiumTier: 'PREMIUM', premiumExpiresAt: new Date('2020-01-01Z'), entitlementId: null } });
+      const before = await snapshot(); const admission = runtime.jobs.snapshot();
+      expect(admission).toEqual([token]);
+      await scheduler.runPremiumReaperPass(runtime);
+      for (const id of [A, B, active.id]) expect((await db.guild.findUnique({ where: { id } }))!.premiumTier).toBe('FREE');
+      for (const id of ['synthetic-paid', 'synthetic-future']) expect((await db.guild.findUnique({ where: { id } }))!.premiumTier).toBe('PREMIUM');
+      expect(runtime.jobs.snapshot()).toEqual(admission);
+      expect(runtime.jobs.isCurrent(runtime.jobs.capture(A))).toBe(false);
+      expect(runtime.jobs.isCurrent(runtime.jobs.capture(B))).toBe(false);
+      const after = await snapshot();
+      expect(after.guilds.map(({ premiumTier, updatedAt, ...row }) => row)).toEqual(before.guilds.map(({ premiumTier, updatedAt, ...row }) => row));
+      expect({ ...after, guilds: [] }).toEqual({ ...before, guilds: [] });
+      for (const id of ['synthetic-paid', 'synthetic-future']) expect(after.guilds.find(g => g.id === id)).toEqual(before.guilds.find(g => g.id === id));
+    });
+
+    it('drains actual inactive-row maintenance before rejoin initialization and preserves paid changes against stale candidates', async () => {
+      const runtime = runtimeModule.createGuildRuntime();
+      await lifecycle.markGuildDeparted(payload());
+      await db.guild.update({ where: { id: A }, data: { premiumTier: 'PREMIUM', entitlementId: null, premiumExpiresAt: new Date('2020-01-01Z') } });
+      const entered = deferred(); const release = deferred(); let block = true;
+      db.$use(async (params, next) => {
+        if (block && params.model === 'Guild' && params.action === 'updateMany' && params.args?.data?.premiumTier === 'FREE' && params.args?.where?.id?.in?.includes(A)) {
+          block = false; entered.release(); await release.promise;
+        }
+        return next(params);
+      });
+      const reaping = scheduler.runPremiumReaperPass(runtime); await entered.promise;
+      let initialized = false;
+      const joining = runtime.join(payload(), async () => {
+        initialized = true;
+        await db.guild.update({ where: { id: A }, data: { premiumTier: 'PREMIUM', entitlementId: 'new-paid', premiumExpiresAt: null } });
+      });
+      expect(initialized).toBe(false);
+      // A provider/external writer can change a row while this statement waits;
+      // the existing reaper predicate must be rechecked by the actual UPDATE.
+      await db.guild.update({ where: { id: A }, data: { entitlementId: 'paid-before-update' } });
+      release.release(); await reaping; await joining;
+      expect(initialized).toBe(true);
+      expect(await db.guild.findUnique({ where: { id: A } })).toMatchObject({ premiumTier: 'PREMIUM', entitlementId: 'new-paid', leftAt: null });
+      expect(await db.raid.count({ where: { guildId: A } })).toBe(5);
+    });
+
+    it('executes real attendance and optout-modal writes only from published IDs, and rejects their prior-installation callbacks', async () => {
+      const { buildRaidButtonRows } = await import('../../utils/raidComponents');
+      const { handleButton, handleModalSubmit } = await import('../../events/buttonHandler');
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); const token = (await runtime.join(original))!;
+      const rows = (await runtime.jobs.runWithToken(token, async () => buildRaidButtonRows('raid-open', 'en')))!;
+      const ids = rows[0].toJSON().components.map(c => (c as any).custom_id);
+      const member: any = { guild: { id: A }, displayName: 'Synthetic Shared Player', permissions: { has: () => true }, roles: { cache: new Collection() } };
+      const guild: any = { id: A, members: { fetch: async () => member } };
+      function input(customId: string): any {
+        const i: any = { customId, guildId: A, guild, message: { edit: async () => {} }, user: { id: USER }, locale: 'en', client: { channels: { fetch: async () => null } },
+          isChatInputCommand: () => false, isAutocomplete: () => false, replied: false, deferred: false,
+          reply: async () => { i.replied = true; }, editReply: async () => {},
+          deferReply: async () => { i.deferred = true; },
+        }; return i;
+      }
+      await db.raidAttendance.update({ where: { raidId_userId: { raidId: 'raid-open', userId: USER } }, data: { status: 'opted_out' } });
+      const attending = input(ids[0]); await interactionModule.runGuildInteraction(runtime, attending, i => handleButton(i as any));
+      expect((await db.raidAttendance.findUnique({ where: { raidId_userId: { raidId: 'raid-open', userId: USER } } }))!.status).toBe('attending');
+      const optout = input(ids[2]); let modalId = '';
+      optout.showModal = async (modal: any) => { modalId = modal.toJSON().custom_id; };
+      await interactionModule.runGuildInteraction(runtime, optout, i => handleButton(i as any));
+      expect(jobModule.readGuildCustomId(modalId)?.token).toBe(token); expect(optout.deferred).toBe(false);
+      const modal = input(modalId); modal.fields = { getTextInputValue: () => 'Synthetic reason' };
+      await interactionModule.runGuildInteraction(runtime, modal, i => handleModalSubmit(i as any));
+      expect(await db.raidAttendance.findUnique({ where: { raidId_userId: { raidId: 'raid-open', userId: USER } } })).toMatchObject({ status: 'opted_out', optoutReason: 'Synthetic reason' });
+      await runtime.depart(original); await runtime.join(payload()); const before = await snapshot();
+      await interactionModule.runGuildInteraction(runtime, input(ids[0]), i => handleButton(i as any));
+      await interactionModule.runGuildInteraction(runtime, input('raid_optin_raid-open'), i => handleButton(i as any));
+      expect(await snapshot()).toEqual(before);
+    });
+  });
+
 });

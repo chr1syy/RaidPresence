@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -130,10 +131,10 @@ export function formatLeaderRoles(raw: string | null): string {
 
 async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -144,9 +145,9 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Server configuration not found. Please try again.',
-    });
+    }));
     return;
   }
 
@@ -191,7 +192,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .setTimestamp();
 
   const hint = await freeTierHint(interaction.guildId, guildData.language || 'en');
-  await interaction.editReply({ embeds: [embed], content: hint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: hint || undefined }));
 }
 
 /**
@@ -213,22 +214,18 @@ export function cleanLeaderRoles(input: string): string {
  * The single write path for `Guild.raidLeaderRoles`.
  *
  * Shared with the welcome setup chain (#48) so the column has exactly one writer;
- * the welcome flow can be triggered from a DM, where the guild name is only
- * available from the client cache, hence the explicit `guildName` parameter.
+ * the welcome flow can also be triggered from a DM. Only the lifecycle may create
+ * Guild rows; a late config callback must never recreate a removed installation.
+ * guildName remains in the signature for existing welcome callers.
  */
 export async function setLeaderRoles(
   guildId: string,
   guildName: string,
   cleanedRoles: string
 ): Promise<void> {
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: guildId },
-    update: { raidLeaderRoles: cleanedRoles },
-    create: {
-      id: guildId,
-      name: guildName,
-      raidLeaderRoles: cleanedRoles,
-    },
+    data: { raidLeaderRoles: cleanedRoles },
   });
 }
 
@@ -238,24 +235,18 @@ export async function setLanguage(
   guildName: string,
   language: 'en' | 'de'
 ): Promise<void> {
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: guildId },
-    update: { language },
-    create: {
-      id: guildId,
-      name: guildName,
-      raidLeaderRoles: '',
-      language,
-    },
+    data: { language },
   });
 }
 
 async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -265,25 +256,25 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   const cleanedRoles = cleanLeaderRoles(roles);
 
   if (!cleanedRoles) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid roles format. Please provide role names or IDs separated by commas.',
-    });
+    }));
     return;
   }
 
   await setLeaderRoles(interaction.guild.id, interaction.guild.name, cleanedRoles);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid leader roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles can now create and manage raids.`,
-  });
+  }));
 }
 
 async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -292,26 +283,26 @@ async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
   const language = interaction.options.get('lang', true).value as string;
 
   if (language !== 'en' && language !== 'de') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid language. Please choose English or German.',
-    });
+    }));
     return;
   }
 
   await setLanguage(interaction.guild.id, interaction.guild.name, language);
 
   const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Language updated to: \`${languageName}\`\n\nBot messages will now appear in this language.`,
-  });
+  }));
 }
 
 async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -324,12 +315,12 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   const timezone = normalizeTimezone(rawZone);
 
   if (!timezone) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content:
         `❌ \`${rawZone}\` is not a known timezone.\n\n` +
         'Pick one from the autocomplete list, or pass an IANA identifier such as ' +
         '`Europe/Berlin`, `America/New_York` or `UTC`.',
-    });
+    }));
     return;
   }
 
@@ -338,24 +329,17 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   // rollback path — see prisma/migrations/20260803090000_guild_timezone_iana_phase1.
   const timezoneData = guildTimezoneUpdate(timezone);
 
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: timezoneData,
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      language: 'en',
-      ...timezoneData,
-    },
+    data: timezoneData,
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content:
       `✅ Timezone updated to: \`${formatTimezoneLabel(timezone)}\`\n\n` +
       'Times you type in `/raid create` are now read as local time in this zone, ' +
       'with daylight saving applied automatically.',
-  });
+  }));
 }
 
 /**
@@ -377,10 +361,10 @@ export async function timezoneAutocomplete(
 
 async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -393,35 +377,29 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
   const isTextChannel = channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement;
 
   if (!isTextChannel) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Archive channel must be a text channel.',
-    });
+    }));
     return;
   }
 
   // Update in database
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: { archiveChannelId: channel.id },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      archiveChannelId: channel.id,
-    },
+    data: { archiveChannelId: channel.id },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Archive channel set to <#${channel.id}>.\n\nClosed raids can now be archived to this channel using \`/raid archive\`.`,
-  });
+  }));
 }
 
 async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -435,27 +413,21 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
   });
 
   if (enabled && !guildData?.archiveChannelId) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Archive channel must be configured before enabling auto-archive.\n\nUse `/config archive-channel` to set it up first.',
-    });
+    }));
     return;
   }
 
   // Update in database
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: { autoArchive: enabled },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      autoArchive: enabled,
-    },
+    data: { autoArchive: enabled },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `Auto-archive is now ${enabled ? 'enabled' : 'disabled'}. ${enabled ? 'Raids will automatically be archived when they close.' : ''}`,
-  });
+  }));
 }
 
 export default command;

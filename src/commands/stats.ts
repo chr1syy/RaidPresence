@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -138,10 +139,10 @@ const command: Command = {
 
 async function handleRaidStats(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -155,16 +156,16 @@ async function handleRaidStats(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
@@ -175,15 +176,15 @@ async function handleRaidStats(interaction: ChatInputCommandInteraction) {
   // No `team` option here — the raid ID already pins the team; just name it on multi-team guilds.
   await appendTeamToTitle(interaction.guild.id, raid.teamId, embed);
 
-  await interaction.editReply({ embeds: [embed] });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed] }));
 }
 
 async function handleGuildStats(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -196,9 +197,9 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Guild not found in database.',
-    });
+    }));
     return;
   }
 
@@ -207,9 +208,9 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
   const teamOption = getTeamOption(interaction);
   const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
   if (teamError) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return;
   }
 
@@ -229,7 +230,7 @@ async function handleGuildStats(interaction: ChatInputCommandInteraction) {
   await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
   const hint = await freeTierHint(interaction.guildId, guildData.language || 'en');
-  await interaction.editReply({ embeds: [embed], content: hint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: hint || undefined }));
 }
 
 function getStartDate(period: string): Date {
@@ -250,10 +251,10 @@ function getStartDate(period: string): Date {
 
 async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -267,9 +268,9 @@ async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
   const teamOption = getTeamOption(interaction);
   const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
   if (teamError) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(guildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return;
   }
 
@@ -297,15 +298,15 @@ async function handleStatusCommand(interaction: ChatInputCommandInteraction) {
   await appendTeamToTitle(interaction.guild.id, team.id, embed);
 
   const hint = await freeTierHint(interaction.guildId, guildData?.language || 'en');
-  await interaction.editReply({ embeds: [embed], content: hint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: hint || undefined }));
 }
 
 async function handleAttendanceCommand(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -319,9 +320,9 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Guild not found in database.',
-    });
+    }));
     return;
   }
 
@@ -330,9 +331,9 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   const teamOption = getTeamOption(interaction);
   const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
   if (teamError) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(lang, 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return;
   }
 
@@ -360,15 +361,15 @@ async function handleAttendanceCommand(interaction: ChatInputCommandInteraction)
   }
 
   const hint = await freeTierHint(interaction.guildId, lang);
-  await interaction.editReply({ embeds: [embed], content: hint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: hint || undefined }));
 }
 
 async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -389,16 +390,16 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
@@ -412,7 +413,7 @@ async function handleSuggestCommand(interaction: ChatInputCommandInteraction) {
   // Like `stats raid`, this analyses one raid by ID — the team follows from the raid itself.
   await appendTeamToTitle(interaction.guild.id, raid.teamId, embed);
 
-  await interaction.editReply({ embeds: [embed] });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed] }));
 }
 
 export default command;

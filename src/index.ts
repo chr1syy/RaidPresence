@@ -1,3 +1,4 @@
+import { guildOutput } from './services/guildJobs';
 import { Client, GatewayIntentBits, Collection, Events, ActivityType, MessageFlags } from 'discord.js';
 import { config } from 'dotenv';
 import { BotClient, Command } from './types';
@@ -10,12 +11,17 @@ import { buildWelcomeMessage } from './utils/welcomeEmbed';
 import { getDefaultTeam } from './services/teamService';
 import { TEAM_OPTION_NAME } from './utils/teamContext';
 import { runStartupTrialBackfill } from './scripts/backfillTrials';
-import { syncGuildOnJoin, markGuildDeparted, reconcileDepartedGuilds } from './services/guildLifecycle';
+import { reconcileDepartedGuilds } from './services/guildLifecycle';
 import { logInteraction, commandLabel } from './utils/interactionLog';
 import { startTopggStatsPoster } from './services/topggService';
 import { startVoteWebhook } from './services/topggWebhook';
 
+import { createGuildRuntime } from './services/guildRuntime';
+import { invalidateGuildDrafts } from './events/raidCreateFlow';
+import { runGuildInteraction } from './events/guildInteraction';
+
 config();
+const guildRuntime = createGuildRuntime(invalidateGuildDrafts);
 
 /** Vote webhook listener, if one was started. Closed on shutdown to release the port. */
 let voteWebhookServer: import('node:http').Server | null = null;
@@ -68,7 +74,7 @@ client.once(Events.ClientReady, async (c) => {
     // start at UTC and set their zone explicitly via `/config timezone`.
     // Also clears `leftAt`: everything in the cache is a guild the bot is currently in,
     // so a row that was marked departed while the bot was down is live again.
-    await syncGuildOnJoin({ id: guildId, name: guild.name });
+    await guildRuntime.join(guild, async () => {
 
     // Make sure every guild owns its default "Main" team. Never abort startup
     // over this — the team is created lazily on first raid creation anyway.
@@ -77,7 +83,7 @@ client.once(Events.ClientReady, async (c) => {
     } catch (error) {
       console.error(`❌ Failed to ensure default team for ${guild.name}:`, error);
     }
-
+    });
   }
 
   // Anything still marked live in the database but missing from the cache is a guild
@@ -85,7 +91,7 @@ client.once(Events.ClientReady, async (c) => {
   // shipped) a historical one that was never recorded. Runs after the sync loop above so
   // every cached guild has already had its `leftAt` cleared and cannot be caught here.
   try {
-    await reconcileDepartedGuilds(c.guilds.cache.keys());
+    await reconcileDepartedGuilds(c.guilds.cache.keys(), { jobs: guildRuntime.jobs });
   } catch (error) {
     console.error('❌ Guild departure reconciliation failed:', error);
   }
@@ -93,10 +99,10 @@ client.once(Events.ClientReady, async (c) => {
   console.log('✅ Guild data synchronized');
 
   // Start the raid scheduler for auto-closing expired raids
-  startRaidScheduler(c);
+  startRaidScheduler(c, guildRuntime);
 
   // Register entitlement handlers (Premium system)
-  registerEntitlementHandlers(c);
+  registerEntitlementHandlers(c, guildRuntime);
 
   // Keep the Top.gg listing's server count current. No-op unless TOPGG_TOKEN is set.
   startTopggStatsPoster(c);
@@ -106,7 +112,7 @@ client.once(Events.ClientReady, async (c) => {
   voteWebhookServer = startVoteWebhook();
 
   // Sync existing entitlements from Discord
-  const entitlementSync = await syncEntitlementsOnStartup(c);
+  const entitlementSync = await syncEntitlementsOnStartup(c, guildRuntime);
 
   // Backfill the one-time Premium trial for guilds that installed the bot before the
   // trial existed — they never fired guildCreate on an eligible code path. Runs last so
@@ -121,7 +127,7 @@ client.once(Events.ClientReady, async (c) => {
   // paying guild whose entitlementId failed to write is never mistaken for a FREE trial
   // candidate. The guard swallows both the skip and any backfill error — see
   // runStartupTrialBackfill() — so startup is never blocked.
-  await runStartupTrialBackfill(entitlementSync);
+  await runStartupTrialBackfill(entitlementSync, guildRuntime);
 });
 
 // Interaction handler
@@ -129,7 +135,7 @@ client.once(Events.ClientReady, async (c) => {
 // Every interaction except autocomplete emits one structured line via logInteraction()
 // so activity is visible in stdout without DB queries. Autocomplete is excluded on
 // purpose: it fires on every keystroke and would drown out the signal.
-client.on(Events.InteractionCreate, async (interaction) => {
+client.on(Events.InteractionCreate, async (incoming) => runGuildInteraction(guildRuntime, incoming, async (interaction) => {
   const startedAt = Date.now();
 
   if (interaction.isChatInputCommand()) {
@@ -179,9 +185,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } as const;
 
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp(errorMessage);
+        await guildOutput(async () => interaction.followUp(errorMessage));
       } else {
-        await interaction.reply(errorMessage);
+        await guildOutput(async () => interaction.reply(errorMessage));
       }
     }
   } else if (interaction.isAutocomplete()) {
@@ -280,7 +286,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       throw error;
     }
   }
-});
+}));
 
 // Guild join event
 client.on(Events.GuildCreate, async (guild) => {
@@ -288,7 +294,7 @@ client.on(Events.GuildCreate, async (guild) => {
 
   // Upserts, clears any `leftAt` mark, and logs the re-install case. New guilds
   // default to UTC — see the guild-sync block above for why nothing is auto-detected.
-  await syncGuildOnJoin({ id: guild.id, name: guild.name });
+  await guildRuntime.join(guild, async () => {
 
   // Make sure the guild owns its default "Main" team right away.
   try {
@@ -335,11 +341,9 @@ client.on(Events.GuildCreate, async (guild) => {
 
     let messageSent = false;
 
-    if (
-      guild.systemChannel &&
-      guild.systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')
-    ) {
-      await guild.systemChannel.send(welcomeMessage);
+    const systemChannel = guild.systemChannel;
+    if (systemChannel && systemChannel.permissionsFor(guild.members.me!)?.has('SendMessages')) {
+      await guildOutput(async () => systemChannel.send(welcomeMessage), true);
       messageSent = true;
       console.log(`📨 Sent welcome message to system channel in ${guild.name}`);
     }
@@ -349,7 +353,7 @@ client.on(Events.GuildCreate, async (guild) => {
     if (!messageSent) {
       try {
         const owner = await guild.fetchOwner();
-        await owner.send(welcomeMessage);
+        await guildOutput(async () => owner.send(welcomeMessage), true);
         console.log(`📨 Sent welcome DM to owner of ${guild.name} (no usable system channel)`);
       } catch (error) {
         console.log(
@@ -360,6 +364,7 @@ client.on(Events.GuildCreate, async (guild) => {
   } catch (error) {
     console.error('Error sending welcome message:', error);
   }
+  });
 });
 
 // Guild departure
@@ -374,7 +379,7 @@ client.on(Events.GuildCreate, async (guild) => {
 // real kicks. The reasoning is spelled out on markGuildDeparted().
 client.on(Events.GuildDelete, async (guild) => {
   try {
-    await markGuildDeparted({ id: guild.id, name: guild.name });
+    await guildRuntime.depart(guild);
   } catch (error) {
     console.error(`❌ Failed to mark guild ${guild.id} as departed:`, error);
   }

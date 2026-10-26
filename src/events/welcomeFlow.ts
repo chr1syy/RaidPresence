@@ -1,3 +1,5 @@
+import { bindGuildCustomId } from '../services/guildJobs';
+import { guildOutput } from '../services/guildJobs';
 /**
  * Handlers for the two welcome-message buttons (issue #39) and the setup chain
  * behind [Start setup] (issue #48).
@@ -21,6 +23,7 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  PermissionFlagsBits,
   RoleSelectMenuBuilder,
   RoleSelectMenuInteraction,
   StringSelectMenuBuilder,
@@ -61,6 +64,30 @@ type ChainInteraction =
   | StringSelectMenuInteraction
   | RoleSelectMenuInteraction;
 
+async function updateSetup(interaction: ChainInteraction, message: { content: string; components: ActionRowBuilder<any>[] }) {
+  if (interaction.deferred) await guildOutput(async () => interaction.editReply(message));
+  else await guildOutput(async () => interaction.update(message));
+}
+
+/** Config writes have the same Administrator contract as /config and /setup. */
+async function authorizeSetupWrite(interaction: StringSelectMenuInteraction | RoleSelectMenuInteraction, guildId: string): Promise<boolean> {
+  // These selects never open a modal. Acknowledge before membership/network work.
+  if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+  let allowed = false;
+  if (!interaction.guildId || interaction.guildId === guildId) {
+    try {
+      const guild = interaction.client.guilds.cache.get(guildId);
+      const member = await guild?.members.fetch({ user: interaction.user.id, force: true });
+      allowed = Boolean(member?.permissions.has(PermissionFlagsBits.Administrator));
+    } catch { /* A membership/network failure cannot authorize a write. */ }
+  }
+  if (!allowed) {
+    const language = await guildLanguage(guildId);
+    await updateSetup(interaction, { content: t(language, 'welcomeSetupAdminRequired'), components: [] });
+  }
+  return allowed;
+}
+
 export function isWelcomeButton(customId: string): boolean {
   return (
     customId.startsWith(`${WELCOME_BUTTON_SETUP}:`) ||
@@ -100,10 +127,9 @@ function languageName(language: string): string {
 /**
  * Guild name for a write, resolved from the client cache.
  *
- * The setup chain writes through the `/config` helpers, which upsert and therefore
- * need a name for the create branch. In a DM `interaction.guild` is null, so the
- * cache is the only source — and the id is a usable last resort, since the create
- * branch only fires for a guild the bot has never seen.
+ * The setup chain uses the shared `/config` helpers. Their guildName parameter is
+ * retained for compatibility; writes now update existing rows only. In a DM the
+ * cache supplies the display name. Missing rows can only be created by lifecycle.
  */
 function guildNameFor(interaction: ChainInteraction, guildId: string): string {
   return interaction.client.guilds.cache.get(guildId)?.name ?? guildId;
@@ -139,10 +165,10 @@ async function replyOpenInServer(
   language: string,
   command: string
 ): Promise<void> {
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content: openInServerText(interaction, guildId, language, command),
     ephemeral: true,
-  });
+  }));
 }
 
 function stepHeader(language: string, current: number): string {
@@ -156,7 +182,7 @@ function skipRow(
 ): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${WELCOME_BUTTON_SKIP}:${guildId}:${step}`)
+      .setCustomId(bindGuildCustomId(`${WELCOME_BUTTON_SKIP}:${guildId}:${step}`))
       .setLabel(t(language, 'welcomeSetupSkip'))
       .setStyle(ButtonStyle.Secondary)
   );
@@ -200,7 +226,7 @@ async function handleSetupButton(interaction: ButtonInteraction): Promise<void> 
   const language = await guildLanguage(guildId);
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_TIMEZONE}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_TIMEZONE}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupTimezonePlaceholder'))
     .addOptions(
       COMMON_TIMEZONES.slice(0, TIMEZONE_CHOICE_LIMIT).map((zone) => ({
@@ -209,25 +235,26 @@ async function handleSetupButton(interaction: ButtonInteraction): Promise<void> 
       }))
     );
 
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content: `${stepHeader(language, 1)}\n${t(language, 'welcomeSetupIntro')}`,
     components: [
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
       skipRow(guildId, 'tz', language),
     ],
     ephemeral: true,
-  });
+  }));
 }
 
 export async function handleTimezoneSelect(
   interaction: StringSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const language = await guildLanguage(guildId);
   const timezone = normalizeTimezone(interaction.values[0]);
 
   if (!timezone) {
-    await interaction.update({
+    await updateSetup(interaction, {
       content: '❌ That timezone is not recognised. Use `/config timezone` to set it.',
       components: [],
     });
@@ -267,14 +294,14 @@ async function showLanguageStep(
   const current = language === 'de' ? 'de' : 'en';
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_LANGUAGE}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_LANGUAGE}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupLanguagePlaceholder'))
     .addOptions(
       { label: 'English', value: 'en', default: current === 'en' },
       { label: 'Deutsch', value: 'de', default: current === 'de' }
     );
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content:
       `${confirmation}\n\n` +
       `${stepHeader(language, 2)}\n` +
@@ -290,6 +317,7 @@ export async function handleLanguageSelect(
   interaction: StringSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const chosen = interaction.values[0] === 'de' ? 'de' : 'en';
 
   await setLanguage(guildId, guildNameFor(interaction, guildId), chosen as SupportedLanguage);
@@ -330,13 +358,13 @@ async function showLeaderRolesStep(
   }
 
   const select = new RoleSelectMenuBuilder()
-    .setCustomId(`${WELCOME_SELECT_LEADER_ROLES}:${guildId}`)
+    .setCustomId(bindGuildCustomId(`${WELCOME_SELECT_LEADER_ROLES}:${guildId}`))
     .setPlaceholder(t(language, 'welcomeSetupLeaderRolesPlaceholder'))
     // Zero is allowed so an empty submit means the same as [Skip]: keep the default.
     .setMinValues(0)
     .setMaxValues(LEADER_ROLE_LIMIT);
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content:
       `${confirmation}\n\n` +
       `${stepHeader(language, 3)}\n` +
@@ -352,6 +380,7 @@ export async function handleLeaderRolesSelect(
   interaction: RoleSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const language = await guildLanguage(guildId);
 
   // Role IDs, not names: `canManageRaids` matches either, and an ID survives a
@@ -442,7 +471,7 @@ async function finishSetup(
     `-# ${t(language, 'welcomeSetupDone')}`,
   ].join('\n');
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content: `${lines.join('\n\n')}\n\n${summary}`,
     components: [],
   });
@@ -469,10 +498,10 @@ async function handleFirstRaidButton(interaction: ButtonInteraction): Promise<vo
   }
 
   if (!interaction.member || !(await canManageRaids(interaction.member as any))) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ You do not have permission to create raids. Ask your server admin to configure raid leader roles.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 

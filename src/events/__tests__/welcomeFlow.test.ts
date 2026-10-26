@@ -30,7 +30,10 @@ const ROLE_ID = '987654321098765432';
 
 function guildCache() {
   const guilds = new Map<string, any>();
-  guilds.set(GUILD_ID, { id: GUILD_ID, name: 'Test Guild' });
+  guilds.set(GUILD_ID, {
+    id: GUILD_ID, name: 'Test Guild',
+    members: { fetch: jest.fn().mockResolvedValue({ permissions: { has: () => true } }) },
+  });
   return { cache: guilds };
 }
 
@@ -54,16 +57,21 @@ function buildButton(customId: string, opts: { inGuild?: boolean } = {}) {
 
 function buildSelect(customId: string, values: string[], opts: { inGuild?: boolean } = {}) {
   const inGuild = opts.inGuild ?? true;
+  const delivery = jest.fn().mockResolvedValue(undefined);
 
-  return {
+  const interaction = {
     customId,
     values,
     user: { id: 'user-1' },
     guild: inGuild ? { id: GUILD_ID, name: 'Test Guild' } : null,
     guildId: inGuild ? GUILD_ID : null,
     client: { guilds: guildCache() },
-    update: jest.fn().mockResolvedValue(undefined),
+    deferred: false,
+    deferUpdate: jest.fn(async () => { interaction.deferred = true; }),
+    update: delivery,
+    editReply: delivery,
   } as any;
+  return interaction;
 }
 
 /** The component rows of the last `update()` / `reply()` on an interaction. */
@@ -85,7 +93,55 @@ describe('welcome buttons', () => {
       timezone: 'UTC',
     });
     (prisma.guild.update as jest.Mock).mockResolvedValue({});
-    (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+    (prisma.guild.update as jest.Mock).mockResolvedValue({});
+  });
+
+  it.each([
+    ['timezone', handleTimezoneSelect, 'welcome-tz', ['UTC']],
+    ['language', handleLanguageSelect, 'welcome-lang', ['de']],
+    ['roles', handleLeaderRolesSelect, 'welcome-roles', [ROLE_ID]],
+  ] as const)('requires a fresh Administrator check before the %s write', async (_name, handler, prefix, values) => {
+    const select = buildSelect(`${prefix}:${GUILD_ID}`, [...values]);
+    const fetch = select.client.guilds.cache.get(GUILD_ID).members.fetch;
+    fetch.mockResolvedValue({ permissions: { has: () => false } });
+    await handler(select);
+    expect(fetch).toHaveBeenCalledWith({ user: 'user-1', force: true });
+    expect(prisma.guild.update).not.toHaveBeenCalled();
+    expect(select.editReply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Administrator') }));
+  });
+
+  it('acknowledges before membership lookup and edits the response instead of acknowledging twice', async () => {
+    const select = buildSelect(`welcome-lang:${GUILD_ID}`, ['de']);
+    const order: string[] = [];
+    select.update = jest.fn();
+    select.editReply = jest.fn().mockResolvedValue(undefined);
+    select.deferUpdate.mockImplementation(async () => { order.push('ack'); select.deferred = true; });
+    select.client.guilds.cache.get(GUILD_ID).members.fetch.mockImplementation(async () => {
+      order.push('fetch'); return { permissions: { has: () => true } };
+    });
+    await handleLanguageSelect(select);
+    expect(order).toEqual(['ack', 'fetch']);
+    expect(select.deferUpdate).toHaveBeenCalledTimes(1);
+    expect(select.update).not.toHaveBeenCalled();
+    expect(select.editReply).toHaveBeenCalledTimes(1);
+  });
+
+  it('reauthorizes DM writes and refuses revoked access, foreign guild context and failed membership fetch', async () => {
+    const select = buildSelect(`welcome-lang:${GUILD_ID}`, ['de'], { inGuild: false });
+    const fetch = select.client.guilds.cache.get(GUILD_ID).members.fetch;
+    await handleLanguageSelect(select);
+    expect(prisma.guild.update).toHaveBeenCalledTimes(1);
+    fetch.mockResolvedValue({ permissions: { has: () => false } });
+    await handleLanguageSelect(select);
+    expect(prisma.guild.update).toHaveBeenCalledTimes(1);
+    fetch.mockRejectedValue(new Error('synthetic unavailable'));
+    await handleLanguageSelect(select);
+    expect(prisma.guild.update).toHaveBeenCalledTimes(1);
+    select.guildId = 'foreign-guild';
+    fetch.mockClear();
+    await handleLanguageSelect(select);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(prisma.guild.update).toHaveBeenCalledTimes(1);
   });
 
   describe('dispatch predicates', () => {
@@ -271,15 +327,15 @@ describe('welcome buttons', () => {
       expect(options.find((o: any) => o.value === 'en').default).toBe(true);
     });
 
-    it('writes the language through the /config upsert path', async () => {
+    it('writes the language through the /config update-only path', async () => {
       const select = buildSelect(`welcome-lang:${GUILD_ID}`, ['de']);
 
       await handleLanguageSelect(select);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: GUILD_ID },
-          update: { language: 'de' },
+          data: { language: 'de' },
         })
       );
     });
@@ -302,7 +358,7 @@ describe('welcome buttons', () => {
 
       await routeWelcomeButton(button);
 
-      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(prisma.guild.update).not.toHaveBeenCalled();
       const update = button.update.mock.calls[0][0];
       expect(update.content).toContain('Step 3 of 3');
       expect(firstComponent(update).custom_id).toBe(`welcome-roles:${GUILD_ID}`);
@@ -337,25 +393,26 @@ describe('welcome buttons', () => {
 
     // Same guard as [Create first raid]: a DM button could come from any server the
     // user installed the bot into.
-    it('points into the server when pressed inside a different guild', async () => {
+    it('rejects a setup write from a different guild before changing the target server', async () => {
       const select = buildSelect('welcome-lang:999999999999999999', ['en']);
 
       await handleLanguageSelect(select);
 
       const update = select.update.mock.calls[0][0];
       expect(update.components).toEqual([]);
-      expect(update.content).toContain('/config leader-roles');
+      expect(update.content).toContain('Administrator');
+      expect(prisma.guild.update).not.toHaveBeenCalled();
     });
 
-    it('stores the picked roles as IDs through the /config upsert path', async () => {
+    it('stores the picked roles as IDs through the /config update-only path', async () => {
       const select = buildSelect(`welcome-roles:${GUILD_ID}`, [ROLE_ID]);
 
       await handleLeaderRolesSelect(select);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: GUILD_ID },
-          update: { raidLeaderRoles: ROLE_ID },
+          data: { raidLeaderRoles: ROLE_ID },
         })
       );
     });
@@ -366,7 +423,7 @@ describe('welcome buttons', () => {
 
       await handleLeaderRolesSelect(select);
 
-      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(prisma.guild.update).not.toHaveBeenCalled();
       expect(select.update.mock.calls[0][0].content).toContain('Manage Events');
     });
 
@@ -375,7 +432,7 @@ describe('welcome buttons', () => {
 
       await routeWelcomeButton(button);
 
-      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(prisma.guild.update).not.toHaveBeenCalled();
     });
   });
 

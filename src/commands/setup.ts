@@ -1,3 +1,5 @@
+import { buildWelcomeMessage } from '../utils/welcomeEmbed';
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -25,10 +27,10 @@ const command: Command = {
 
 async function handleSetup(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -98,7 +100,7 @@ async function handleSetup(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `Run /config view to check your settings anytime | v${VERSION}` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [setupEmbed] });
+  await guildOutput(async () => interaction.editReply({ embeds: [setupEmbed], components: buildWelcomeMessage({ guildId: interaction.guild!.id, language: guildData?.language || 'en', trialGranted: false }).components }));
 }
 
 export default command;

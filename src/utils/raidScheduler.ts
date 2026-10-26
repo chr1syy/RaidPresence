@@ -1,4 +1,6 @@
+import { guildOutput } from '../services/guildJobs';
 import { Client } from 'discord.js';
+import type { GuildRuntime } from '../services/guildRuntime';
 import prisma, { withRetry } from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
 import { archiveRaid } from './archiveManager';
@@ -6,6 +8,7 @@ import { getTeamLabel } from './teamContext';
 import { FEATURE_TIERS, getTier, hasFeature, reapExpiredPremium } from '../services/entitlementService';
 import { advanceSeries, retireNudge, sendPostRaidNudge } from '../services/recurringRaidService';
 import { NUDGE_LOOKBACK_MS, NUDGE_TTL_MS, RECURRENCE_WEEKLY } from './recurrence';
+import type { createGuildJobCoordinator, GuildJobToken } from '../services/guildJobs';
 
 /**
  * Upper bound per pass. The scheduler runs every two minutes; a backlog is worked off
@@ -52,41 +55,24 @@ function teamSuffix(label: string | null): string {
  *   // Start the scheduler when the bot initializes
  *   startRaidScheduler(client);
  */
-export function startRaidScheduler(client: Client) {
-  const CHECK_INTERVAL = 2 * 60 * 1000; // 2 minutes in milliseconds
-
-  setInterval(async () => {
-    try {
-      await checkAndCloseExpiredRaids(client);
-    } catch (error) {
-      console.error('Error in raid scheduler:', error);
-    }
-
-    // Deliberately separate passes rather than work tacked onto the close loop: each one
-    // re-reads its own state from the database, so a crash anywhere leaves a state the
-    // next tick can pick up from. That is what makes the successor creation idempotent.
-    try {
-      await processRecurringSeries(client);
-    } catch (error) {
-      console.error('Error in recurring raid pass:', error);
-    }
-
-    try {
-      await sendPostRaidNudges(client);
-    } catch (error) {
-      console.error('Error in post-raid nudge pass:', error);
-    }
-
-    try {
-      await expireStaleNudges(client);
-    } catch (error) {
-      console.error('Error in nudge expiry pass:', error);
-    }
-  }, CHECK_INTERVAL);
-
+export function startRaidScheduler(client: Client, runtime?: GuildRuntime) {
+  setInterval(async () => { await runRaidSchedulerPass(client, runtime); }, 2 * 60 * 1000);
   console.log('✅ Raid scheduler started - checking for expired raids every 2 minutes');
+  startPremiumReaper(runtime);
+}
 
-  startPremiumReaper();
+/** Capture original generations before any selection/network work in this tick. */
+export async function runRaidSchedulerPass(client: Client, runtime?: GuildRuntime) {
+  const tokens = runtime?.jobs.snapshot();
+  async function pass(guildId?: string, token?: GuildJobToken) {
+    for (const operation of [checkAndCloseExpiredRaids, processDueRecurringSeries, sendPostRaidNudges, expireStaleNudges]) {
+      if (token && !runtime!.jobs.isCurrent(token)) return;
+      try { await operation(client, guildId); }
+      catch (error) { console.error('Error in raid scheduler pass:', error); }
+    }
+  }
+  if (!runtime) { await pass(); return; }
+  for (const token of tokens!) await runtime.jobs.runWithToken(token, () => pass(token.guildId, token));
 }
 
 /**
@@ -100,14 +86,8 @@ export function startRaidScheduler(client: Client) {
  * surface as an unhandled rejection. The job is idempotent, so a skipped run costs
  * nothing beyond staying stale until the next one.
  */
-export function startPremiumReaper(): void {
-  const runReaperPass = async () => {
-    try {
-      await reapExpiredPremium();
-    } catch (error) {
-      console.error('Error in expired-premium reaper pass:', error);
-    }
-  };
+export function startPremiumReaper(runtime?: GuildRuntime): void {
+  const runReaperPass = () => runPremiumReaperPass(runtime);
 
   void runReaperPass();
   setInterval(runReaperPass, PREMIUM_REAP_INTERVAL);
@@ -115,7 +95,13 @@ export function startPremiumReaper(): void {
   console.log('✅ Premium reaper started - resetting expired premiumTier every 60 minutes');
 }
 
-export async function checkAndCloseExpiredRaids(client: Client) {
+/** Global retained-row coverage, serialized per guild without positive admission. */
+export async function runPremiumReaperPass(runtime?: GuildRuntime): Promise<void> {
+  try { await reapExpiredPremium(undefined, runtime?.jobs); }
+  catch (error) { console.error('Error in expired-premium reaper pass:', error); }
+}
+
+export async function checkAndCloseExpiredRaids(client: Client, guildId?: string) {
   const now = new Date();
 
   // Find all open raids that have expired.
@@ -125,6 +111,7 @@ export async function checkAndCloseExpiredRaids(client: Client) {
   const expiredRaids = await withRetry(() =>
     prisma.raid.findMany({
       where: {
+        ...(guildId === undefined ? {} : { guildId }),
         status: 'open',
         raidDate: {
           lt: now,
@@ -204,10 +191,10 @@ export async function checkAndCloseExpiredRaids(client: Client) {
              const embed = await createRaidEmbed(raid.id, raid.guild.language);
 
              // Remove buttons when closed
-             await message.edit({
+             await guildOutput(async () => message.edit({
                embeds: [embed],
                components: [],
-             });
+             }));
 
               console.log(`✅ Auto-closed raid: ${raid.description} (${raid.id})${teamLabel}`);
             }
@@ -234,12 +221,33 @@ export async function checkAndCloseExpiredRaids(client: Client) {
  * between closing and generating leaves behind — so the retry is the normal path, not a
  * special case, and the UNIQUE index on `recurrenceParentId` makes a double run a no-op.
  */
-export async function processRecurringSeries(client: Client) {
+/** Preparation only: callers retain the token of a positively observed join.
+ * No timer currently supplies this scope. Never capture a new token after a scan.
+ */
+export interface RecurringSeriesJob {
+  token: GuildJobToken;
+  coordinator: Pick<ReturnType<typeof createGuildJobCoordinator>, 'runWithToken'>;
+}
+
+export async function processRecurringSeries(client: Client, job?: RecurringSeriesJob) {
+  if (job) {
+    // Both selection and ALL awaited recurrence side effects belong to this root.
+    // Do not wrap only advanceSeries: an old bulk selection could cross a rejoin.
+    const { coordinator, token } = job;
+    await coordinator.runWithToken(token, () => processDueRecurringSeries(client, token.guildId));
+    return;
+  }
+  // Existing runtime retains its current behaviour until all writers are integrated.
+  await processDueRecurringSeries(client);
+}
+
+async function processDueRecurringSeries(client: Client, guildId?: string) {
   const now = new Date();
 
   const due = await withRetry(() =>
     prisma.raid.findMany({
       where: {
+        ...(guildId === undefined ? {} : { guildId }),
         status: 'closed',
         recurrenceRule: RECURRENCE_WEEKLY,
         recurrenceActive: true,
@@ -273,12 +281,13 @@ export async function processRecurringSeries(client: Client) {
  * the series already produces next week, and nobody wants a nudge for a raid they called
  * off.
  */
-export async function sendPostRaidNudges(client: Client) {
+export async function sendPostRaidNudges(client: Client, guildId?: string) {
   const now = new Date();
 
   const candidates = await withRetry(() =>
     prisma.raid.findMany({
       where: {
+        ...(guildId === undefined ? {} : { guildId }),
         status: 'closed',
         nudgeSentAt: null,
         recurrenceRule: null,
@@ -302,12 +311,13 @@ export async function sendPostRaidNudges(client: Client) {
 }
 
 /** Removes nudge buttons nobody pressed within {@link NUDGE_TTL_MS}. */
-export async function expireStaleNudges(client: Client) {
+export async function expireStaleNudges(client: Client, guildId?: string) {
   const cutoff = new Date(Date.now() - NUDGE_TTL_MS);
 
   const stale = await withRetry(() =>
     prisma.raid.findMany({
       where: {
+        ...(guildId === undefined ? {} : { guildId }),
         nudgeMessageId: { not: null },
         nudgeSentAt: { lt: cutoff },
       },

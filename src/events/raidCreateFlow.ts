@@ -1,3 +1,5 @@
+import { bindGuildCustomId } from '../services/guildJobs';
+import { guildOutput, currentGuildJobToken, GuildJobToken } from '../services/guildJobs';
 /**
  * Guided `/raid create` flow: modal → role select → preview → confirm.
  *
@@ -59,6 +61,8 @@ export const BUTTON_PING = 'rcflow-ping';
 export const BUTTON_RECUR = 'rcflow-recur';
 
 interface RaidDraft {
+  /** Original issuing job; retained with the existing ephemeral draft, never minted by a callback. */
+  jobToken?: GuildJobToken;
   guildId: string;
   userId: string;
   channelId: string;
@@ -105,14 +109,29 @@ function putDraft(draft: Omit<RaidDraft, 'createdAt'>): string {
   return id;
 }
 
-function getDraft(id: string, userId: string): RaidDraft | null {
+function getDraft(id: string, userId: string, guildId: string | null): RaidDraft | null {
   pruneExpiredDrafts(Date.now());
   const draft = drafts.get(id);
   if (!draft) return null;
   // A custom ID is visible to anyone who can see the message; never act on someone
   // else's draft.
-  if (draft.userId !== userId) return null;
+  if (draft.userId !== userId || draft.guildId !== guildId) return null;
   return draft;
+}
+
+/** Existing draft IDs already bind guild + actor and expire across restart. */
+export function getFlowJobToken(customId: string, userId: string, guildId: string | null): GuildJobToken | undefined {
+  if (!customId.startsWith('rcflow-')) return undefined;
+  return getDraft(customId.split(':')[1], userId, guildId)?.jobToken;
+}
+
+/** Called by retaining runtime and inactive removal adapter on revocation/drain. */
+export function invalidateGuildDrafts(guildId: string): number {
+  let removed = 0;
+  for (const [id, draft] of drafts) {
+    if (draft.guildId === guildId) { drafts.delete(id); ++removed; }
+  }
+  return removed;
 }
 
 /** Exposed for tests — the store is module-level state. */
@@ -174,10 +193,10 @@ export async function startGuidedRaidCreate(
   }
 ): Promise<void> {
   if (!interaction.guild || !interaction.channel) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -187,6 +206,7 @@ export async function startGuidedRaidCreate(
   // The draft is created up front so the modal's custom ID can carry it. Roles are
   // filled in at the select step; anything passed on the command line is preserved.
   const draftId = putDraft({
+    jobToken: currentGuildJobToken(),
     guildId: interaction.guild.id,
     userId: interaction.user.id,
     channelId: interaction.channel.id,
@@ -200,7 +220,7 @@ export async function startGuidedRaidCreate(
   });
 
   const modal = new ModalBuilder()
-    .setCustomId(`${MODAL_DETAILS}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${MODAL_DETAILS}:${draftId}`))
     .setTitle('Create a raid')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -231,7 +251,7 @@ export async function startGuidedRaidCreate(
       )
     );
 
-  await interaction.showModal(modal);
+  await guildOutput(async () => interaction.showModal(modal));
 }
 
 // ---------------------------------------------------------------------------
@@ -240,13 +260,13 @@ export async function startGuidedRaidCreate(
 
 export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -258,21 +278,21 @@ export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): 
   const raidDate = zonedDateTimeToUtc(date, time, timezone);
 
   if (!raidDate) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content:
         `❌ \`${date} ${time}\` is not a valid date and time.\n` +
         'Use `YYYY-MM-DD` for the date and `HH:MM` (24h) for the time — for example ' +
         '`2026-08-14` and `20:00`. Run `/raid create` to try again.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
   if (raidDate < new Date()) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ That is in the past. Run `/raid create` again and pick a future date.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -281,19 +301,19 @@ export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): 
   draft.time = time;
 
   const select = new RoleSelectMenuBuilder()
-    .setCustomId(`${SELECT_ROLES}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${SELECT_ROLES}:${draftId}`))
     .setPlaceholder('Which roles are raiding?')
     .setMinValues(1)
     .setMaxValues(10);
 
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content:
       `**${title}** — <t:${Math.floor(raidDate.getTime() / 1000)}:F>\n\n` +
       'Now pick the roles whose members should be on the roster. ' +
       'Everyone with those roles is signed up automatically and only has to opt *out*.',
     components: [new ActionRowBuilder<RoleSelectMenuBuilder>().addComponents(select)],
     ephemeral: true,
-  });
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -302,13 +322,13 @@ export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): 
 
 export async function handleRoleSelect(interaction: RoleSelectMenuInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       components: [],
-    });
+    }));
     return;
   }
 
@@ -359,17 +379,17 @@ async function showPreview(
 
   const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_CONFIRM}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_CONFIRM}:${draftId}`))
       .setLabel('Create raid')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_FIXTIME}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_FIXTIME}:${draftId}`))
       .setLabel('Fix time / timezone')
       .setStyle(ButtonStyle.Secondary),
     // Nothing to ping without roles, so the toggle is dead weight rather than a
     // control that flips a flag with no effect.
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_PING}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_PING}:${draftId}`))
       .setLabel(t(language, draft.pingRoles ? 'raidCreatePingOn' : 'raidCreatePingOff'))
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!hasRoles),
@@ -377,7 +397,7 @@ async function showPreview(
     // question — what happens *around* this raid — and because a series that could only be
     // started from the one-line command form would never be discovered.
     new ButtonBuilder()
-      .setCustomId(`${BUTTON_RECUR}:${draftId}`)
+      .setCustomId(bindGuildCustomId(`${BUTTON_RECUR}:${draftId}`))
       .setLabel(t(language, draft.recurring ? 'recurringToggleOn' : 'recurringToggleOff'))
       .setStyle(ButtonStyle.Secondary)
   );
@@ -385,9 +405,9 @@ async function showPreview(
   const payload = { content: '', embeds: [embed], components: [buttons] };
 
   if (interaction.isModalSubmit()) {
-    await interaction.reply({ ...payload, ephemeral: true });
+    await guildOutput(async () => interaction.reply({ ...payload, ephemeral: true }));
   } else {
-    await interaction.update(payload);
+    await guildOutput(async () => interaction.update(payload));
   }
 }
 
@@ -408,14 +428,14 @@ async function showPreview(
  */
 export async function handlePingToggle(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
@@ -438,14 +458,14 @@ export async function handlePingToggle(interaction: ButtonInteraction): Promise<
  */
 export async function handleRecurringToggle(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
@@ -460,21 +480,21 @@ export async function handleRecurringToggle(interaction: ButtonInteraction): Pro
 
 export async function handleFixTimeButton(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
   const timezone = await guildTimezone(draft.guildId);
 
   const modal = new ModalBuilder()
-    .setCustomId(`${MODAL_FIXTIME}:${draftId}`)
+    .setCustomId(bindGuildCustomId(`${MODAL_FIXTIME}:${draftId}`))
     .setTitle('Fix time / timezone')
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
@@ -504,18 +524,18 @@ export async function handleFixTimeButton(interaction: ButtonInteraction): Promi
       )
     );
 
-  await interaction.showModal(modal);
+  await guildOutput(async () => interaction.showModal(modal));
 }
 
 export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -525,30 +545,30 @@ export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): 
 
   const timezone = normalizeTimezone(zoneInput);
   if (!timezone) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content:
         `❌ \`${zoneInput}\` is not a known timezone. Use an IANA name such as ` +
         '`Europe/Berlin`, `America/New_York` or `UTC`, then press ' +
         '**Fix time / timezone** again.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
   const raidDate = zonedDateTimeToUtc(date, time, timezone);
   if (!raidDate) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: `❌ \`${date} ${time}\` is not a valid date and time. Use \`YYYY-MM-DD\` and \`HH:MM\`.`,
       ephemeral: true,
-    });
+    }));
     return;
   }
 
   if (raidDate < new Date()) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ That is in the past. Press **Fix time / timezone** again and pick a future date.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -571,14 +591,14 @@ export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): 
 
 export async function handleConfirmButton(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '⏱️ This setup has expired. Run `/raid create` again — it only takes a moment.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
@@ -587,11 +607,11 @@ export async function handleConfirmButton(interaction: ButtonInteraction): Promi
   // Re-check permissions at the point of the write: roles can change between opening
   // the flow and confirming it.
   if (!interaction.member || !(await canManageRaids(interaction.member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to create raids.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
@@ -599,11 +619,11 @@ export async function handleConfirmButton(interaction: ButtonInteraction): Promi
   const channel = guild ? guild.channels.cache.get(draft.channelId) : null;
 
   if (!guild || !channel) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ The channel this raid was started in is no longer available.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
@@ -612,18 +632,18 @@ export async function handleConfirmButton(interaction: ButtonInteraction): Promi
   const raidDate = zonedDateTimeToUtc(draft.date, draft.time, timezone);
 
   if (!raidDate || raidDate < new Date()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ That raid time is no longer in the future. Run `/raid create` again.',
       embeds: [],
       components: [],
-    });
+    }));
     return;
   }
 
   // Clear the draft before the write so a double-click cannot create two raids.
   drafts.delete(draftId);
 
-  await interaction.editReply({ content: '⏳ Creating the raid…', embeds: [], components: [] });
+  await guildOutput(async () => interaction.editReply({ content: '⏳ Creating the raid…', embeds: [], components: [] }));
 
   await createRaidWithRoster(interaction, {
     guild,

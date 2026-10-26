@@ -268,6 +268,7 @@ describe('grantTrialIfEligible()', () => {
     // The conditional predicate that closes the TOCTOU window.
     expect(update.where).toEqual({
       id: 'guild1',
+      leftAt: null,
       trialStartedAt: null,
       entitlementId: null,
       premiumTier: 'FREE',

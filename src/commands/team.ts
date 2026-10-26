@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -91,10 +92,10 @@ async function getGuildLanguage(guildId: string): Promise<string> {
 
 async function handleCreateTeam(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -103,7 +104,7 @@ async function handleCreateTeam(interaction: ChatInputCommandInteraction) {
   const name = interaction.options.getString('name', true).trim();
 
   if (!name || name.length > MAX_TEAM_NAME_LENGTH) {
-    await interaction.reply({ content: t(lang, 'teamInvalidName'), ephemeral: true });
+    await guildOutput(async () => interaction.reply({ content: t(lang, 'teamInvalidName'), ephemeral: true }));
     return;
   }
 
@@ -122,10 +123,10 @@ async function handleCreateTeam(interaction: ChatInputCommandInteraction) {
 
   try {
     const team = await createTeamWithinLimit(guildId, name, interaction.user.id, maxTeams);
-    await interaction.editReply({ content: t(lang, 'teamCreated', { name: team.name }) });
+    await guildOutput(async () => interaction.editReply({ content: t(lang, 'teamCreated', { name: team.name }) }));
   } catch (error) {
     if (error instanceof DuplicateTeamNameError) {
-      await interaction.editReply({ content: t(lang, 'teamAlreadyExists', { name }) });
+      await guildOutput(async () => interaction.editReply({ content: t(lang, 'teamAlreadyExists', { name }) }));
       return;
     }
     if (error instanceof TeamLimitReachedError) {
@@ -139,10 +140,10 @@ async function handleCreateTeam(interaction: ChatInputCommandInteraction) {
 
 async function handleListTeams(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -171,15 +172,15 @@ async function handleListTeams(interaction: ChatInputCommandInteraction) {
   // Free guilds get the shared low-key upgrade nudge; premium replies stay unchanged.
   const hint = await freeTierHint(interaction.guildId, lang);
 
-  await interaction.editReply({ embeds: [embed], ...(hint ? { content: hint } : {}) });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], ...(hint ? { content: hint } : {}) }));
 }
 
 async function handleDeleteTeam(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -192,20 +193,20 @@ async function handleDeleteTeam(interaction: ChatInputCommandInteraction) {
   const team = await getTeamByName(guildId, name);
 
   if (!team) {
-    await interaction.editReply({ content: t(lang, 'teamNotFound', { name }) });
+    await guildOutput(async () => interaction.editReply({ content: t(lang, 'teamNotFound', { name }) }));
     return;
   }
 
   if (team.isDefault) {
-    await interaction.editReply({ content: t(lang, 'teamCannotDeleteDefault') });
+    await guildOutput(async () => interaction.editReply({ content: t(lang, 'teamCannotDeleteDefault') }));
     return;
   }
 
   await deleteTeam(team.id);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `${t(lang, 'teamDeleted', { name: team.name })}\n${DELETE_CASCADE_NOTE[lang] || DELETE_CASCADE_NOTE.en}`,
-  });
+  }));
 }
 
 export default command;

@@ -1,3 +1,5 @@
+import { bindGuildCustomId } from '../services/guildJobs';
+import { guildOutput } from '../services/guildJobs';
 import {
   StringSelectMenuInteraction,
   ActionRowBuilder,
@@ -25,16 +27,16 @@ async function handleClassSelect(interaction: StringSelectMenuInteraction, raidI
   const specs = getSpecsForClass(selectedClass);
 
   if (specs.length === 0) {
-    await interaction.update({
+    await guildOutput(async () => interaction.update({
       content: '❌ No specs found for this class.',
       components: [],
-    });
+    }));
     return;
   }
 
   // Create spec selection menu
   const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId(`spec_select_${raidId}_${selectedClass}`)
+    .setCustomId(bindGuildCustomId(`spec_select_${raidId}_${selectedClass}`))
     .setPlaceholder('Select your specialization')
     .addOptions(
       specs.map((spec) => ({
@@ -45,10 +47,10 @@ async function handleClassSelect(interaction: StringSelectMenuInteraction, raidI
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  await interaction.update({
+  await guildOutput(async () => interaction.update({
     content: `⚔️ You selected **${selectedClass}**. Now select your spec:`,
     components: [row],
-  });
+  }));
 }
 
 async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId: string) {
@@ -137,10 +139,10 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
     },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Your class has been set to **${selectedClass} (${selectedSpec})**!\nThis will be remembered for future raids.`,
     components: [],
-  });
+  }));
 
   // Update the raid message
   try {
@@ -151,9 +153,9 @@ async function handleSpecSelect(interaction: StringSelectMenuInteraction, raidId
         const message = await channel.messages.fetch(raid.messageId);
         const embed = await createRaidEmbed(raidId, raid.guild.language);
 
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [embed],
-        });
+        }));
       }
     }
   } catch (error) {

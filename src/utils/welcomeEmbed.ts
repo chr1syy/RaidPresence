@@ -1,3 +1,4 @@
+import { bindGuildCustomId } from '../services/guildJobs';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Colors } from 'discord.js';
 import { t } from './localization';
 import { TRIAL_DAYS } from '../services/entitlementService';
@@ -69,11 +70,11 @@ export function buildWelcomeButtons(
 ): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`${WELCOME_BUTTON_SETUP}:${guildId}`)
+      .setCustomId(bindGuildCustomId(`${WELCOME_BUTTON_SETUP}:${guildId}`))
       .setLabel(t(language, 'welcomeButtonSetup'))
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId(`${WELCOME_BUTTON_FIRST_RAID}:${guildId}`)
+      .setCustomId(bindGuildCustomId(`${WELCOME_BUTTON_FIRST_RAID}:${guildId}`))
       .setLabel(t(language, 'welcomeButtonFirstRaid'))
       .setStyle(ButtonStyle.Success)
   );

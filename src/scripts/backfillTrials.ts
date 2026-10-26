@@ -1,3 +1,4 @@
+import type { GuildRuntime } from '../services/guildRuntime';
 /**
  * One-off backfill that starts the Premium trial for guilds that predate it.
  *
@@ -32,14 +33,25 @@ export interface BackfillTrialsResult {
  * @param options.dryRun When true, only the candidate query runs — no grants are attempted.
  */
 export async function backfillTrials(
-  options: { dryRun?: boolean } = {},
+  options: { dryRun?: boolean; guildId?: string; runtime?: GuildRuntime } = {},
 ): Promise<BackfillTrialsResult> {
   const dryRun = options.dryRun ?? false;
+  if (options.runtime) {
+    const runtime = options.runtime;
+    const tokens = runtime.jobs.snapshot(); // Before selecting candidates.
+    const total = { scanned: 0, granted: 0, skipped: 0 };
+    for (const token of tokens) {
+      const result = await runtime.jobs.runWithToken(token, () => backfillTrials({ dryRun, guildId: token.guildId }));
+      if (result) for (const key of ['scanned', 'granted', 'skipped'] as const) total[key] += result[key];
+    }
+    return total;
+  }
 
   // Pre-selection only: this narrows the write attempts. The authoritative eligibility
   // check still happens atomically inside grantTrialIfEligible().
   const candidates = await prisma.guild.findMany({
     where: {
+      ...(options.guildId === undefined ? {} : { id: options.guildId }),
       trialStartedAt: null,
       entitlementId: null,
       premiumTier: 'FREE',
@@ -111,6 +123,7 @@ export async function backfillTrials(
  */
 export async function runStartupTrialBackfill(
   entitlementSync: { ok: boolean },
+  runtime?: GuildRuntime,
 ): Promise<BackfillTrialsResult | null> {
   if (!entitlementSync.ok) {
     console.warn('⏭️ Trial backfill skipped: entitlement sync did not complete cleanly');
@@ -118,7 +131,7 @@ export async function runStartupTrialBackfill(
   }
 
   try {
-    return await backfillTrials();
+    return await backfillTrials({ runtime });
   } catch (error) {
     console.error('❌ Trial backfill failed:', error);
     return null;

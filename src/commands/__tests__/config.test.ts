@@ -182,14 +182,14 @@ describe('config command', () => {
     });
 
     it('should update leader roles in database', async () => {
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'guild-123' },
-          update: { raidLeaderRoles: 'Officer,Raid Leader' },
+          data: { raidLeaderRoles: 'Officer,Raid Leader' },
         })
       );
 
@@ -230,13 +230,13 @@ describe('config command', () => {
         if (key === 'lang') return { value: 'en' };
         return null;
       });
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { language: 'en' },
+          data: { language: 'en' },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
@@ -249,13 +249,13 @@ describe('config command', () => {
         if (key === 'lang') return { value: 'de' };
         return null;
       });
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { language: 'de' },
+          data: { language: 'de' },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
@@ -295,13 +295,13 @@ describe('config command', () => {
 
     it('should store an east-of-UTC IANA zone', async () => {
       mockInteraction.options.get = withZone('Europe/Berlin');
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
+          data: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
@@ -311,13 +311,13 @@ describe('config command', () => {
 
     it('should store a west-of-UTC IANA zone', async () => {
       mockInteraction.options.get = withZone('America/New_York');
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'America/New_York', timezoneOffset: expect.any(Number) },
+          data: { timezone: 'America/New_York', timezoneOffset: expect.any(Number) },
         })
       );
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
@@ -330,26 +330,26 @@ describe('config command', () => {
       // path, so every write has to fill both. Etc/GMT-3 is UTC+3 (POSIX inversion),
       // and being a fixed-offset zone it is stable regardless of when the suite runs.
       mockInteraction.options.get = withZone('Etc/GMT-3');
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'Etc/GMT-3', timezoneOffset: 3 },
+          data: { timezone: 'Etc/GMT-3', timezoneOffset: 3 },
         })
       );
     });
 
     it('should normalize casing to the canonical identifier', async () => {
       mockInteraction.options.get = withZone('  europe/berlin  ');
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          update: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
+          data: { timezone: 'Europe/Berlin', timezoneOffset: expect.any(Number) },
         })
       );
     });
@@ -361,7 +361,7 @@ describe('config command', () => {
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(prisma.guild.update).not.toHaveBeenCalled();
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('is not a known timezone'),
@@ -374,7 +374,7 @@ describe('config command', () => {
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).not.toHaveBeenCalled();
+      expect(prisma.guild.update).not.toHaveBeenCalled();
       expect(mockInteraction.editReply).toHaveBeenCalledWith(
         expect.objectContaining({
           content: expect.stringContaining('is not a known timezone'),
@@ -402,14 +402,14 @@ describe('config command', () => {
     });
 
     it('should update archive channel in database', async () => {
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'guild-123' },
-          update: { archiveChannelId: 'channel-456' },
+          data: { archiveChannelId: 'channel-456' },
         })
       );
 
@@ -467,14 +467,14 @@ describe('config command', () => {
         id: 'guild-123',
         archiveChannelId: 'channel-456',
       });
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'guild-123' },
-          update: { autoArchive: true },
+          data: { autoArchive: true },
         })
       );
 
@@ -489,14 +489,14 @@ describe('config command', () => {
         id: 'guild-123',
         archiveChannelId: 'channel-456',
       });
-      (prisma.guild.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.guild.update as jest.Mock).mockResolvedValue({});
 
       await command.execute(mockInteraction);
 
-      expect(prisma.guild.upsert).toHaveBeenCalledWith(
+      expect(prisma.guild.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'guild-123' },
-          update: { autoArchive: false },
+          data: { autoArchive: false },
         })
       );
 

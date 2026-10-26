@@ -213,22 +213,18 @@ export function cleanLeaderRoles(input: string): string {
  * The single write path for `Guild.raidLeaderRoles`.
  *
  * Shared with the welcome setup chain (#48) so the column has exactly one writer;
- * the welcome flow can be triggered from a DM, where the guild name is only
- * available from the client cache, hence the explicit `guildName` parameter.
+ * the welcome flow can also be triggered from a DM. Only the lifecycle may create
+ * Guild rows; a late config callback must never recreate a removed installation.
+ * guildName remains in the signature for existing welcome callers.
  */
 export async function setLeaderRoles(
   guildId: string,
   guildName: string,
   cleanedRoles: string
 ): Promise<void> {
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: guildId },
-    update: { raidLeaderRoles: cleanedRoles },
-    create: {
-      id: guildId,
-      name: guildName,
-      raidLeaderRoles: cleanedRoles,
-    },
+    data: { raidLeaderRoles: cleanedRoles },
   });
 }
 
@@ -238,15 +234,9 @@ export async function setLanguage(
   guildName: string,
   language: 'en' | 'de'
 ): Promise<void> {
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: guildId },
-    update: { language },
-    create: {
-      id: guildId,
-      name: guildName,
-      raidLeaderRoles: '',
-      language,
-    },
+    data: { language },
   });
 }
 
@@ -338,16 +328,9 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   // rollback path — see prisma/migrations/20260803090000_guild_timezone_iana_phase1.
   const timezoneData = guildTimezoneUpdate(timezone);
 
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: timezoneData,
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      language: 'en',
-      ...timezoneData,
-    },
+    data: timezoneData,
   });
 
   await interaction.editReply({
@@ -400,15 +383,9 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
   }
 
   // Update in database
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: { archiveChannelId: channel.id },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      archiveChannelId: channel.id,
-    },
+    data: { archiveChannelId: channel.id },
   });
 
   await interaction.editReply({
@@ -442,15 +419,9 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
   }
 
   // Update in database
-  await prisma.guild.upsert({
+  await prisma.guild.update({
     where: { id: interaction.guild.id },
-    update: { autoArchive: enabled },
-    create: {
-      id: interaction.guild.id,
-      name: interaction.guild.name,
-      raidLeaderRoles: '',
-      autoArchive: enabled,
-    },
+    data: { autoArchive: enabled },
   });
 
   await interaction.editReply({

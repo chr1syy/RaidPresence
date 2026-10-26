@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import prisma from '../database/client';
 import { invalidateTierCache } from './entitlementService';
 import { GuildLifecyclePayload, syncGuildOnJoin } from './guildLifecycle';
@@ -11,7 +12,7 @@ import { GuildLifecyclePayload, syncGuildOnJoin } from './guildLifecycle';
  */
 export type GuildRemovalResult =
   | { status: 'deleted'; guilds: number; raids: number }
-  | { status: 'absent' | 'legacy_retained' };
+  | { status: 'absent' | 'legacy_retained' | 'stale_generation' };
 
 export class GuildRemovalIsolationError extends Error {
   constructor() {
@@ -72,9 +73,17 @@ async function deleteConfirmedGuild(guildId: string): Promise<GuildRemovalResult
   return result;
 }
 
+/** Process-local capability captured when work/UI is issued, never on a late callback. */
+export interface GuildJobToken {
+  readonly guildId: string;
+  readonly generation: number;
+}
+
 interface GuildWork {
-  generation: number;
+  token: GuildJobToken;
   accepting: boolean;
+  legacyProtected: boolean;
+  pending: number;
   tail: Promise<unknown>;
 }
 
@@ -85,61 +94,137 @@ interface GuildWork {
  * through the existing lifecycle helper. Every guild writer MUST use run() before
  * this draft can be wired into runtime. It is not a distributed lock.
  */
-export function createGuildRemovalDraft() {
+export function createGuildRemovalDraft(options: { invalidateGuild?: (guildId: string) => void } = {}) {
   const work = new Map<string, GuildWork>();
   const removals = new WeakMap<GuildLifecyclePayload, Promise<GuildRemovalResult>>();
+  const removalTokens = new WeakMap<GuildJobToken, Promise<GuildRemovalResult>>();
+  const joins = new WeakMap<GuildLifecyclePayload, Promise<GuildJobToken | undefined>>();
+  const context = new AsyncLocalStorage<{ token: GuildJobToken; active: boolean }>();
 
   function state(guildId: string): GuildWork {
     let entry = work.get(guildId);
     if (!entry) {
-      entry = { generation: 0, accepting: false, tail: Promise.resolve() };
+      entry = {
+        token: Object.freeze({ guildId, generation: 0 }), accepting: false,
+        legacyProtected: false, pending: 0, tail: Promise.resolve(),
+      };
       work.set(guildId, entry);
     }
     return entry;
   }
 
   function enqueue<T>(entry: GuildWork, operation: () => Promise<T>): Promise<T> {
-    const result = entry.tail.then(operation);
+    ++entry.pending;
+    const result = entry.tail.then(operation).finally(() => { --entry.pending; });
     entry.tail = result.catch(() => undefined);
     return result;
   }
 
+  function advance(entry: GuildWork): GuildJobToken {
+    entry.token = Object.freeze({ guildId: entry.token.guildId, generation: entry.token.generation + 1 });
+    return entry.token;
+  }
+
+  function isCurrent(token: GuildJobToken): boolean {
+    const entry = work.get(token.guildId);
+    return Boolean(entry?.accepting && entry.token === token);
+  }
+
+  function runWithToken<T>(token: GuildJobToken, operation: () => Promise<T>): Promise<T | undefined> {
+    const parent = context.getStore();
+    if (parent) {
+      // A detached continuation must not escape the lifetime of its awaited root.
+      if (!parent.active || parent.token !== token) return Promise.reject(new Error('Guild job context expired or belongs to another generation'));
+      return operation(); // Reentrant same-guild work must not queue behind itself.
+    }
+    const entry = work.get(token.guildId);
+    if (!entry || !isCurrent(token)) return Promise.resolve(undefined);
+    return enqueue(entry, async () => {
+      if (!isCurrent(token)) return undefined;
+      const running = { token, active: true };
+      try {
+        return await context.run(running, operation);
+      } finally {
+        running.active = false;
+      }
+    });
+  }
+
   return {
-    join(guild: GuildLifecyclePayload): Promise<void> {
+    capture(guildId: string): GuildJobToken { return state(guildId).token; },
+    isCurrent,
+    runWithToken,
+
+    /** Reject busy UI work immediately so showModal/reply keep their first-response semantics. */
+    tryRunWithToken<T>(token: GuildJobToken, operation: () => Promise<T>): Promise<T | undefined> {
+      if (!context.getStore() && work.get(token.guildId)?.pending) return Promise.resolve(undefined);
+      return runWithToken(token, operation);
+    },
+
+    join(guild: GuildLifecyclePayload): Promise<GuildJobToken | undefined> {
+      if (context.getStore()) return Promise.reject(new Error('Guild lifecycle cannot be nested inside a writer job'));
+      const previous = joins.get(guild);
+      if (previous) return previous;
       const entry = state(guild.id);
-      const generation = ++entry.generation;
+      const token = advance(entry);
       entry.accepting = true;
-      return enqueue(entry, async () => {
-        if (generation !== entry.generation) return;
+      const result = enqueue(entry, async () => {
+        if (token !== entry.token) return undefined;
         try {
+          const existing = await prisma.guild.findUnique({ where: { id: guild.id }, select: { leftAt: true } });
+          // Returning legacy is an unresolved product decision. Do not erase its
+          // departure mark and accidentally make old history purge-eligible.
+          if (entry.legacyProtected || existing?.leftAt) {
+            entry.legacyProtected = true;
+            entry.accepting = false;
+            return undefined;
+          }
           await syncGuildOnJoin(guild);
+          return token;
         } catch (error) {
-          if (generation === entry.generation) entry.accepting = false;
+          if (token === entry.token) entry.accepting = false;
           throw error;
         }
       });
+      joins.set(guild, result);
+      return result;
     },
 
     run<T>(guildId: string, operation: () => Promise<T>): Promise<T | undefined> {
-      const entry = state(guildId);
-      const generation = entry.generation;
-      if (!entry.accepting) return Promise.resolve(undefined);
-      return enqueue(entry, () => {
-        if (!entry.accepting || generation !== entry.generation) return Promise.resolve(undefined);
-        return operation();
-      });
+      const parent = context.getStore();
+      if (parent && parent.token.guildId !== guildId) return Promise.reject(new Error('Cross-guild nested job is not allowed'));
+      return runWithToken(parent?.token ?? state(guildId).token, operation);
     },
 
-    remove(guild: GuildLifecyclePayload): Promise<GuildRemovalResult> {
+    remove(guild: GuildLifecyclePayload, token: GuildJobToken): Promise<GuildRemovalResult> {
+      if (context.getStore()) return Promise.reject(new Error('Guild lifecycle cannot be nested inside a writer job'));
       // discord.js emits the cached Guild object. An accidental replay of that
       // object must not delete a later reinstallation of the same Discord ID.
       const previous = removals.get(guild);
       if (previous) return previous;
       const entry = state(guild.id);
+      const duplicate = removalTokens.get(token);
+      if (duplicate && token.guildId === guild.id) return duplicate;
+      if (token.guildId !== guild.id || token !== entry.token) return Promise.resolve({ status: 'stale_generation' });
       entry.accepting = false;
-      ++entry.generation;
-      const result = enqueue(entry, () => deleteConfirmedGuild(guild.id));
+      const revoked = advance(entry);
+      // Synchronous invalidation closes the UI immediately, and a second pass
+      // after drain removes drafts an already-running job may have just issued.
+      const result = (async () => {
+        options.invalidateGuild?.(guild.id);
+        const outcome = await enqueue(entry, async () => {
+          options.invalidateGuild?.(guild.id);
+          if (entry.legacyProtected) return { status: 'legacy_retained' } as const;
+          return deleteConfirmedGuild(guild.id);
+        });
+        // No permanent Guild-ID tombstone: token identity also fences a later
+        // installation if generation numbers restart after reclaiming this entry.
+        if ((outcome.status === 'deleted' || outcome.status === 'absent') &&
+            !entry.accepting && entry.token === revoked && entry.pending === 0) work.delete(guild.id);
+        return outcome;
+      })();
       removals.set(guild, result);
+      removalTokens.set(token, result);
       return result;
     },
   };

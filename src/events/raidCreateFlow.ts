@@ -105,14 +105,23 @@ function putDraft(draft: Omit<RaidDraft, 'createdAt'>): string {
   return id;
 }
 
-function getDraft(id: string, userId: string): RaidDraft | null {
+function getDraft(id: string, userId: string, guildId: string | null): RaidDraft | null {
   pruneExpiredDrafts(Date.now());
   const draft = drafts.get(id);
   if (!draft) return null;
   // A custom ID is visible to anyone who can see the message; never act on someone
   // else's draft.
-  if (draft.userId !== userId) return null;
+  if (draft.userId !== userId || draft.guildId !== guildId) return null;
   return draft;
+}
+
+/** Called by the inactive removal adapter both on revocation and after draining. */
+export function invalidateGuildDrafts(guildId: string): number {
+  let removed = 0;
+  for (const [id, draft] of drafts) {
+    if (draft.guildId === guildId) { drafts.delete(id); ++removed; }
+  }
+  return removed;
 }
 
 /** Exposed for tests — the store is module-level state. */
@@ -240,7 +249,7 @@ export async function startGuidedRaidCreate(
 
 export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.reply({
@@ -302,7 +311,7 @@ export async function handleDetailsSubmit(interaction: ModalSubmitInteraction): 
 
 export async function handleRoleSelect(interaction: RoleSelectMenuInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.update({
@@ -408,7 +417,7 @@ async function showPreview(
  */
 export async function handlePingToggle(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.update({
@@ -438,7 +447,7 @@ export async function handlePingToggle(interaction: ButtonInteraction): Promise<
  */
 export async function handleRecurringToggle(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.update({
@@ -460,7 +469,7 @@ export async function handleRecurringToggle(interaction: ButtonInteraction): Pro
 
 export async function handleFixTimeButton(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.update({
@@ -509,7 +518,7 @@ export async function handleFixTimeButton(interaction: ButtonInteraction): Promi
 
 export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.reply({
@@ -571,7 +580,7 @@ export async function handleFixTimeSubmit(interaction: ModalSubmitInteraction): 
 
 export async function handleConfirmButton(interaction: ButtonInteraction): Promise<void> {
   const draftId = interaction.customId.split(':')[1];
-  const draft = getDraft(draftId, interaction.user.id);
+  const draft = getDraft(draftId, interaction.user.id, interaction.guildId);
 
   if (!draft) {
     await interaction.update({

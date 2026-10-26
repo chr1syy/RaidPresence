@@ -21,6 +21,7 @@ import { canManageRaids } from '../../utils/permissions';
 import { createRaidWithRoster } from '../../commands/raid';
 import {
   __clearDrafts,
+  invalidateGuildDrafts,
   handleConfirmButton,
   handleDetailsSubmit,
   handleFixTimeButton,
@@ -153,6 +154,30 @@ describe('guided /raid create flow', () => {
       timezone: 'Europe/Berlin',
     });
     (prisma.guild.update as jest.Mock).mockResolvedValue({});
+  });
+
+  it('invalidates only the removed guild drafts and rejects an old confirm callback', async () => {
+    const { draftId } = await runToRoleSelect();
+    const other = buildSlashInteraction({ guild: { id: 'other-guild', name: 'Other' }, guildId: 'other-guild' });
+    await startGuidedRaidCreate(other, { date: null, time: null, title: null, roles: null, pingRoles: false, teamOption: null });
+    const otherId = other.showModal.mock.calls[0][0].toJSON().custom_id.split(':')[1];
+    expect(invalidateGuildDrafts(GUILD_ID)).toBe(1);
+    expect(invalidateGuildDrafts(GUILD_ID)).toBe(0);
+    const old = buildButtonInteraction(`rcflow-confirm:${draftId}`);
+    await handleConfirmButton(old);
+    expect(old.update).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('expired') }));
+    expect(createRaidWithRoster).not.toHaveBeenCalled();
+    expect(invalidateGuildDrafts('other-guild')).toBe(1);
+    expect(otherId).not.toBe(draftId);
+  });
+
+  it('rejects a valid draft ID submitted from a different guild before any write', async () => {
+    const { draftId } = await runToRoleSelect();
+    const foreign = buildButtonInteraction(`rcflow-confirm:${draftId}`);
+    foreign.guildId = 'other-guild';
+    await handleConfirmButton(foreign);
+    expect(foreign.update).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('expired') }));
+    expect(createRaidWithRoster).not.toHaveBeenCalled();
   });
 
   describe('step 1 — the modal', () => {

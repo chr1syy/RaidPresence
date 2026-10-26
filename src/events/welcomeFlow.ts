@@ -21,6 +21,7 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  PermissionFlagsBits,
   RoleSelectMenuBuilder,
   RoleSelectMenuInteraction,
   StringSelectMenuBuilder,
@@ -61,6 +62,30 @@ type ChainInteraction =
   | StringSelectMenuInteraction
   | RoleSelectMenuInteraction;
 
+async function updateSetup(interaction: ChainInteraction, message: { content: string; components: ActionRowBuilder<any>[] }) {
+  if (interaction.deferred) await interaction.editReply(message);
+  else await interaction.update(message);
+}
+
+/** Config writes have the same Administrator contract as /config and /setup. */
+async function authorizeSetupWrite(interaction: StringSelectMenuInteraction | RoleSelectMenuInteraction, guildId: string): Promise<boolean> {
+  // These selects never open a modal. Acknowledge before membership/network work.
+  if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+  let allowed = false;
+  if (!interaction.guildId || interaction.guildId === guildId) {
+    try {
+      const guild = interaction.client.guilds.cache.get(guildId);
+      const member = await guild?.members.fetch({ user: interaction.user.id, force: true });
+      allowed = Boolean(member?.permissions.has(PermissionFlagsBits.Administrator));
+    } catch { /* A membership/network failure cannot authorize a write. */ }
+  }
+  if (!allowed) {
+    const language = await guildLanguage(guildId);
+    await updateSetup(interaction, { content: t(language, 'welcomeSetupAdminRequired'), components: [] });
+  }
+  return allowed;
+}
+
 export function isWelcomeButton(customId: string): boolean {
   return (
     customId.startsWith(`${WELCOME_BUTTON_SETUP}:`) ||
@@ -100,10 +125,9 @@ function languageName(language: string): string {
 /**
  * Guild name for a write, resolved from the client cache.
  *
- * The setup chain writes through the `/config` helpers, which upsert and therefore
- * need a name for the create branch. In a DM `interaction.guild` is null, so the
- * cache is the only source — and the id is a usable last resort, since the create
- * branch only fires for a guild the bot has never seen.
+ * The setup chain uses the shared `/config` helpers. Their guildName parameter is
+ * retained for compatibility; writes now update existing rows only. In a DM the
+ * cache supplies the display name. Missing rows can only be created by lifecycle.
  */
 function guildNameFor(interaction: ChainInteraction, guildId: string): string {
   return interaction.client.guilds.cache.get(guildId)?.name ?? guildId;
@@ -223,11 +247,12 @@ export async function handleTimezoneSelect(
   interaction: StringSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const language = await guildLanguage(guildId);
   const timezone = normalizeTimezone(interaction.values[0]);
 
   if (!timezone) {
-    await interaction.update({
+    await updateSetup(interaction, {
       content: '❌ That timezone is not recognised. Use `/config timezone` to set it.',
       components: [],
     });
@@ -274,7 +299,7 @@ async function showLanguageStep(
       { label: 'Deutsch', value: 'de', default: current === 'de' }
     );
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content:
       `${confirmation}\n\n` +
       `${stepHeader(language, 2)}\n` +
@@ -290,6 +315,7 @@ export async function handleLanguageSelect(
   interaction: StringSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const chosen = interaction.values[0] === 'de' ? 'de' : 'en';
 
   await setLanguage(guildId, guildNameFor(interaction, guildId), chosen as SupportedLanguage);
@@ -336,7 +362,7 @@ async function showLeaderRolesStep(
     .setMinValues(0)
     .setMaxValues(LEADER_ROLE_LIMIT);
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content:
       `${confirmation}\n\n` +
       `${stepHeader(language, 3)}\n` +
@@ -352,6 +378,7 @@ export async function handleLeaderRolesSelect(
   interaction: RoleSelectMenuInteraction
 ): Promise<void> {
   const guildId = guildIdFrom(interaction.customId);
+  if (!(await authorizeSetupWrite(interaction, guildId))) return;
   const language = await guildLanguage(guildId);
 
   // Role IDs, not names: `canManageRaids` matches either, and an ID survives a
@@ -442,7 +469,7 @@ async function finishSetup(
     `-# ${t(language, 'welcomeSetupDone')}`,
   ].join('\n');
 
-  await interaction.update({
+  await updateSetup(interaction, {
     content: `${lines.join('\n\n')}\n\n${summary}`,
     components: [],
   });

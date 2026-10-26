@@ -263,6 +263,9 @@ export async function grantTrialIfEligible(guildId: string): Promise<TrialGrantR
   const { count } = await prisma.guild.updateMany({
     where: {
       id: guildId,
+      // Match the backfill's existing active-guild contract at the actual write,
+      // not only in its earlier candidate scan (a departure may race that scan).
+      leftAt: null,
       trialStartedAt: null,
       entitlementId: null,
       premiumTier: 'FREE',

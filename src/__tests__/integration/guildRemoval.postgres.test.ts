@@ -16,6 +16,9 @@ let lifecycle: typeof import('../../services/guildLifecycle');
 let entitlement: typeof import('../../services/entitlementService');
 let config: typeof import('../../commands/config');
 let recurrence: typeof import('../../services/recurringRaidService');
+let adapterModule: typeof import('../../services/guildWriterAdapter');
+let guided: typeof import('../../events/raidCreateFlow');
+let welcome: typeof import('../../events/welcomeFlow');
 
 const A = 'synthetic-guild-a';
 const B = 'synthetic-guild-b';
@@ -51,6 +54,11 @@ async function retainedSnapshot() {
     rolePrefs: all.rolePrefs.filter((row) => row.guildId === B),
     votes: all.votes,
   };
+}
+
+async function removeFresh() {
+  const draft = removal.createGuildRemovalDraft();
+  return draft.remove(payload(), draft.capture(A));
 }
 
 async function expectDeleted() {
@@ -90,10 +98,14 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     entitlement = await import('../../services/entitlementService');
     config = await import('../../commands/config');
     recurrence = await import('../../services/recurringRaidService');
+    adapterModule = await import('../../services/guildWriterAdapter');
+    guided = await import('../../events/raidCreateFlow');
+    welcome = await import('../../events/welcomeFlow');
   });
 
   beforeEach(async () => {
     entitlement.clearTierCache();
+    guided.__clearDrafts();
     await db.raid.deleteMany();
     await db.guild.deleteMany();
     await db.topggVote.deleteMany();
@@ -160,7 +172,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
   it('deletes all six scoped tables and preserves every field in the other guild and shared-user votes', async () => {
     const before = await retainedSnapshot();
     expect(await entitlement.getTier(A)).toBe('PREMIUM');
-    const result = await removal.createGuildRemovalDraft().remove(payload());
+    const result = await removeFresh();
     expect(result).toEqual({ status: 'deleted', guilds: 1, raids: 5 });
     await expectDeleted();
     expect(await retainedSnapshot()).toEqual(before);
@@ -179,7 +191,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     const guild = { ...payload(), available: false, channels: { cache: new Map() } };
     client.guilds.cache.set(A, guild as any);
     const pending: Array<Promise<unknown>> = [];
-    client.on(Events.GuildDelete, (deleted) => { pending.push(draft.remove(deleted)); });
+    client.on(Events.GuildDelete, (deleted) => { pending.push(draft.remove(deleted, draft.capture(deleted.id))); });
     (client as any).actions.GuildDelete.handle({ id: A });
     expect(pending).toHaveLength(1);
     await Promise.all(pending);
@@ -195,7 +207,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     client.guilds.cache.set(A, guild as any);
     let deletes = 0;
     let unavailable = 0;
-    client.on(Events.GuildDelete, (deleted) => { deletes++; void draft.remove(deleted); });
+    client.on(Events.GuildDelete, (deleted) => { deletes++; void draft.remove(deleted, draft.capture(deleted.id)); });
     client.on(Events.GuildUnavailable, () => { unavailable++; });
     (client as any).actions.GuildDelete.handle({ id: A, unavailable: true });
     client.emit(Events.ShardReconnecting, 0);
@@ -213,22 +225,22 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     expect(await db.guild.count()).toBe(2);
     expect(await db.raid.count()).toBe(6);
     const marked = await snapshot();
-    expect(await removal.createGuildRemovalDraft().remove(payload())).toEqual({ status: 'legacy_retained' });
+    expect(await removeFresh()).toEqual({ status: 'legacy_retained' });
     expect(await snapshot()).toEqual(marked);
   });
 
   it('leaves explicitly historical leftAt records and all descendants untouched', async () => {
     await lifecycle.markGuildDeparted(payload());
     const before = await snapshot();
-    expect(await removal.createGuildRemovalDraft().remove(payload())).toEqual({ status: 'legacy_retained' });
+    expect(await removeFresh()).toEqual({ status: 'legacy_retained' });
     expect(await snapshot()).toEqual(before);
   });
 
   it('makes concurrent duplicate events and unknown guild removals idempotent', async () => {
     const draft = removal.createGuildRemovalDraft();
-    const results = await Promise.all([draft.remove(payload()), draft.remove(payload())]);
+    const results = await Promise.all([draft.remove(payload(), draft.capture(A)), draft.remove(payload(), draft.capture(A))]);
     expect(results.map((result) => result.status)).toEqual(['deleted', 'absent']);
-    expect(await draft.remove({ id: 'synthetic-unknown', name: 'Unknown' })).toEqual({ status: 'absent' });
+    expect(await draft.remove({ id: 'synthetic-unknown', name: 'Unknown' }, draft.capture('synthetic-unknown'))).toEqual({ status: 'absent' });
     await expectDeleted();
   });
 
@@ -246,7 +258,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     await entered.promise;
     let queuedRan = false;
     const queued = draft.run(A, async () => { queuedRan = true; });
-    const deleting = draft.remove(payload());
+    const deleting = draft.remove(payload(), draft.capture(A));
     expect(await draft.run(A, async () => { throw new Error('must not run'); })).toBeUndefined();
     resume.release();
     expect(await running).toBe('completed-before-delete');
@@ -265,7 +277,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     const running = draft.run(A, async () => { entered.release(); await resume.promise; });
     await entered.promise;
     const staleConfig = draft.run(A, () => config.setLanguage(A, 'Old installation', 'de'));
-    const deleting = draft.remove(oldGuild);
+    const deleting = draft.remove(oldGuild, draft.capture(A));
     const joining = draft.join(payload());
     const freshWork = draft.run(A, async () => db.guild.findUnique({ where: { id: A } }));
     resume.release();
@@ -277,7 +289,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     expect(fresh).toMatchObject({ language: 'en', timezone: 'UTC', premiumTier: 'FREE', trialStartedAt: null, entitlementId: null, weeklyRaidCount: 0 });
     expect(await db.raid.count({ where: { guildId: A } })).toBe(0);
     expect(await db.team.count({ where: { guildId: A } })).toBe(0);
-    expect(await draft.remove(oldGuild)).toEqual({ status: 'deleted', guilds: 1, raids: 5 });
+    expect(await draft.remove(oldGuild, draft.capture(A))).toEqual({ status: 'deleted', guilds: 1, raids: 5 });
     expect(await db.guild.findUnique({ where: { id: A } })).toEqual(fresh);
   });
 
@@ -289,7 +301,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     const resume = deferred();
     const running = draft.run(A, async () => { entered.release(); await resume.promise; });
     await entered.promise;
-    const deleting = draft.remove(payload());
+    const deleting = draft.remove(payload(), draft.capture(A));
     expect(await draft.run(B, async () => 'other-server-continues')).toBe('other-server-continues');
     resume.release();
     await running;
@@ -298,7 +310,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
 
   it('records the product decision: fresh rejoin makes the existing one-time trial grant eligible again', async () => {
     const draft = removal.createGuildRemovalDraft();
-    await draft.remove(payload());
+    await draft.remove(payload(), draft.capture(A));
     await draft.join(payload());
     expect(await entitlement.grantTrialIfEligible(A)).toMatchObject({ granted: true, tier: 'PREMIUM' });
   });
@@ -312,10 +324,17 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       await draft.join(payload());
       // Join changes only updatedAt/name; use the snapshot after that normal sync.
       const beforeDelete = await snapshot();
-      await expect(draft.remove(payload())).rejects.toThrow();
+      const failedToken = draft.capture(A);
+      const failed = draft.remove(payload(), failedToken);
+      await expect(failed).rejects.toThrow();
       expect(await snapshot()).toEqual(beforeDelete);
       expect(await draft.run(A, async () => 'unsafe')).toBeUndefined();
       expect((await snapshot()).raids).toEqual(before.raids);
+      await draft.join(payload()); // A separately observed, explicit rejoin.
+      const afterRejoin = await snapshot();
+      expect(draft.remove(payload(), failedToken)).toBe(failed);
+      await expect(failed).rejects.toThrow();
+      expect(await snapshot()).toEqual(afterRejoin);
     } finally {
       await db.$executeRawUnsafe('DROP TRIGGER fail_guild_removal ON "Guild"');
       await db.$executeRawUnsafe('DROP FUNCTION fail_guild_removal()');
@@ -335,27 +354,160 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       data: { guildId: kind === 'attendance-in' ? B : A },
     });
     const before = await snapshot();
-    await expect(removal.createGuildRemovalDraft().remove(payload())).rejects.toBeInstanceOf(removal.GuildRemovalIsolationError);
+    await expect(removeFresh()).rejects.toBeInstanceOf(removal.GuildRemovalIsolationError);
     expect(await snapshot()).toEqual(before);
   });
 
   it('real FKs reject late child writes and existing recurring code cannot restart a deleted source', async () => {
     const source = (await db.raid.findUnique({ where: { id: 'raid-parent' } })) as Raid;
-    await removal.createGuildRemovalDraft().remove(payload());
+    await removeFresh();
     await expect(db.userPreference.create({ data: { guildId: A, userId: 'late', username: 'Synthetic Late' } })).rejects.toMatchObject({ code: 'P2003' });
     await expect(db.team.create({ data: { guildId: A, name: 'Late', createdBy: USER } })).rejects.toMatchObject({ code: 'P2003' });
     expect(await recurrence.createFollowUpRaid({} as Client, source, { mode: 'inherit' })).toEqual({ ok: false, reason: 'series_stopped' });
     await expectDeleted();
   });
 
-  it('demonstrates why activation must wrap current config upserts: an unguarded helper recreates Guild', async () => {
+  it('config writes cannot recreate a removed Guild, even outside the coordinator', async () => {
     const draft = removal.createGuildRemovalDraft();
     await draft.join(payload());
-    await draft.remove(payload());
+    await draft.remove(payload(), draft.capture(A));
     await draft.run(A, () => config.setLanguage(A, 'Synthetic Alpha', 'de'));
     await expectDeleted();
-    // Characterization of the existing hazard, NOT a claim runtime is protected.
-    await config.setLanguage(A, 'Synthetic Alpha', 'de');
-    expect(await db.guild.findUnique({ where: { id: A } })).toMatchObject({ language: 'de' });
+    await expect(config.setLanguage(A, 'Synthetic Alpha', 'de')).rejects.toMatchObject({ code: 'P2025' });
+    await expect(config.setLeaderRoles(A, 'Synthetic Alpha', 'late-role')).rejects.toMatchObject({ code: 'P2025' });
+    await expectDeleted();
+  });
+
+  it.each(['leader-roles', 'language', 'timezone', 'archive-channel', 'auto-archive'])('the actual config %s command cannot recreate a deleted Guild', async (subcommand) => {
+    await removeFresh();
+    const interaction = {
+      isChatInputCommand: () => true,
+      guild: { id: A, name: 'Synthetic Alpha' },
+      options: {
+        getSubcommand: () => subcommand,
+        get: (key: string) => ({ value: ({ roles: 'synthetic-role', lang: 'en', zone: 'UTC' } as Record<string, string>)[key] }),
+        getChannel: () => ({ id: 'synthetic-channel', type: 0 }),
+        getBoolean: () => false,
+      },
+      deferReply: async () => {}, reply: async () => {}, editReply: async () => {},
+    };
+    await expect(config.default.execute(interaction as any)).rejects.toMatchObject({ code: 'P2025' });
+    await expectDeleted();
+  });
+
+  it('retains returning legacy and refuses a second final removal without erasing its marker/history', async () => {
+    await lifecycle.markGuildDeparted(payload());
+    const before = await snapshot();
+    const draft = removal.createGuildRemovalDraft();
+    expect(await draft.join(payload())).toBeUndefined();
+    expect(await draft.remove(payload(), draft.capture(A))).toEqual({ status: 'legacy_retained' });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('rejects an old removal token and old writer after a new join, without touching the database', async () => {
+    const draft = removal.createGuildRemovalDraft();
+    const oldToken = (await draft.join(payload()))!;
+    await draft.join(payload());
+    const before = await snapshot();
+    expect(await draft.remove(payload(), oldToken)).toEqual({ status: 'stale_generation' });
+    expect(await draft.runWithToken(oldToken, () => config.setLanguage(A, 'Old', 'en'))).toBeUndefined();
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('executes actual DM welcome updates inside one reauthorized boundary, rejecting callbacks after rejoin', async () => {
+    const adapter = adapterModule.createGuildWriterAdapter();
+    const token = (await adapter.coordinator.join(payload()))!;
+    const id = adapter.bindCallback(token, `welcome-lang:${A}`, USER);
+    let authorized = true;
+    const authorize = async (guildId: string, userId: string) => authorized && guildId === A && userId === USER;
+    const callback = async (originalCustomId: string) => {
+      let deferred = false;
+      return welcome.handleLanguageSelect({
+        customId: originalCustomId, values: ['en'], user: { id: USER }, guildId: null, guild: null,
+        client: { guilds: { cache: new Map([[A, { name: 'Synthetic Alpha', members: { fetch: async () => ({ permissions: { has: () => authorized } }) } }]]) } },
+        get deferred() { return deferred; }, deferUpdate: async () => { deferred = true; },
+        update: async () => {}, editReply: async () => {},
+      } as any);
+    };
+    const input = { customId: id, guildId: null, userId: USER };
+    expect((await adapter.callback(input, authorize, callback)).status).toBe('executed');
+    expect((await db.guild.findUnique({ where: { id: A } }))?.language).toBe('en');
+    authorized = false;
+    const beforeDenied = await snapshot();
+    expect(await adapter.callback(input, authorize, callback)).toEqual({ status: 'rejected' });
+    expect(await snapshot()).toEqual(beforeDenied);
+    await adapter.coordinator.remove(payload(), token);
+    await adapter.coordinator.join(payload());
+    authorized = true;
+    const beforeOld = await snapshot();
+    expect(await adapter.callback(input, authorize, callback)).toEqual({ status: 'rejected' });
+    expect(await snapshot()).toEqual(beforeOld);
+  });
+
+  it('invalidates real guided drafts per guild before rejoin and preserves another guild draft', async () => {
+    const adapter = adapterModule.createGuildWriterAdapter();
+    const token = (await adapter.coordinator.join(payload()))!;
+    async function openDraft(guildId: string) {
+      let customId = '';
+      await guided.startGuidedRaidCreate({
+        guild: { id: guildId }, guildId, channel: { id: 'synthetic-channel' }, user: { id: USER },
+        showModal: async (modal: any) => { customId = modal.toJSON().custom_id; },
+      } as any, { date: null, time: null, title: null, roles: null, pingRoles: false, teamOption: null });
+      return customId.split(':')[1];
+    }
+    const oldId = await adapter.writer(token, () => openDraft(A));
+    await openDraft(B);
+    await adapter.coordinator.remove(payload(), token);
+    await adapter.coordinator.join(payload());
+    let response = '';
+    await guided.handleConfirmButton({
+      customId: `rcflow-confirm:${oldId}`, guildId: A, user: { id: USER },
+      update: async (message: any) => { response = message.content; },
+    } as any);
+    expect(response).toContain('expired');
+    expect(await db.raid.count({ where: { guildId: A } })).toBe(0);
+    expect(guided.invalidateGuildDrafts(B)).toBe(1);
+  });
+
+  it('fences old preference writes even when a sequential rejoin reuses the numeric generation', async () => {
+    const adapter = adapterModule.createGuildWriterAdapter();
+    const old = (await adapter.coordinator.join(payload()))!;
+    await adapter.coordinator.remove(payload(), old);
+    const fresh = (await adapter.coordinator.join(payload()))!;
+    expect(old.generation).toBe(fresh.generation);
+    expect(old).not.toBe(fresh);
+    expect(await adapter.writer(old, () => db.userPreference.create({
+      data: { userId: USER, guildId: A, username: 'Synthetic Stale Player' },
+    }))).toBeUndefined();
+    expect(await db.userPreference.count({ where: { guildId: A } })).toBe(0);
+    expect(await adapter.writer(fresh, () => db.guild.findUnique({ where: { id: A } }))).toMatchObject({ id: A });
+  });
+
+  it('does not grant a trial if departure raced the earlier backfill candidate scan', async () => {
+    await db.guild.update({ where: { id: A }, data: {
+      premiumTier: 'FREE', trialStartedAt: null, entitlementId: null,
+    } });
+    expect(await db.guild.count({ where: { id: A, leftAt: null } })).toBe(1);
+    await lifecycle.markGuildDeparted(payload());
+    const before = await snapshot();
+    expect(await entitlement.grantTrialIfEligible(A)).toMatchObject({ granted: false, tier: 'FREE' });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it('the actual DM setup handler denies a fresh failed membership/admin check without a database write', async () => {
+    const before = await snapshot();
+    let deferred = false;
+    let checks = 0;
+    const input = {
+      customId: `welcome-lang:${A}`, values: ['en'], user: { id: USER }, guildId: null, guild: null,
+      client: { guilds: { cache: new Map([[A, { members: { fetch: async () => { ++checks; return { permissions: { has: () => false } }; } } }]]) } },
+      get deferred() { return deferred; }, deferUpdate: async () => { deferred = true; },
+      editReply: async () => {},
+      update: async () => { throw new Error('must not acknowledge twice'); },
+    };
+    await welcome.handleLanguageSelect(input as any);
+    expect(deferred).toBe(true);
+    expect(checks).toBe(1);
+    expect(await snapshot()).toEqual(before);
   });
 });

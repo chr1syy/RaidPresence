@@ -240,6 +240,7 @@ export interface Translations {
     welcomeButtonFirstRaid: string;
     welcomeTrialTitle: string;
     welcomeSetupIntro: string;
+    welcomeSetupAdminRequired: string;
     welcomeSetupTimezonePlaceholder: string;
     welcomeSetupTimezoneSaved: string;
     welcomeOpenInServer: string;
@@ -577,6 +578,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeTrialTitle: '🎁 {days}-day Premium trial',
         welcomeSetupIntro: '**Which timezone are your raid times in?**\nPick it below — daylight saving is handled automatically.',
         welcomeSetupTimezonePlaceholder: 'Select your timezone',
+        welcomeSetupAdminRequired: '❌ Current server Administrator permission is required to change setup settings. Reopen setup after access is restored.',
         welcomeSetupTimezoneSaved: '✅ Timezone set to **{zone}**.',
         welcomeOpenInServer: 'This button only works inside the server. Open **{guild}** and run `{command}` there.',
 
@@ -899,6 +901,7 @@ const translations: Record<SupportedLanguage, Translations> = {
         welcomeTrialTitle: '🎁 {days} Tage Premium testen',
         welcomeSetupIntro: '**In welcher Zeitzone sind eure Raid-Zeiten?**\nUnten auswählen – die Sommerzeit wird automatisch berücksichtigt.',
         welcomeSetupTimezonePlaceholder: 'Zeitzone auswählen',
+        welcomeSetupAdminRequired: '❌ Zum Ändern der Einrichtung ist die aktuelle Administrator-Berechtigung auf dem Server erforderlich. Öffne die Einrichtung nach Wiederherstellung des Zugriffs erneut.',
         welcomeSetupTimezoneSaved: '✅ Zeitzone auf **{zone}** gesetzt.',
         welcomeOpenInServer: 'Dieser Knopf funktioniert nur im Server. Öffne **{guild}** und führe dort `{command}` aus.',
 

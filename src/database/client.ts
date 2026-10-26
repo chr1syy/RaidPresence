@@ -1,8 +1,19 @@
+import { assertGuildJobActive } from '../services/guildJobs';
 import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
   log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+});
+
+// Running work may have been revoked while awaiting Discord or a prior query.
+// Reject its next ORM write before it reaches PostgreSQL. Raw retained lifecycle
+// operations execute outside a writer context and keep their existing semantics.
+prisma.$use(async (params, next) => {
+  if (['create', 'createMany', 'update', 'updateMany', 'upsert', 'delete', 'deleteMany'].includes(params.action)) {
+    assertGuildJobActive();
+  }
+  return next(params);
 });
 
 /**

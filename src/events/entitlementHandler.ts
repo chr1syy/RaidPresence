@@ -1,21 +1,24 @@
+import type { GuildRuntime } from '../services/guildRuntime';
 import { Client, Events, Entitlement } from 'discord.js';
 import { PremiumTier } from '@prisma/client';
 import { syncEntitlement, skuToTier } from '../services/entitlementService';
 
-async function handleEntitlement(entitlement: Entitlement, tier: PremiumTier): Promise<void> {
+async function handleEntitlement(entitlement: Entitlement, tier: PremiumTier, runtime?: GuildRuntime): Promise<void> {
   const guildId = entitlement.guildId;
   if (!guildId) return; // Only handle guild subscriptions
 
-  await syncEntitlement({
+  const write = () => syncEntitlement({
     guildId,
     tier,
     expiresAt: entitlement.endsAt ?? undefined,
     entitlementId: entitlement.id,
     source: 'discord',
   });
+  if (runtime) { const token = runtime.jobs.capture(guildId); await runtime.jobs.runWithToken(token, write); }
+  else await write();
 }
 
-export function registerEntitlementHandlers(client: Client): void {
+export function registerEntitlementHandlers(client: Client, runtime?: GuildRuntime): void {
   client.on(Events.EntitlementCreate, async (entitlement) => {
     try {
       const tier = skuToTier(entitlement.skuId);
@@ -23,7 +26,7 @@ export function registerEntitlementHandlers(client: Client): void {
         console.warn(`⚠️ Unknown SKU ID: ${entitlement.skuId}`);
         return;
       }
-      await handleEntitlement(entitlement, tier);
+      await handleEntitlement(entitlement, tier, runtime);
     } catch (error) {
       console.error('Error handling EntitlementCreate:', error);
     }
@@ -34,7 +37,7 @@ export function registerEntitlementHandlers(client: Client): void {
       if (!newEntitlement) return;
       const tier = skuToTier(newEntitlement.skuId);
       if (!tier) return;
-      await handleEntitlement(newEntitlement, tier);
+      await handleEntitlement(newEntitlement, tier, runtime);
     } catch (error) {
       console.error('Error handling EntitlementUpdate:', error);
     }
@@ -45,11 +48,7 @@ export function registerEntitlementHandlers(client: Client): void {
       const guildId = entitlement.guildId;
       if (!guildId) return;
 
-      await syncEntitlement({
-        guildId,
-        tier: 'FREE',
-        source: 'discord',
-      });
+      await handleEntitlement(entitlement, 'FREE', runtime);
     } catch (error) {
       console.error('Error handling EntitlementDelete:', error);
     }

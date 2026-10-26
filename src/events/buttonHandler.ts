@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   ButtonInteraction,
   ActionRowBuilder,
@@ -54,10 +55,10 @@ export async function handleButton(interaction: ButtonInteraction) {
       await handleResumeSeries(interaction, raidId);
       break;
     default:
-      await interaction.reply({
+      await guildOutput(async () => interaction.reply({
         content: '❌ Unknown action',
         ephemeral: true,
-      });
+      }));
   }
 }
 
@@ -81,7 +82,7 @@ async function handleOptOut(interaction: ButtonInteraction, raidId: string) {
             .setRequired(false)
         )
       );
-    await interaction.showModal(modal);
+    await guildOutput(async () => interaction.showModal(modal));
   } else {
     // Free tier: direct opt-out without reason
     await handleDirectOptOut(interaction, raidId);
@@ -97,19 +98,19 @@ async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ Raid not found.' }));
     return;
   }
 
   const trans = getTranslations(raid.guild.language || 'en');
 
   if (raid.status === 'closed') {
-    await interaction.editReply({ content: trans.raidIsClosed });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsClosed }));
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({ content: trans.raidIsCancelled });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsCancelled }));
     return;
   }
 
@@ -118,12 +119,12 @@ async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string
   });
 
   if (!attendance) {
-    await interaction.editReply({ content: '❌ You are not on the attendance list for this raid.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ You are not on the attendance list for this raid.' }));
     return;
   }
 
   if (attendance.status === 'opted_out') {
-    await interaction.editReply({ content: '❌ You have already opted out of this raid.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ You have already opted out of this raid.' }));
     return;
   }
 
@@ -141,7 +142,7 @@ async function handleDirectOptOut(interaction: ButtonInteraction, raidId: string
     },
   });
 
-  await interaction.editReply({ content: trans.optoutReasonSubmitted });
+  await guildOutput(async () => interaction.editReply({ content: trans.optoutReasonSubmitted }));
   await updateRaidMessage(interaction, raidId);
 }
 
@@ -155,19 +156,19 @@ async function handleOptIn(interaction: ButtonInteraction, raidId: string) {
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ Raid not found.' }));
     return;
   }
 
   const trans = getTranslations(raid.guild.language || 'en');
 
   if (raid.status === 'closed') {
-    await interaction.editReply({ content: trans.raidIsClosed });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsClosed }));
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({ content: trans.raidIsCancelled });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsCancelled }));
     return;
   }
 
@@ -181,16 +182,16 @@ async function handleOptIn(interaction: ButtonInteraction, raidId: string) {
   });
 
   if (!attendance) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You are not on the attendance list for this raid.',
-    });
+    }));
     return;
   }
 
   if (attendance.status === 'attending') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '✅ You are already attending this raid.',
-    });
+    }));
     return;
   }
 
@@ -211,9 +212,9 @@ async function handleOptIn(interaction: ButtonInteraction, raidId: string) {
     },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: '✅ You are now attending this raid!',
-  });
+  }));
 
   // Update the raid message
   await updateRaidMessage(interaction, raidId);
@@ -229,19 +230,19 @@ async function handleRunningLate(interaction: ButtonInteraction, raidId: string)
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ Raid not found.' }));
     return;
   }
 
   const trans = getTranslations(raid.guild.language || 'en');
 
   if (raid.status === 'closed') {
-    await interaction.editReply({ content: trans.raidIsClosed });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsClosed }));
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({ content: trans.raidIsCancelled });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsCancelled }));
     return;
   }
 
@@ -255,16 +256,16 @@ async function handleRunningLate(interaction: ButtonInteraction, raidId: string)
   });
 
   if (!attendance) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You are not on the attendance list for this raid.',
-    });
+    }));
     return;
   }
 
   if (attendance.status === 'late') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: trans.alreadyMarkedAsLate,
-    });
+    }));
     return;
   }
 
@@ -285,9 +286,9 @@ async function handleRunningLate(interaction: ButtonInteraction, raidId: string)
     },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: trans.markedAsLate,
-  });
+  }));
 
   // Update the raid message
   await updateRaidMessage(interaction, raidId);
@@ -304,10 +305,10 @@ async function handleClassSelection(interaction: ButtonInteraction, raidId: stri
   });
 
   if (!attendance) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ You are not on the attendance list for this raid.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -326,11 +327,11 @@ async function handleClassSelection(interaction: ButtonInteraction, raidId: stri
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content: '⚔️ Select your WoW class:',
     components: [row],
     ephemeral: true,
-  });
+  }));
 }
 
 /**
@@ -361,14 +362,14 @@ async function handleNudgeClick(interaction: ButtonInteraction, raidId: string) 
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ Raid not found.' }));
     return;
   }
 
   const language = raid.guild.language || 'en';
 
   if (!(await canActOnRaid(interaction, raid.createdBy))) {
-    await interaction.editReply({ content: t(language, 'nudgeNoPermission') });
+    await guildOutput(async () => interaction.editReply({ content: t(language, 'nudgeNoPermission') }));
     return;
   }
 
@@ -380,7 +381,7 @@ async function handleNudgeClick(interaction: ButtonInteraction, raidId: string) 
   if (!result.ok) {
     // A duplicate means the follow-up already exists — the button is stale, so it goes.
     if (result.reason === 'duplicate') await retireNudge(interaction.client, raid);
-    await interaction.editReply({ content: followUpFailureMessage(result, language) });
+    await guildOutput(async () => interaction.editReply({ content: followUpFailureMessage(result, language) }));
     return;
   }
 
@@ -393,13 +394,13 @@ async function handleNudgeClick(interaction: ButtonInteraction, raidId: string) 
       .setStyle(ButtonStyle.Primary),
   );
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: t(language, 'nudgeCreated', {
       unix: String(Math.floor(result.raidDate.getTime() / 1000)),
       count: String(result.memberCount),
     }),
     components: [row],
-  });
+  }));
 }
 
 /** Turns the raid behind the button into a weekly series (offered after a nudge click). */
@@ -410,14 +411,14 @@ async function handleStartSeries(interaction: ButtonInteraction, raidId: string)
   });
 
   if (!raid) {
-    await interaction.reply({ content: '❌ Raid not found.', ephemeral: true });
+    await guildOutput(async () => interaction.reply({ content: '❌ Raid not found.', ephemeral: true }));
     return;
   }
 
   const language = raid.guild.language || 'en';
 
   if (!(await canActOnRaid(interaction, raid.createdBy))) {
-    await interaction.reply({ content: t(language, 'recurringNoPermission'), ephemeral: true });
+    await guildOutput(async () => interaction.reply({ content: t(language, 'recurringNoPermission'), ephemeral: true }));
     return;
   }
 
@@ -428,10 +429,10 @@ async function handleStartSeries(interaction: ButtonInteraction, raidId: string)
 
   // The button lives on this bot's own ephemeral reply, so it is replaced rather than
   // answered — leaving a live "start series" button on a started series invites a re-click.
-  await interaction.update({
+  await guildOutput(async () => interaction.update({
     content: t(language, 'recurringSeriesStarted', { title: raid.description || 'Raid' }),
     components: [],
-  });
+  }));
 }
 
 /**
@@ -445,14 +446,14 @@ async function handleResumeSeries(interaction: ButtonInteraction, raidId: string
   });
 
   if (!raid) {
-    await interaction.reply({ content: '❌ Raid not found.', ephemeral: true });
+    await guildOutput(async () => interaction.reply({ content: '❌ Raid not found.', ephemeral: true }));
     return;
   }
 
   const language = raid.guild.language || 'en';
 
   if (!(await canActOnRaid(interaction, raid.createdBy))) {
-    await interaction.reply({ content: t(language, 'recurringNoPermission'), ephemeral: true });
+    await guildOutput(async () => interaction.reply({ content: t(language, 'recurringNoPermission'), ephemeral: true }));
     return;
   }
 
@@ -470,21 +471,21 @@ async function handleResumeSeries(interaction: ButtonInteraction, raidId: string
   });
 
   try {
-    await interaction.message.edit({ components: [] });
+    await guildOutput(async () => interaction.message.edit({ components: [] }));
   } catch {
     // The notice may have been deleted; resuming still worked.
   }
 
   const result = await advanceSeries(interaction.client, reactivated);
 
-  await interaction.followUp({
+  await guildOutput(async () => interaction.followUp({
     content: result.ok
       ? t(language, 'recurringSeriesResumed', {
           unix: String(Math.floor(result.raidDate.getTime() / 1000)),
         })
       : followUpFailureMessage(result, language),
     ephemeral: true,
-  });
+  }));
 }
 
 export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
@@ -505,9 +506,9 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
 
   // Verify the user submitting is the one who started the modal
   if (interaction.user.id !== userId) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This modal response is not for you.',
-    });
+    }));
     return;
   }
 
@@ -521,19 +522,19 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({ content: '❌ Raid not found.' });
+    await guildOutput(async () => interaction.editReply({ content: '❌ Raid not found.' }));
     return;
   }
 
   const trans = getTranslations(raid.guild.language || 'en');
 
   if (raid.status === 'closed') {
-    await interaction.editReply({ content: trans.raidIsClosed });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsClosed }));
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({ content: trans.raidIsCancelled });
+    await guildOutput(async () => interaction.editReply({ content: trans.raidIsCancelled }));
     return;
   }
 
@@ -548,16 +549,16 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
   });
 
   if (!attendance) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You are not on the attendance list for this raid.',
-    });
+    }));
     return;
   }
 
   if (attendance.status === 'opted_out') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You have already opted out of this raid.',
-    });
+    }));
     return;
   }
 
@@ -581,9 +582,9 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
     },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: trans.optoutReasonSubmitted,
-  });
+  }));
 
    // Update the raid message
    try {
@@ -597,9 +598,9 @@ async function handleOptOutReasonSubmit(interaction: ModalSubmitInteraction) {
      const message = await channel.messages.fetch(raid.messageId);
      if (message) {
        const embed = await createRaidEmbed(raidId, raid.guild.language);
-       await message.edit({
+       await guildOutput(async () => message.edit({
          embeds: [embed],
-       });
+       }));
      }
    } catch (error) {
      console.error('Error updating raid message:', error);
@@ -617,9 +618,9 @@ async function updateRaidMessage(interaction: ButtonInteraction, raidId: string)
 
     const embed = await createRaidEmbed(raidId, raid.guild.language);
 
-    await interaction.message.edit({
+    await guildOutput(async () => interaction.message.edit({
       embeds: [embed],
-    });
+    }));
   } catch (error) {
     console.error('Error updating raid message:', error);
   }

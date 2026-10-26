@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import { Client, TextChannel, NewsChannel, EmbedBuilder } from 'discord.js';
 import prisma from '../database/client';
 import { createRaidEmbed } from '../commands/raid';
@@ -102,7 +103,7 @@ export async function archiveRaid(
     .setTimestamp(new Date());
 
   // Post to archive channel
-  const archiveMessage = await archiveChannel.send({ embeds: [archiveEmbed] });
+  const archiveMessage = await guildOutput(async () => archiveChannel.send({ embeds: [archiveEmbed] }), true);
 
   // Update raid in database
   await prisma.raid.update({
@@ -180,7 +181,7 @@ export async function unarchiveRaid(
   const embed = await createRaidEmbed(raidId, language);
   const [row1, row2] = buildRaidButtonRows(raidId, language);
 
-  const newMessage = await originalChannel.send({ embeds: [embed], components: [row1, row2] });
+  const newMessage = await guildOutput(async () => originalChannel.send({ embeds: [embed], components: [row1, row2] }), true);
 
   // Update raid in database
   await prisma.raid.update({

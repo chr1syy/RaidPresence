@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -504,10 +505,10 @@ const command: Command = {
 
 async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild || !interaction.channel) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -523,10 +524,10 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   // cannot share a deferred reply.
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ You do not have permission to create raids. Ask your server admin to configure raid leader roles.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -554,9 +555,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Guild not found in database. Please try again.',
-    });
+    }));
     return;
   }
 
@@ -564,9 +565,9 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const effectiveRolesInput = rolesInput;
   
   if (!effectiveRolesInput || effectiveRolesInput.trim() === '') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid roles must be specified in the command.',
-    });
+    }));
     return;
   }
 
@@ -577,16 +578,16 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   const raidDate = zonedDateTimeToUtc(dateStr, timeStr, timezone);
 
   if (!raidDate) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
-    });
+    }));
     return;
   }
 
   if (raidDate < new Date()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid date must be in the future!',
-    });
+    }));
     return;
   }
 
@@ -596,22 +597,22 @@ async function handleCreateRaid(interaction: ChatInputCommandInteraction) {
   if (invalidNames.length > 0) {
     const invalidList = invalidNames.join(', ');
     if (roleIds.length === 0) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: `❌ No valid roles provided. The following roles were not found: ${invalidList}`,
-      });
+      }));
       return;
     } else {
       // Warn user about invalid roles but proceed with valid ones
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: `⚠️ These roles were not found: ${invalidList}. Proceeding with available roles.`,
-      });
+      }));
     }
   }
 
   if (roleIds.length === 0) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ No valid roles provided. Please specify at least one valid role in the command.',
-    });
+    }));
     return;
   }
 
@@ -689,9 +690,9 @@ export async function createRaidWithRoster(
   }
 
   if (eligibleMembers.size === 0) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `❌ No eligible members found with roles: ${rolesLabel}. Verify that members have these roles (use role names or IDs, separated by commas).`,
-    });
+    }));
     return false;
   }
 
@@ -737,9 +738,9 @@ export async function createRaidWithRoster(
   // an input error and must not burn a raid slot.
   const { team, error: teamError } = await resolveTeam(guild.id, teamOption);
   if (teamError === 'not_found') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(language, 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return false;
   }
 
@@ -753,9 +754,9 @@ export async function createRaidWithRoster(
     const resetDate = resetAt
       ? resetAt.toLocaleString(localeMap[lang] || 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
       : '';
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `${t(lang, 'premiumWeeklyLimitReached', { count: String(max), max: String(max), resetDate })}\n${premiumFooterHint(lang)}`,
-    });
+    }));
     return false;
   }
 
@@ -802,9 +803,9 @@ export async function createRaidWithRoster(
 
   // Send public raid message to channel
   if (!('send' in channel)) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Cannot send message to this channel type.',
-    });
+    }));
     return false;
   }
 
@@ -818,11 +819,11 @@ export async function createRaidWithRoster(
     }
   }
 
-  const message = await channel.send({
+  const message = await guildOutput(async () => channel.send({
     content: content || undefined,
     embeds: [embed],
     components: [row1, row2],
-  });
+  }), true);
 
   // Update raid with message ID
   await prisma.raid.update({
@@ -831,11 +832,11 @@ export async function createRaidWithRoster(
   });
 
   // Send ephemeral confirmation to command user — FREE guilds get the premium nudge appended.
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid "${title}" created successfully with ${eligibleMembers.size} members!`
       + (recurring ? `\n${t(language, 'recurringEnabledHint', { raidId: raid.id })}` : '')
       + (await freeTierHint(guild.id, language)),
-  });
+  }));
 
   return true;
 }
@@ -1044,10 +1045,10 @@ export async function createRaidEmbed(raidId: string, language?: string): Promis
 // mutating subcommand is enforced at runtime via canManageRaids.
 async function handleListRaids(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1061,9 +1062,9 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
   const teamOption = interaction.options.get(TEAM_OPTION_NAME, false)?.value as string | undefined;
   const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
   if (teamError === 'not_found') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(listGuildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return;
   }
 
@@ -1092,11 +1093,11 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
   const listHint = await freeTierHint(interaction.guildId, listGuildData?.language || 'en');
 
   if (raids.length === 0) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: (isMultiTeam
         ? `📅 No upcoming raids found for **${team.name}**.`
         : '📅 No upcoming raids found.') + listHint,
-    });
+    }));
     return;
   }
 
@@ -1116,15 +1117,15 @@ async function handleListRaids(interaction: ChatInputCommandInteraction) {
     .setFooter({ text: `v${VERSION}` })
     .setTimestamp();
 
-  await interaction.editReply({ embeds: [embed], content: listHint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: listHint || undefined }));
 }
 
 async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1133,9 +1134,9 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to delete raids. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
@@ -1148,16 +1149,16 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
@@ -1182,19 +1183,19 @@ async function handleDeleteRaid(interaction: ChatInputCommandInteraction) {
 
   const deleteTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content:
       t(raid.guild.language || 'en', 'raidDeletedSuccess', { title: raid.description || 'Raid' }) +
       teamSuffix(deleteTeamLabel),
-  });
+  }));
 }
 
 async function handleEditRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1203,9 +1204,9 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to edit raids. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
@@ -1217,9 +1218,9 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
 
   // At least one option must be provided
   if (!dateStr && !timeStr && !title && !status) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You must provide at least one field to edit (date, time, title, or status).',
-    });
+    }));
     return;
   }
 
@@ -1229,23 +1230,23 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   if (raid.raidDate < new Date()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Cannot edit raids that have already passed.',
-    });
+    }));
     return;
   }
 
@@ -1257,9 +1258,9 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
   // Validate date/time if provided
   if (dateStr || timeStr) {
     if (!dateStr || !timeStr) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ Both date and time must be provided together.',
-      });
+      }));
       return;
     }
 
@@ -1267,18 +1268,18 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
     const parsed = zonedDateTimeToUtc(dateStr, timeStr, timezone);
 
     if (!parsed) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.',
-      });
+      }));
       return;
     }
 
     newRaidDate = parsed;
 
     if (newRaidDate < new Date()) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ New raid date must be in the future!',
-      });
+      }));
       return;
     }
   }
@@ -1311,28 +1312,28 @@ async function handleEditRaid(interaction: ChatInputCommandInteraction) {
            components = buildRaidButtonRows(raidId, guildData.language || 'en');
         }
 
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [embed],
           components,
-        });
+        }));
       }
     } catch (error) {
       console.error('Error updating raid message:', error as Error);
     }
   }
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid "${raid.description}" has been updated successfully.`,
-  });
+  }));
 }
 
 async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
 
   if (!interaction.guild || !interaction.channel) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1341,17 +1342,17 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to clone raids. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
   // Check if channel is sendable
   if (!('send' in interaction.channel)) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Cannot send message to this channel type.',
-    });
+    }));
     return;
   }
 
@@ -1367,23 +1368,23 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
     const timeRegex = /^(\d{1,2}):(\d{2})$/;
     const match = timeStr.match(timeRegex);
     if (!match) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ Invalid time format. Please use HH:MM (24-hour format).',
-      });
+      }));
       return;
     }
     hour = parseInt(match[1], 10);
     min = parseInt(match[2], 10);
     if (isNaN(hour) || hour < 0 || hour > 23) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ Invalid hour in time.',
-      });
+      }));
       return;
     }
     if (isNaN(min) || min < 0 || min > 59) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: '❌ Invalid minute in time.',
-      });
+      }));
       return;
     }
   }
@@ -1395,24 +1396,24 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!sourceRaid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (sourceRaid.guildId !== interaction.guild!.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   // Check source raid has roles
   if (!sourceRaid.roles || sourceRaid.roles.trim() === '') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Cannot clone a raid with no roles configured.',
-    });
+    }));
     return;
   }
 
@@ -1427,9 +1428,9 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   if (teamOption?.trim()) {
     const { team, error: teamError } = await resolveTeam(interaction.guild!.id, teamOption);
     if (teamError === 'not_found') {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: t(guildData.language || 'en', 'teamNotFound', { name: teamOption }),
-      });
+      }));
       return;
     }
     explicitTeamId = team.id;
@@ -1442,16 +1443,16 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const day = parseInt(dateParts[2], 10);
 
   if (month < 0 || month > 11) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid month in date.',
-    });
+    }));
     return;
   }
 
   if (day < 1 || day > new Date(year, month + 1, 0).getDate()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid day in date.',
-    });
+    }));
     return;
   }
 
@@ -1466,16 +1467,16 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const raidDate = zonedDateTimeToUtc(dateStr, localTimeStr, timezone);
 
   if (!raidDate) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid date or time combination.',
-    });
+    }));
     return;
   }
 
   if (raidDate < new Date()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ New raid date must be in the future.',
-    });
+    }));
     return;
   }
 
@@ -1508,9 +1509,9 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   }
 
   if (eligibleMembers.size === 0) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ No eligible members found with the required roles.',
-    });
+    }));
     return;
   }
 
@@ -1601,10 +1602,12 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   const [row1, row2] = buildRaidButtonRows(newRaid.id, guildData.language || 'en');
 
   // Send public raid message to channel
-  const message = await interaction.channel.send({
+  const outputChannel = interaction.channel;
+  if (!outputChannel || !('send' in outputChannel)) throw new Error('Channel unavailable');
+  const message = await guildOutput(async () => outputChannel.send({
     embeds: [embed],
     components: [row1, row2],
-  });
+  }), true);
 
   // Update raid with message ID
   await prisma.raid.update({
@@ -1613,10 +1616,10 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
   });
 
   // Resolve the deferred ephemeral reply with a confirmation — FREE guilds get the premium nudge appended.
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid "${description}" cloned successfully with ${eligibleMembers.size} members!`
       + (await freeTierHint(interaction.guildId, guildData.language || 'en')),
-  });
+  }));
   return;
 }
 
@@ -1632,10 +1635,10 @@ async function handleCloneRaid(interaction: ChatInputCommandInteraction) {
  */
 async function handleRecurringCommand(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1649,7 +1652,7 @@ async function handleRecurringCommand(interaction: ChatInputCommandInteraction) 
 
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({ content: t(language, 'recurringNoPermission') });
+    await guildOutput(async () => interaction.editReply({ content: t(language, 'recurringNoPermission') }));
     return;
   }
 
@@ -1659,7 +1662,7 @@ async function handleRecurringCommand(interaction: ChatInputCommandInteraction) 
 
   const raid = await prisma.raid.findUnique({ where: { id: raidId } });
   if (!raid || raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({ content: t(language, 'raidNotFound') });
+    await guildOutput(async () => interaction.editReply({ content: t(language, 'raidNotFound') }));
     return;
   }
 
@@ -1669,9 +1672,9 @@ async function handleRecurringCommand(interaction: ChatInputCommandInteraction) 
 
   if (interaction.options.getSubcommand() === 'start') {
     if (tail.recurrenceRule === WEEKLY && tail.recurrenceActive) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: t(language, 'recurringSeriesAlreadyActive', { title }),
-      });
+      }));
       return;
     }
 
@@ -1682,14 +1685,14 @@ async function handleRecurringCommand(interaction: ChatInputCommandInteraction) 
       data: { recurrenceRule: WEEKLY, recurrenceActive: true, recurrenceSilentStreak: 0 },
     });
 
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(language, 'recurringSeriesStarted', { title }) + teamLabel,
-    });
+    }));
     return;
   }
 
   if (!tail.recurrenceRule || !tail.recurrenceActive) {
-    await interaction.editReply({ content: t(language, 'recurringSeriesNotActive') });
+    await guildOutput(async () => interaction.editReply({ content: t(language, 'recurringSeriesNotActive') }));
     return;
   }
 
@@ -1700,17 +1703,17 @@ async function handleRecurringCommand(interaction: ChatInputCommandInteraction) 
     data: { recurrenceActive: false },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: t(language, 'recurringSeriesStopped', { title }) + teamLabel,
-  });
+  }));
 }
 
 async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1723,9 +1726,9 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to archive raids. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
@@ -1738,24 +1741,24 @@ async function handleArchiveRaid(interaction: ChatInputCommandInteraction) {
       select: { teamId: true },
     });
     const archiveTeamLabel = await getTeamLabel(interaction.guild.id, archivedRaid?.teamId);
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `✅ Raid archived successfully.${teamSuffix(archiveTeamLabel)}`,
-    });
+    }));
   } catch (error) {
     console.error('Error archiving raid:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `❌ ${message}`,
-    });
+    }));
   }
 }
 
 async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1768,9 +1771,9 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to restore raids. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
@@ -1783,15 +1786,15 @@ async function handleUnarchiveRaid(interaction: ChatInputCommandInteraction) {
       select: { teamId: true },
     });
     const unarchiveTeamLabel = await getTeamLabel(interaction.guild.id, restoredRaid?.teamId);
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `✅ Raid restored successfully.${teamSuffix(unarchiveTeamLabel)}`,
-    });
+    }));
   } catch (error) {
     console.error('Error restoring raid:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `❌ ${message}`,
-    });
+    }));
   }
 }
 
@@ -1811,10 +1814,10 @@ function getStartDate(period: string): Date {
 
 async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1828,9 +1831,9 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
   // attendance data, so it stays limited to raid leaders/admins.
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to search the raid archive. Ask your server admin to configure raid leader roles.',
-    });
+    }));
     return;
   }
 
@@ -1844,9 +1847,9 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
 
   const { team, error: teamError } = await resolveTeam(interaction.guild.id, teamOption ?? null);
   if (teamError) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: t(guildData?.language || 'en', 'teamNotFound', { name: teamOption ?? '' }),
-    });
+    }));
     return;
   }
 
@@ -1868,15 +1871,15 @@ async function handleSearchArchive(interaction: ChatInputCommandInteraction) {
     embed.setTitle(`${embed.data.title} — ${searchTeamLabel}`);
   }
 
-  await interaction.editReply({ embeds: [embed] });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed] }));
 }
 
 async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1885,9 +1888,9 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to close raids.',
-    });
+    }));
     return;
   }
 
@@ -1899,23 +1902,23 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   if (raid.status === 'closed' || raid.status === 'cancelled') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid is already closed or cancelled.',
-    });
+    }));
     return;
   }
 
@@ -1932,10 +1935,10 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
       if (channel?.isTextBased()) {
         const message = await (channel as any).messages.fetch(raid.messageId);
         const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [updatedEmbed],
           components: [],
-        });
+        }));
       }
     } catch (error) {
       console.error('[handleCloseRaid] Failed to update message:', error);
@@ -1945,17 +1948,17 @@ async function handleCloseRaid(interaction: ChatInputCommandInteraction) {
 
   const closeTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid has been closed.${teamSuffix(closeTeamLabel)}`,
-  });
+  }));
 }
 
 async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -1964,9 +1967,9 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to open raids.',
-    });
+    }));
     return;
   }
 
@@ -1978,23 +1981,23 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   if (raid.status !== 'closed') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid is not closed.',
-    });
+    }));
     return;
   }
 
@@ -2015,10 +2018,10 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
         const [row1, row2] = buildRaidButtonRows(raid.id, raid.guild.language || 'en');
 
         // Restore buttons when opened
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [updatedEmbed],
           components: [row1, row2],
-        });
+        }));
       }
     } catch (error) {
       console.error('[handleOpenRaid] Failed to update message:', error);
@@ -2028,17 +2031,17 @@ async function handleOpenRaid(interaction: ChatInputCommandInteraction) {
 
   const openTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid has been opened.${teamSuffix(openTeamLabel)}`,
-  });
+  }));
 }
 
 async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -2047,9 +2050,9 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to cancel raids.',
-    });
+    }));
     return;
   }
 
@@ -2061,23 +2064,23 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   if (raid.status === 'cancelled') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid is already cancelled.',
-    });
+    }));
     return;
   }
 
@@ -2094,10 +2097,10 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
       if (channel?.isTextBased()) {
         const message = await (channel as any).messages.fetch(raid.messageId);
         const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [updatedEmbed],
           components: [],
-        });
+        }));
       }
     } catch (error) {
       console.error('[handleCancelRaid] Failed to update message:', error);
@@ -2107,17 +2110,17 @@ async function handleCancelRaid(interaction: ChatInputCommandInteraction) {
 
   const cancelTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid has been cancelled.${teamSuffix(cancelTeamLabel)}`,
-  });
+  }));
 }
 
 async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -2126,9 +2129,9 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to send reminders.',
-    });
+    }));
     return;
   }
 
@@ -2141,33 +2144,33 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
   // Check if channel exists
   if (!raid.channelId) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Could not find the raid channel.',
-    });
+    }));
     return;
   }
 
   // Get channel and send reminder
   const channel = await interaction.client.channels.fetch(raid.channelId);
   if (!channel?.isTextBased()) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Could not send reminder to raid channel.',
-    });
+    }));
     return;
   }
 
@@ -2236,22 +2239,22 @@ async function handleRemindRaid(interaction: ChatInputCommandInteraction) {
     .setTimestamp();
 
   const messageContent = roleMentions;
-  await (channel as any).send({
+  await guildOutput(async () => (channel as any).send({
     content: messageContent,
     embeds: [reminderEmbed],
-  });
+  }), true);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Reminder sent for **${raid.description}**.${teamSuffix(remindTeamLabel)}`,
-  });
+  }));
 }
 
 async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -2260,9 +2263,9 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   // Check permissions
   const member = interaction.member;
   if (!member || !(await canManageRaids(member as any))) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ You do not have permission to refresh raids.',
-    });
+    }));
     return;
   }
 
@@ -2274,16 +2277,16 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!raid) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Raid not found.',
-    });
+    }));
     return;
   }
 
   if (raid.guildId !== interaction.guild.id) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ This raid does not belong to this server.',
-    });
+    }));
     return;
   }
 
@@ -2293,9 +2296,9 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Guild configuration not found.',
-    });
+    }));
     return;
   }
 
@@ -2429,9 +2432,9 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
       if (channel?.isTextBased()) {
         const message = await (channel as any).messages.fetch(raid.messageId);
         const updatedEmbed = await createRaidEmbed(raidId, raid.guild.language || 'en');
-        await message.edit({
+        await guildOutput(async () => message.edit({
           embeds: [updatedEmbed],
-        });
+        }));
       }
     } catch (error) {
       console.error('[handleRefreshRaid] Failed to update message:', error);
@@ -2443,13 +2446,13 @@ async function handleRefreshRaid(interaction: ChatInputCommandInteraction) {
   const refreshTeamLabel = await getTeamLabel(interaction.guild.id, raid.teamId);
 
   if (newMembers.length > 0 || membersToRemove.length > 0) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `✅ Raid refreshed. Added ${newMembers.length} new member(s), removed ${membersToRemove.length} member(s).${teamSuffix(refreshTeamLabel)}`,
-    });
+    }));
   } else {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: `✅ No roster changes needed.${teamSuffix(refreshTeamLabel)}`,
-    });
+    }));
   }
 }
 

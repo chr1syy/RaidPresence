@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import { ChatInputCommandInteraction, ButtonInteraction, ModalSubmitInteraction, EmbedBuilder } from 'discord.js';
 import { getTier, hasFeature, FEATURE_TIERS, PremiumFeature, PremiumTier } from '../services/entitlementService';
 import { t, Translations } from '../utils/localization';
@@ -107,13 +108,13 @@ export async function gateFeature(
   const embed = premiumUpsellEmbed(feature, tier, FEATURE_TIERS[feature], language);
 
   if (interaction.replied) {
-    await interaction.followUp({ embeds: [embed], ephemeral: true });
+    await guildOutput(async () => interaction.followUp({ embeds: [embed], ephemeral: true }));
   } else if (interaction.deferred) {
     // A pending deferral must be resolved, otherwise the "thinking…" placeholder never
     // goes away and the upsell shows up as a second, orphaned message.
-    await interaction.editReply({ embeds: [embed] });
+    await guildOutput(async () => interaction.editReply({ embeds: [embed] }));
   } else {
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await guildOutput(async () => interaction.reply({ embeds: [embed], ephemeral: true }));
   }
 
   return false;

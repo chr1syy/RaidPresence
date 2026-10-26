@@ -20,6 +20,9 @@ let adapterModule: typeof import('../../services/guildWriterAdapter');
 let guided: typeof import('../../events/raidCreateFlow');
 let welcome: typeof import('../../events/welcomeFlow');
 let scheduler: typeof import('../../utils/raidScheduler');
+let runtimeModule: typeof import('../../services/guildRuntime');
+let jobModule: typeof import('../../services/guildJobs');
+let interactionModule: typeof import('../../events/guildInteraction');
 
 const A = 'synthetic-guild-a';
 const B = 'synthetic-guild-b';
@@ -103,6 +106,9 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
     guided = await import('../../events/raidCreateFlow');
     welcome = await import('../../events/welcomeFlow');
     scheduler = await import('../../utils/raidScheduler');
+    runtimeModule = await import('../../services/guildRuntime');
+    jobModule = await import('../../services/guildJobs');
+    interactionModule = await import('../../events/guildInteraction');
   });
 
   beforeEach(async () => {
@@ -568,7 +574,7 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       expect(rejoined).toBe(false);
       release.release(); await pass; await join;
       expect(passDone).toBe(true); expect(rejoined).toBe(true);
-      expect(await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } })).toMatchObject({ messageId: 'synthetic-posted-successor' });
+      expect(await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } })).toBeNull();
       const beforeLate = await snapshot();
       await scheduler.processRecurringSeries({} as any, { coordinator, token });
       expect(await snapshot()).toEqual(beforeLate);
@@ -628,6 +634,177 @@ postgres('guild removal draft — isolated real PostgreSQL', () => {
       const before = await snapshot();
       await scheduler.processRecurringSeries({} as any, { coordinator, token: coordinator.capture(A) });
       expect(await snapshot()).toEqual(before);
+    });
+  });
+
+  describe('runtime wiring', () => {
+    function inputFor(guildId: string = A) {
+      let administrator = true;
+      const member: any = { guild: { id: guildId }, permissions: { has: () => administrator }, roles: { cache: new Collection() } };
+      const input: any = {
+        guildId, guild: { id: guildId, name: guildId, members: { fetch: async () => member } },
+        user: { id: USER }, locale: 'en-US', commandName: 'config',
+        isChatInputCommand: () => true, isAutocomplete: () => false,
+        options: { getSubcommand: () => 'language', get: () => ({ value: 'en' }) },
+        replied: false, deferred: false,
+        deferReply: async () => { input.deferred = true; },
+        reply: async (_message: any) => { input.replied = true; }, editReply: async () => {},
+      };
+      return { input, revokeAdmin: () => { administrator = false; } };
+    }
+
+    it('retains all real rows on departure, preserves legacy rejoin onboarding and rejects duplicate old removal objects', async () => {
+      const runtime = runtimeModule.createGuildRuntime(guided.invalidateGuildDrafts);
+      await lifecycle.markGuildDeparted(payload());
+      const original = payload(); await runtime.join(original);
+      expect((await db.guild.findUnique({ where: { id: A } }))!.leftAt).toBeNull();
+      const retained = await retainedSnapshot();
+      const trial = (await db.guild.findUnique({ where: { id: A } }))!.trialStartedAt;
+      await runtime.depart(original); const marked = (await db.guild.findUnique({ where: { id: A } }))!.leftAt;
+      expect(marked).not.toBeNull(); expect(await db.raid.count({ where: { guildId: A } })).toBe(5);
+      await runtime.join(payload()); await runtime.depart(original);
+      expect((await db.guild.findUnique({ where: { id: A } }))!.leftAt).toBeNull();
+      expect((await db.guild.findUnique({ where: { id: A } }))!.trialStartedAt).toEqual(trial);
+      expect(await retainedSnapshot()).toEqual(retained);
+      expect('remove' in runtime.jobs).toBe(false);
+    });
+
+    it('executes the actual config command, rejects revoked auth, and rejects delayed command work across departure/rejoin', async () => {
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); await runtime.join(original);
+      const allowed = inputFor(); await interactionModule.runGuildInteraction(runtime, allowed.input, i => config.default.execute(i as any));
+      expect((await db.guild.findUnique({ where: { id: A } }))!.language).toBe('en');
+      const denied = inputFor(); denied.revokeAdmin();
+      const beforeDenied = await snapshot();
+      await interactionModule.runGuildInteraction(runtime, denied.input, i => config.default.execute(i as any));
+      expect(await snapshot()).toEqual(beforeDenied);
+      const delayed = inputFor(); const entered = deferred(); const release = deferred();
+      const fetch = delayed.input.guild.members.fetch;
+      delayed.input.guild.members.fetch = async () => { entered.release(); await release.promise; return fetch(); };
+      const command = interactionModule.runGuildInteraction(runtime, delayed.input, i => config.default.execute(i as any));
+      await entered.promise; const leaving = runtime.depart(original); const rejoin = runtime.join(payload());
+      release.release(); await command; await leaving; await rejoin;
+      expect((await db.guild.findUnique({ where: { id: A } }))!.language).toBe('en');
+      expect(await db.raid.count({ where: { guildId: A } })).toBe(5);
+    });
+
+    it('rolls back a real interrupted writer transaction and fences delayed output before retained departure completes', async () => {
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); const token = (await runtime.join(original))!;
+      const before = await db.guild.findUnique({ where: { id: A } }); const other = await retainedSnapshot();
+      const entered = deferred(); const release = deferred(); let output = false;
+      const writer = runtime.jobs.runWithToken(token, () => db.$transaction(async tx => {
+        await tx.guild.update({ where: { id: A }, data: { weeklyRaidCount: 99 } });
+        entered.release(); await release.promise;
+        await tx.raid.update({ where: { id: 'raid-child' }, data: { description: 'must roll back' } });
+        await jobModule.guildOutput(async () => { output = true; });
+      }));
+      const rejected = expect(writer).rejects.toThrow('revoked'); await entered.promise;
+      const leaving = runtime.depart(original); release.release(); await rejected; await leaving;
+      expect((await db.guild.findUnique({ where: { id: A } }))!.weeklyRaidCount).toBe(before!.weeklyRaidCount);
+      expect((await db.raid.findUnique({ where: { id: 'raid-child' } }))!.description).toBe('Synthetic notes');
+      expect(output).toBe(false); expect(await retainedSnapshot()).toEqual(other);
+    });
+
+    it('runs all actual scheduler passes with guild isolation and prevents old candidate writes after delayed target resolution', async () => {
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); await runtime.join(original);
+      const other = await retainedSnapshot(); const entered = deferred(); const release = deferred(); let sends = 0;
+      const fake: any = {
+        guilds: { fetch: async () => { entered.release(); await release.promise; return {
+          id: A, roles: { cache: new Collection([['role', { id: 'role', name: 'synthetic-role' }]]) },
+          members: { me: {}, fetch: async () => {}, cache: new Collection([[USER, {
+            user: { bot: false }, displayName: 'Synthetic Shared Player', roles: { cache: new Collection([['role', { id: 'role', name: 'synthetic-role' }]]) },
+          }]]) },
+        }; } },
+        channels: { fetch: async () => ({ id: 'synthetic-channel', isTextBased: () => true, permissionsFor: () => ({ has: () => true }), send: async () => { ++sends; return { id: 'no-send', delete: async () => {} }; } }) },
+      };
+      const tick = scheduler.runRaidSchedulerPass(fake, runtime); await entered.promise;
+      const leaving = runtime.depart(original); const rejoin = runtime.join(payload());
+      release.release(); await tick; await leaving; await rejoin;
+      expect(sends).toBe(0); expect(await db.raid.findUnique({ where: { recurrenceParentId: 'raid-child' } })).toBeNull();
+      expect(await retainedSnapshot()).toEqual(other);
+    });
+
+    it('captures startup entitlement generations before REST and preserves paid-before-trial ordering per guild', async () => {
+      const { runStartupTrialBackfill } = await import('../../scripts/backfillTrials');
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); await runtime.join(original);
+      await db.guild.updateMany({ data: { premiumTier: 'FREE', entitlementId: null, trialStartedAt: null } });
+      const other = await retainedSnapshot(); const previousSku = process.env.DISCORD_SKU_PREMIUM;
+      process.env.DISCORD_SKU_PREMIUM = 'synthetic-runtime-sku';
+      try {
+        const sync = await entitlement.syncEntitlementsOnStartup({ application: { id: 'synthetic-app' }, rest: { get: async () => [{ id: 'synthetic-paid', sku_id: 'synthetic-runtime-sku', guild_id: A }] } } as any, runtime);
+        expect(sync.ok).toBe(true); await runStartupTrialBackfill(sync, runtime);
+        expect(await db.guild.findUnique({ where: { id: A } })).toMatchObject({ premiumTier: 'PREMIUM', entitlementId: 'synthetic-paid', trialStartedAt: null });
+        expect(await retainedSnapshot()).toEqual(other);
+        const entered = deferred(); const release = deferred();
+        const stale = entitlement.syncEntitlementsOnStartup({ application: { id: 'synthetic-app' }, rest: { get: async () => { entered.release(); await release.promise; return [{ id: 'late-paid', sku_id: 'synthetic-runtime-sku', guild_id: A }]; } } } as any, runtime);
+        await entered.promise; await runtime.depart(original); await runtime.join(payload());
+        release.release(); expect((await stale).ok).toBe(false);
+        expect((await db.guild.findUnique({ where: { id: A } }))!.entitlementId).toBe('synthetic-paid');
+      } finally { if (previousSku === undefined) delete process.env.DISCORD_SKU_PREMIUM; else process.env.DISCORD_SKU_PREMIUM = previousSku; }
+    });
+
+    it('wires actual entitlement events, trial backfill and premium reaper to original per-guild jobs', async () => {
+      const { registerEntitlementHandlers } = await import('../../events/entitlementHandler');
+      const { backfillTrials } = await import('../../scripts/backfillTrials');
+      const runtime = runtimeModule.createGuildRuntime(); const original = payload(); const token = (await runtime.join(original))!;
+      await db.guild.updateMany({ data: { premiumTier: 'FREE', entitlementId: null, trialStartedAt: null } });
+      const other = await retainedSnapshot(); const result = await backfillTrials({ runtime });
+      expect(result.granted).toBe(1); expect(await retainedSnapshot()).toEqual(other);
+      await db.guild.update({ where: { id: A }, data: { premiumExpiresAt: new Date('2026-01-01Z') } });
+      const interval = jest.spyOn(global, 'setInterval').mockReturnValue(0 as any);
+      try { scheduler.startPremiumReaper(runtime); await runtime.jobs.runWithToken(token, async () => {}); }
+      finally { interval.mockRestore(); }
+      expect((await db.guild.findUnique({ where: { id: A } }))!.premiumTier).toBe('FREE');
+      const handlers = new Map<string, Function>();
+      registerEntitlementHandlers({ on: (event: string, handler: Function) => { handlers.set(event, handler); } } as any, runtime);
+      const previousSku = process.env.DISCORD_SKU_PREMIUM;
+      process.env.DISCORD_SKU_PREMIUM = 'synthetic-runtime-event-sku';
+      try {
+        await handlers.get(Events.EntitlementCreate)!({ guildId: A, skuId: 'synthetic-runtime-event-sku', id: 'synthetic-created-paid' });
+        expect((await db.guild.findUnique({ where: { id: A } }))!.entitlementId).toBe('synthetic-created-paid');
+        await handlers.get(Events.EntitlementUpdate)!({}, { guildId: A, skuId: 'synthetic-runtime-event-sku', id: 'synthetic-updated-paid' });
+        expect((await db.guild.findUnique({ where: { id: A } }))!.entitlementId).toBe('synthetic-updated-paid');
+      } finally { if (previousSku === undefined) delete process.env.DISCORD_SKU_PREMIUM; else process.env.DISCORD_SKU_PREMIUM = previousSku; }
+      const entered = deferred(); const release = deferred();
+      const running = runtime.jobs.runWithToken(token, async () => { entered.release(); await release.promise; }); await entered.promise;
+      const oldEvent = handlers.get(Events.EntitlementDelete)!({ guildId: A, id: 'synthetic-paid' });
+      const leaving = runtime.depart(original); const rejoin = runtime.join(payload());
+      release.release(); await running; await oldEvent; await leaving; await rejoin;
+      expect(await retainedSnapshot()).toEqual(other);
+      expect((await db.guild.findUnique({ where: { id: A } }))!.trialStartedAt).not.toBeNull();
+    });
+
+    it('binds actual guided modal issuance to its stored original generation, reauthorizes callbacks, and invalidates on departure', async () => {
+      const runtime = runtimeModule.createGuildRuntime(guided.invalidateGuildDrafts); const original = payload(); const token = (await runtime.join(original))!;
+      const { input, revokeAdmin } = inputFor(); input.commandName = 'raid'; input.channel = { id: 'synthetic-channel' };
+      let modalId = ''; input.showModal = async (modal: any) => { modalId = modal.toJSON().custom_id; };
+      await interactionModule.runGuildInteraction(runtime, input, i => guided.startGuidedRaidCreate(i as any, { date: null, time: null, title: null, roles: null, pingRoles: false, teamOption: null }));
+      expect(guided.getFlowJobToken(modalId, USER, A)).toBe(token);
+      const callback: any = { ...input, customId: modalId, isChatInputCommand: () => false, isAutocomplete: () => false,
+        fields: { getTextInputValue: (key: string) => ({ title: 'Synthetic guided', date: '2099-01-01', time: '19:00' } as Record<string, string>)[key] },
+        reply: async () => { callback.replied = true; },
+      };
+      await interactionModule.runGuildInteraction(runtime, callback, i => guided.routeFlowModal(i as any));
+      expect(callback.replied).toBe(true);
+      callback.customId = `rcflow-fixtime-modal:${modalId.split(':')[1]}`;
+      callback.replied = false;
+      callback.isModalSubmit = () => true;
+      callback.fields.getTextInputValue = (key: string) => ({ date: '2099-01-01', time: '19:00', timezone: 'UTC' } as Record<string, string>)[key];
+      await interactionModule.runGuildInteraction(runtime, callback, i => guided.routeFlowModal(i as any));
+      expect((await db.guild.findUnique({ where: { id: A } }))!.timezone).toBe('UTC');
+      revokeAdmin(); callback.replied = false; const before = await snapshot();
+      await interactionModule.runGuildInteraction(runtime, callback, async () => { throw new Error('revoked user must not reach handler'); });
+      expect(await snapshot()).toEqual(before);
+      await runtime.depart(original); await runtime.join(payload());
+      expect(guided.getFlowJobToken(modalId, USER, A)).toBeUndefined();
+      expect(await db.raid.count({ where: { guildId: A } })).toBe(5);
+    });
+
+    it('serializes retaining startup reconciliation without marking a newly observed guild from a stale partial cache', async () => {
+      const runtime = runtimeModule.createGuildRuntime(); await runtime.join(payload());
+      const marked = await lifecycle.reconcileDepartedGuilds([B], { jobs: runtime.jobs });
+      expect(marked).toBe(0); expect((await db.guild.findUnique({ where: { id: A } }))!.leftAt).toBeNull();
+      expect(await lifecycle.reconcileDepartedGuilds([], { jobs: runtime.jobs })).toBe(0);
+      expect(await db.raid.count()).toBe(6);
     });
   });
 });

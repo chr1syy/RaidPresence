@@ -1,3 +1,4 @@
+import { guildOutput, guildJobCleanup } from './guildJobs';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -325,7 +326,7 @@ export async function createFollowUpRaid(
 
   let message: { id: string; delete: () => Promise<unknown> } | null = null;
   try {
-    const postedMessage = await channel.send({ embeds: [embed], components });
+    const postedMessage = await guildOutput(async () => channel.send({ embeds: [embed], components }), true);
     message = postedMessage;
     await prisma.raid.update({
       where: { id: newRaid.id, guildId: source.guildId },
@@ -340,7 +341,7 @@ export async function createFollowUpRaid(
         console.error(`Recurrence: failed to remove orphaned message for ${newRaid.id}:`, deleteError);
       });
     }
-    await prisma.raid.delete({ where: { id: newRaid.id, guildId: source.guildId } }).catch(() => undefined);
+    await guildJobCleanup(() => prisma.raid.delete({ where: { id: newRaid.id, guildId: source.guildId } })).catch(() => undefined);
     return { ok: false, reason: 'channel_unavailable' };
   }
 
@@ -398,7 +399,7 @@ export async function pauseSeries(
         .setStyle(ButtonStyle.Primary),
     );
 
-    await channel.send({ embeds: [embed], components: [row] });
+    await guildOutput(async () => channel.send({ embeds: [embed], components: [row] }), true);
   } catch (error) {
     // A pause must never depend on being able to announce itself — the channel being
     // gone is one of the reasons we pause in the first place.
@@ -503,10 +504,10 @@ export async function sendPostRaidNudge(client: Client, raid: Raid): Promise<boo
           .setStyle(ButtonStyle.Success),
       );
 
-      const message = await channel.send({
+      const message = await guildOutput(async () => channel.send({
         content: t(language, 'nudgePrompt', { title: raid.description || 'Raid' }),
         components: [row],
-      });
+      }), true);
       messageId = message.id;
     }
   } catch (error) {
@@ -536,7 +537,7 @@ export async function retireNudge(client: Client, raid: Pick<Raid, 'id' | 'chann
     const channel: any = await client.channels.fetch(raid.channelId);
     if (!channel?.isTextBased?.() || !('messages' in channel)) return;
     const message = await channel.messages.fetch(messageId);
-    await message.edit({ components: [] });
+    await guildOutput(async () => message.edit({ components: [] }));
   } catch (error) {
     // A deleted message or channel is the normal end state here, not a problem.
     console.error(`Nudge: could not retire message for raid ${raid.id}:`, error);

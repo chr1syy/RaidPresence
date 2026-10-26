@@ -1,3 +1,4 @@
+import type { GuildRuntime } from './guildRuntime';
 import { PremiumTier, Prisma } from '@prisma/client';
 import { Client } from 'discord.js';
 import prisma from '../database/client';
@@ -313,7 +314,8 @@ export interface StartupSyncResult {
  * Never throws — errors are logged and reported via the returned `ok` flag so startup
  * continues, while downstream steps can still tell a clean sync from a broken one.
  */
-export async function syncEntitlementsOnStartup(client: Client): Promise<StartupSyncResult> {
+export async function syncEntitlementsOnStartup(client: Client, runtime?: GuildRuntime): Promise<StartupSyncResult> {
+  const tokens = runtime ? new Map(runtime.jobs.snapshot().map(token => [token.guildId, token])) : undefined;
   const appId = client.application?.id;
   if (!appId) {
     console.warn('⚠️ Could not sync entitlements: application ID not available');
@@ -342,7 +344,18 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<Startup
         continue;
       }
 
-      await syncEntitlement({
+      if (runtime) {
+        const token = tokens!.get(guildId);
+        if (!token) { skipped++; continue; }
+        const completed = await runtime.jobs.runWithToken(token, async () => { await syncEntitlement({
+        guildId,
+        tier,
+        expiresAt: entitlement.ends_at ? new Date(entitlement.ends_at) : undefined,
+        entitlementId: entitlement.id,
+        source: 'discord',
+      }); return true; });
+        if (!completed) return { ok: false };
+      } else await syncEntitlement({
         guildId,
         tier,
         expiresAt: entitlement.ends_at ? new Date(entitlement.ends_at) : undefined,
@@ -385,10 +398,11 @@ export async function syncEntitlementsOnStartup(client: Client): Promise<Startup
  *
  * Returns the number of guilds downgraded.
  */
-export async function reapExpiredPremium(): Promise<number> {
+export async function reapExpiredPremium(guildId?: string): Promise<number> {
   const now = new Date();
 
   const where = {
+    ...(guildId === undefined ? {} : { id: guildId }),
     premiumTier: { not: 'FREE' as PremiumTier },
     premiumExpiresAt: { lt: now },
     entitlementId: null,

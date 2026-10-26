@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import {
   SlashCommandBuilder,
   CommandInteraction,
@@ -130,10 +131,10 @@ export function formatLeaderRoles(raw: string | null): string {
 
 async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -144,9 +145,9 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
   });
 
   if (!guildData) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Server configuration not found. Please try again.',
-    });
+    }));
     return;
   }
 
@@ -191,7 +192,7 @@ async function handleViewConfig(interaction: ChatInputCommandInteraction) {
     .setTimestamp();
 
   const hint = await freeTierHint(interaction.guildId, guildData.language || 'en');
-  await interaction.editReply({ embeds: [embed], content: hint || undefined });
+  await guildOutput(async () => interaction.editReply({ embeds: [embed], content: hint || undefined }));
 }
 
 /**
@@ -242,10 +243,10 @@ export async function setLanguage(
 
 async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -255,25 +256,25 @@ async function handleSetLeaderRoles(interaction: ChatInputCommandInteraction) {
   const cleanedRoles = cleanLeaderRoles(roles);
 
   if (!cleanedRoles) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid roles format. Please provide role names or IDs separated by commas.',
-    });
+    }));
     return;
   }
 
   await setLeaderRoles(interaction.guild.id, interaction.guild.name, cleanedRoles);
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Raid leader roles updated to: \`${cleanedRoles}\`\n\nMembers with these roles can now create and manage raids.`,
-  });
+  }));
 }
 
 async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -282,26 +283,26 @@ async function handleSetLanguage(interaction: ChatInputCommandInteraction) {
   const language = interaction.options.get('lang', true).value as string;
 
   if (language !== 'en' && language !== 'de') {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Invalid language. Please choose English or German.',
-    });
+    }));
     return;
   }
 
   await setLanguage(interaction.guild.id, interaction.guild.name, language);
 
   const languageName = language === 'de' ? 'Deutsch (German)' : 'English';
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Language updated to: \`${languageName}\`\n\nBot messages will now appear in this language.`,
-  });
+  }));
 }
 
 async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -314,12 +315,12 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
   const timezone = normalizeTimezone(rawZone);
 
   if (!timezone) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content:
         `❌ \`${rawZone}\` is not a known timezone.\n\n` +
         'Pick one from the autocomplete list, or pass an IANA identifier such as ' +
         '`Europe/Berlin`, `America/New_York` or `UTC`.',
-    });
+    }));
     return;
   }
 
@@ -333,12 +334,12 @@ async function handleSetTimezone(interaction: ChatInputCommandInteraction) {
     data: timezoneData,
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content:
       `✅ Timezone updated to: \`${formatTimezoneLabel(timezone)}\`\n\n` +
       'Times you type in `/raid create` are now read as local time in this zone, ' +
       'with daylight saving applied automatically.',
-  });
+  }));
 }
 
 /**
@@ -360,10 +361,10 @@ export async function timezoneAutocomplete(
 
 async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -376,9 +377,9 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
   const isTextChannel = channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement;
 
   if (!isTextChannel) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Archive channel must be a text channel.',
-    });
+    }));
     return;
   }
 
@@ -388,17 +389,17 @@ async function handleSetArchiveChannel(interaction: ChatInputCommandInteraction)
     data: { archiveChannelId: channel.id },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `✅ Archive channel set to <#${channel.id}>.\n\nClosed raids can now be archived to this channel using \`/raid archive\`.`,
-  });
+  }));
 }
 
 async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
   if (!interaction.guild) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ This command can only be used in a server!',
       ephemeral: true,
-    });
+    }));
     return;
   }
 
@@ -412,9 +413,9 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
   });
 
   if (enabled && !guildData?.archiveChannelId) {
-    await interaction.editReply({
+    await guildOutput(async () => interaction.editReply({
       content: '❌ Archive channel must be configured before enabling auto-archive.\n\nUse `/config archive-channel` to set it up first.',
-    });
+    }));
     return;
   }
 
@@ -424,9 +425,9 @@ async function handleSetAutoArchive(interaction: ChatInputCommandInteraction) {
     data: { autoArchive: enabled },
   });
 
-  await interaction.editReply({
+  await guildOutput(async () => interaction.editReply({
     content: `Auto-archive is now ${enabled ? 'enabled' : 'disabled'}. ${enabled ? 'Raids will automatically be archived when they close.' : ''}`,
-  });
+  }));
 }
 
 export default command;

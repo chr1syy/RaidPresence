@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 /**
  * Handlers for the two welcome-message buttons (issue #39) and the setup chain
  * behind [Start setup] (issue #48).
@@ -63,8 +64,8 @@ type ChainInteraction =
   | RoleSelectMenuInteraction;
 
 async function updateSetup(interaction: ChainInteraction, message: { content: string; components: ActionRowBuilder<any>[] }) {
-  if (interaction.deferred) await interaction.editReply(message);
-  else await interaction.update(message);
+  if (interaction.deferred) await guildOutput(async () => interaction.editReply(message));
+  else await guildOutput(async () => interaction.update(message));
 }
 
 /** Config writes have the same Administrator contract as /config and /setup. */
@@ -163,10 +164,10 @@ async function replyOpenInServer(
   language: string,
   command: string
 ): Promise<void> {
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content: openInServerText(interaction, guildId, language, command),
     ephemeral: true,
-  });
+  }));
 }
 
 function stepHeader(language: string, current: number): string {
@@ -233,14 +234,14 @@ async function handleSetupButton(interaction: ButtonInteraction): Promise<void> 
       }))
     );
 
-  await interaction.reply({
+  await guildOutput(async () => interaction.reply({
     content: `${stepHeader(language, 1)}\n${t(language, 'welcomeSetupIntro')}`,
     components: [
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
       skipRow(guildId, 'tz', language),
     ],
     ephemeral: true,
-  });
+  }));
 }
 
 export async function handleTimezoneSelect(
@@ -496,10 +497,10 @@ async function handleFirstRaidButton(interaction: ButtonInteraction): Promise<vo
   }
 
   if (!interaction.member || !(await canManageRaids(interaction.member as any))) {
-    await interaction.reply({
+    await guildOutput(async () => interaction.reply({
       content: '❌ You do not have permission to create raids. Ask your server admin to configure raid leader roles.',
       ephemeral: true,
-    });
+    }));
     return;
   }
 

@@ -2,7 +2,7 @@
 
 This draft prepares real database deletion after a confirmed final bot removal. It is
 **not connected to `src/index.ts`**, has no environment switch and is not a purge
-command. The running lifecycle still calls `markGuildDeparted`, preserving data.
+command. The retaining runtime coordinator still delegates departures to `markGuildDeparted`, preserving data.
 Do not publish a claim that removal already deletes data on the strength of this PR.
 No rollout, legacy deletion or retention schedule is authorized by this document.
 
@@ -144,60 +144,63 @@ entitlement/backfill/recurrence/scheduler/team/delete/multi-team suites; typeche
 No full Jest suite was rerun for this continuation. The previous full-suite and CI
 success at `1da2969` is historical evidence, not proof for a later head.
 
-## Writer coverage at the continuation boundary
+## Non-destructive runtime wiring and remaining coverage
 
-These are source references, **not a claim that every runtime writer is coordinated**.
-No production entry point has been connected to the new adapter in this phase.
+Runtime creates **one** `createGuildRuntime` in `src/index.ts`, using the shared
+`guildJobs.ts` primitive. That primitive has no database or deletion dependency and
+no remove capability. The inactive deletion draft composes the same primitive;
+it is not imported by the runtime. No flag can activate deletion.
 
-| Entry point / writer class | Source | Implemented proof and remaining work |
+| Real caller | Connected boundary | Remaining limitation |
 | --- | --- | --- |
-| Startup Guild sync/default team | `src/index.ts:49`, `src/index.ts:71` | Existing live path unchanged. Draft `initialize` and `join` are tested; moving the complete startup guild job remains open |
-| GuildCreate/onboarding | `src/index.ts:286`, `src/index.ts:291` | Draft join is generation-bound and legacy-safe. Live onboarding/trial/welcome publication still bypasses it |
-| Commands: config/setup/raid/team | `src/index.ts:153` | All five config writes update-only, real DB tests; setup/read and complete raid/team operations still need one dispatch boundary |
-| Raid/roster creation/clone/refresh | `src/commands/raid.ts:645`, `src/commands/raid.ts:1329`, `src/commands/raid.ts:2249` | Existing scoped/FK and recurrence guards remain; complete roster/network/database operation not yet wrapped |
-| Team creation/deletion/default team | `src/services/teamService.ts:89`, `src/services/teamService.ts:191`, `src/services/teamService.ts:238` | Existing transactional team behavior qualified by focused tests; not connected to the coordinator |
-| Buttons and opt-out modal | `src/events/buttonHandler.ts:29`, `src/events/buttonHandler.ts:490` | Complete actual handler and every component/modal issuance need the adapter; generic callback lifetime tested |
-| Class/spec selects | `src/events/selectHandler.ts:11`, `src/events/selectHandler.ts:54` | Preference/attendance writes and their UI issuance remain unwrapped |
-| Guided create modals/selects/buttons | `src/events/raidCreateFlow.ts:108`, `src/events/raidCreateFlow.ts:119` | Seven readers bind actor+guild; real store invalidated per guild at revocation and drain in inactive adapter. Runtime issuance/routing remains open |
-| DM customId setup writes | `src/events/welcomeFlow.ts:71`, `src/events/welcomeFlow.ts:318` | Actual fresh-admin reauthorization and prompt acknowledgement implemented; real DM handler tested through adapter. Live customIds still lack issuance bindings |
-| Autocomplete | `src/index.ts:190`, `src/utils/teamContext.ts` | No writer introduced; still needs immediate busy rejection/respond([]), generation admission and full lookup boundary in the dispatcher |
-| Entitlement events/startup sync | `src/events/entitlementHandler.ts:5`, `src/services/entitlementService.ts:316` | Existing guild_id provider mapping and startup order inspected/tests passed. Complete per-guild event/REST job remains unwrapped |
-| Trial grant/backfill | `src/services/entitlementService.ts:254`, `src/scripts/backfillTrials.ts:34` | Authoritative leftAt predicate added and real race scenario tested. Candidate selection and full per-guild backfill job still need admission/fencing |
-| Premium reaper | `src/services/entitlementService.ts:388`, `src/utils/raidScheduler.ts:103` | Bulk job still unwrapped; split/group per guild before one-coordinator integration |
-| Scheduler close/recurrence/nudge/expiry | `src/utils/raidScheduler.ts:118`, `src/utils/raidScheduler.ts:237`, `src/utils/raidScheduler.ts:276`, `src/utils/raidScheduler.ts:305` | Focused scheduler/recurrence tests and real deleted-source rejection pass. Optional concrete per-guild recurring pass now wraps SELECT through complete advanceSeries; live timer, close/nudge/expiry remain unwrapped |
+| Startup Guild sync/default team | `guildRuntime.join(guild, initialize)` awaits the existing sync + default team job | Cache presence is positive observation only; absence never authorizes deletion |
+| GuildCreate/onboarding | Same retaining join root includes trial and welcome output | Existing returning leftAt history is preserved and marker cleared; draft legacy hold is NOT live onboarding |
+| GuildDelete / unavailable | Original observed object/token -> immediate non-destructive revoke, invalidate, drain, markGuildDeparted; duplicate original object replays result | Unavailable stays logging-only; failure stays closed, no retry over rejoin |
+| Startup reconciliation | Per-row retaining marker work serialized; a positive concurrent join outranks a stale partial cache | Unobserved historical rows can still get the existing retaining leftAt detection mark; no purge |
+| Slash config/setup/raid/team/stats | `runGuildInteraction` around the actual existing dispatcher; original receipt token; force-fetched member; config/setup require current Administrator | Membership lookup bounded to 1200ms, no automatic pre-defer that would break a modal's first response |
+| Autocomplete | Same original token and entire lookup; busy/revoked lookup responds [] immediately | No hosted timing claim |
+| Guided create modal/select/buttons | Draft store captures original issuing token, actor and guild; real callbacks use that token and fresh raid-leader authorization | Existing ephemeral expiry across restart is unchanged; raw welcome entry points without issuance binding remain legacy |
+| Long-lived attendance / class/spec / optout callbacks | Existing authorization and actual handler behavior retained | **Not connected**: raw raid IDs have no installation generation; no late current-token stamp is substituted |
+| Welcome/DM setup / first raid / skip | Existing fresh Administrator checks for setup selects and prompt defer retained | **Not connected**: original long-lived welcome issuance has no generation or stored delivery identity |
+| Scheduler close / recurring / nudge / expiry | Production timer snapshots positive tokens before any SELECT; complete awaited per-guild root includes all four actual passes and target/member/message work | Existing outbound long-lived buttons still need the compatibility decision below |
+| Entitlement startup | Snapshot before provider REST, apply each result with original guild token, failed/revoked sync blocks trial backfill | Provider billing mapping unchanged; no entitlement cancellation claim |
+| Entitlement events | Capture at event receipt, queue complete sync per guild | No distributed/provider event journal or proof of provider event creation generation |
+| Trial backfill | Startup passes shared runtime; snapshot before per-guild candidate selection + atomic grant | Standalone CLI has no bot's process-local generation; external writers remain outside this fence |
+| Premium reaper | Production hourly timer snapshots tokens; guild-scoped selection/update/cache invalidation inside root | Retained departed guilds are not admitted to this live hygiene pass; paid records excluded as before |
 
-The completed phase supplies the coordinator/adapter capability, concrete config,
-authorization and trial-race fixes, and real-data-store proofs. The next phase is
-explicit runtime entry-point and UI-issuance integration; it must not be declared
-complete merely because `writer(token, callback)` can accept an arbitrary callback.
+`database/client.ts` checks the active job before each ORM mutation, so a query or
+Discord lookup returning after revocation cannot initiate its next write. This is
+not an independent transaction around the whole job. Nested same-guild helpers
+reuse the awaited root; detached/cross-guild work is rejected. `guildOutput` checks
+before output and after completion. Only newly created send results permit a
+best-effort message compensation; pre-existing edits are never deleted by this
+helper. An already initiated remote request cannot be cancelled or reliably undone.
 
-## Bounded recurring-scheduler preparation (October 26)
+The existing recurring creation failure path may compensate **only its newly
+created successor row** within the still-running drained root (`guildJobCleanup`).
+This does not admit normal stale writes, retained-history deletion or guild removal;
+queued rejoin cannot execute until that compensation finishes. Lazy Prisma promises
+must be awaited inside the compensation context; the real DB case covers this.
+Earlier preference writes and later attendance/Discord work remain separate from
+the existing successor/quota transaction. Code rollback cannot restore committed deletes.
 
-`processRecurringSeries(client, { coordinator, token })` now executes the actual
-per-guild SELECT and complete awaited `advanceSeries` path within the supplied
-coordinator root. The token is the original capability from a positively observed
-join, supplied before selection; this function never captures or refreshes it.
-The WHERE includes that token's guildId. Revoked admission returns without a query,
-and admission/selection failure never falls back to the existing bulk path.
+### Concrete architecture decision blocking long-lived UI
 
-This is a concrete scheduler integration seam, **not registered by the live timer**.
-`startRaidScheduler` still calls the existing unscoped signature. Neither runtime
-join/departure handling nor legacy onboarding changes, and deletion stays off.
-Each future caller must dispatch one such job per guild using the same coordinator;
-close, nudge, expiry and premium-reaper passes remain outside this seam.
+`buildRaidButtonRows`, `buttonHandler`, `selectHandler`, `welcomeEmbed` and
+`welcomeFlow` currently publish/consume raw IDs containing raid/guild IDs but no
+original install epoch. Welcome delivery IDs are not persisted. Using an in-memory
+binding table as the sole live replacement would invalidate every existing raid
+button after restart, unlike their current normal behavior. Looking up the current
+epoch on callback receipt would accept stale pre-rejoin UI and violates fencing.
 
-The whole awaited job includes Discord target/member resolution, preference writes,
-the existing successor/quota transaction, attendance creation, and message posting
-plus its final messageId write/cleanup. It is not one database transaction: earlier
-preference updates and later attendance/Discord work cannot be undone by rolling
-back successor creation. The real-DB failure test covers the existing transaction's
-successor and weekly-quota rollback only. A committed deletion cannot be reversed
-by code rollback.
-
-Outbound recurrence/resume buttons still carry their existing raw IDs. Their original
-issuance binding, callback reauthorization and prompt acknowledgement remain activation
-blockers; this background seam neither authorizes a user nor claims UI fencing.
-No new trial, billing or retention policy is selected.
+Before connecting these callers, choose and review either durable operational
+installation/issuance provenance with an explicit legacy-message transition, or
+an audited startup refresh/reissue strategy with an explicit contract for old
+raid and DM messages. This run adds neither a migration nor that larger compatibility
+mechanism and preserves existing raw handlers. The gap is technical and specific;
+it is not a blanket block on independent runtime wiring or an answered trial/retention
+question. Deletion must remain unregistered until this and all other activation gaps
+are independently reviewed.
 
 ## Decisions and work required before activation
 
@@ -207,10 +210,10 @@ No new trial, billing or retention policy is selected.
    separately scoped anti-abuse record with an approved data purpose/lifetime. This
    draft creates no such retained record. Decide how active paid entitlements are
    reattached before trial grant; deleting the local pointer does not cancel payment.
-2. **Integrate every writer into one coordinator.** Startup sync and GuildCreate
-   must use `join`; config/setup/raid/team/button/select/modal/autocomplete paths,
-   DM welcome writes (guild ID comes from customId), entitlement handling, trial
-   backfill/reaper and each guild's scheduler work must use the same `run` boundary.
+2. **Complete the remaining UI writers.** Startup/GuildCreate, fresh commands,
+   guided drafts, autocomplete and background runtime jobs now share the retaining
+   coordinator. Long-lived button/select/modal and DM welcome issuance still need
+   the compatibility decision and must use original provenance when connected.
    Include the entire async job, not just its first query. Same-guild nested `run`
    now reuses the active root; cross-guild and lifecycle nesting is rejected. Keep
    acknowledgments within Discord deadlines. Remove/replace the existing departure handler as part

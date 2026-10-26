@@ -1,3 +1,4 @@
+import type { createGuildJobCoordinator } from './guildJobs';
 import prisma from '../database/client';
 
 /**
@@ -146,7 +147,7 @@ export async function markGuildDeparted(
  */
 export async function reconcileDepartedGuilds(
   activeGuildIds: Iterable<string>,
-  options: { now?: Date } = {},
+  options: { now?: Date; jobs?: ReturnType<typeof createGuildJobCoordinator> } = {},
 ): Promise<number> {
   const ids = [...activeGuildIds];
 
@@ -160,6 +161,24 @@ export async function reconcileDepartedGuilds(
   }
 
   const now = options.now ?? new Date();
+
+  if (options.jobs) {
+    const jobs = options.jobs;
+    const candidates = await prisma.guild.findMany({
+      where: { leftAt: null, id: { notIn: ids } }, select: { id: true },
+    });
+    let marked = 0;
+    for (const guild of candidates) {
+      const token = jobs.capture(guild.id);
+      // A positive join observed during startup outranks an earlier cache snapshot.
+      if (jobs.isCurrent(token)) continue;
+      const result = await jobs.depart(token, () => prisma.guild.updateMany({
+        where: { id: guild.id, leftAt: null }, data: { leftAt: now },
+      }));
+      marked += result?.count ?? 0;
+    }
+    return marked; // Retaining marks only; cache absence never connects to removal.
+  }
 
   const { count } = await prisma.guild.updateMany({
     where: { leftAt: null, id: { notIn: ids } },

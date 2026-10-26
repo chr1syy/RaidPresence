@@ -1,3 +1,4 @@
+import { guildOutput } from '../services/guildJobs';
 import { ChatInputCommandInteraction, GatewayRateLimitError } from 'discord.js';
 import { getTranslations } from './localization';
 
@@ -36,14 +37,14 @@ export async function handleRateLimitError(
 
   try {
     if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({
+      await guildOutput(async () => interaction.editReply({
         content: rateLimitMessage,
-      });
+      }));
     } else {
-      await interaction.reply({
+      await guildOutput(async () => interaction.reply({
         content: rateLimitMessage,
         ephemeral: true,
-      });
+      }));
     }
   } catch (replyError) {
     console.error('[handleRateLimitError] Failed to send rate limit message:', replyError);
